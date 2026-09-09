@@ -152,8 +152,9 @@ before touching the fork**.
 
 `plugin-list.txt` is a publication tracker, not a migration directive. Verified state:
 
-- 19/20 listed plugins are on npm (`0.1.2-rc.x`); only `dsh-logseq` (+
-  `session-intelligence`, `api-wiki-controller`) are unpublished.
+- All listed public plugins are on npm (`0.1.x-rc.x`); only `dsh-logseq` (+
+  `dsh-session-intelligence`) are still unpublished. `api-wiki-controller` is
+  private (excluded from this repo's publish flow).
 - The in-fork `@deepseek-ai/dsh-*` packages are the fork's **default composition**
   (depended on by `dsh-base`, the `dsh` CLI, web-app bundle, graph-host,
   memory-extraction, tool-fs, session-persistence…) and use upstream
