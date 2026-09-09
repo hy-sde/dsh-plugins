@@ -25,7 +25,11 @@ pnpm -r test
 pnpm -r build
 
 dirs=()
-while IFS= read -r d; do dirs+=("$d"); done < <(node scripts/lib/ordered-packages.mjs)
+# capture the order via a file so a guard failure in ordered-packages.mjs
+# (e.g. an excluded plugin still a workspace member) aborts this script
+node scripts/lib/ordered-packages.mjs > .ordered.tmp || { rm -f .ordered.tmp; exit 1; }
+while IFS= read -r d; do dirs+=("$d"); done < .ordered.tmp
+rm -f .ordered.tmp
 echo "== will process ${#dirs[@]} packages in dependency order =="
 if [[ "$mode" == "--check" ]]; then
   for d in "${dirs[@]}"; do
