@@ -46,6 +46,25 @@ via `file:` deps in `apps/cli/package.json`, and the local stand-ins that remain
 (`orchestration-policy.ts` in tool-git, the structural `VcsService`) are all
 destined to be deleted once their standalone packages are published.
 
+## Private / never-publish plugins → dsh-plugins-private
+
+Client-bound or harness-private capabilities (client UI slots, private API
+controllers, anything you never want on npm) are the A case taken further: no
+fork-backport, no standalone package. They live in
+`/Users/hui/Documents/github/dsh-plugins-private` — a separate local git repo —
+and must never enter this workspace or the publish flow. The exclusion
+mechanism is fail-closed:
+
+1. add the dir name to `scripts/excluded-plugins.list` — the publish-order
+   script (`scripts/lib/ordered-packages.mjs`) refuses to run if an excluded
+   plugin is still a workspace member, so `publish-all.sh` can never touch it;
+2. move the dir out of this repo (keep its per-plugin `.git` history in
+   `~/.dsh/archives/dsh-plugins-git/`) and `git rm -r` it here;
+3. on a remote-less repo, purge the paths from this repo's history:
+   `git filter-branch --index-filter 'git rm -r --cached --ignore-unmatch <dir>' -- --all`
+   then `git reflog expire --expire=now --all && git gc --prune=now`
+   (only safe before the first push; copies live in dsh-plugins-private + archives).
+
 ---
 
 ## Phase 0 — Recon: clone → inventory

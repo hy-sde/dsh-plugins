@@ -10,6 +10,11 @@ upstream `deepseek-ai/deepseek-harness`).
   candidate-repo list into clones + codebase-memory indexes + analysis notes.
 - **Publication tracker:** [`plugin-list.txt`](./plugin-list.txt) — published
   versions per plugin + still-to-publish queue.
+- **Private plugins:** excluded/never-publish plugins live OUTSIDE this repo, in
+  [`dsh-plugins-private`](../dsh-plugins-private) (client UI slots, private API
+  controllers). The publish flow blocks them via
+  [`scripts/excluded-plugins.list`](./scripts/excluded-plugins.list) —
+  see [`WORKFLOW.md`](./WORKFLOW.md) → "Private / never-publish plugins".
 - **Release infra:** [`scripts/release-public.sh`](./scripts/release-public.sh)
   (one package) and [`scripts/publish-all.sh`](./scripts/publish-all.sh) (all
   packages in dependency order).

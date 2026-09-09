@@ -1,0 +1,18 @@
+# Plugins EXCLUDED from the dsh-plugins monorepo and its publish flow.
+#
+# Entries are workspace-relative dir prefixes (one per line, `#` comments ok).
+# An excluded plugin is a private/never-publish plugin — it lives in the
+# dsh-plugins-private repo, NOT here. The publish order refuses to continue if
+# any listed path is still a workspace member (fail-closed guard in
+# scripts/lib/ordered-packages.mjs), so removing an entry here is the
+# deliberate act of re-including a plugin.
+#
+# Moving a plugin out: move the dir to dsh-plugins-private (keep the per-plugin
+# .git history in ~/.dsh/archives/dsh-plugins-git/), `git rm -r` it here, add
+# the dir name to this list, commit, and (on a remote-less repo) purge it from
+# history with `git filter-branch --index-filter 'git rm -r --cached
+# --ignore-unmatch <dir>' -- --all` followed by reflog expire + gc.
+
+dsh-client-ui-countdown
+dsh-client-ui-wiki
+dsh-api-wiki-controller

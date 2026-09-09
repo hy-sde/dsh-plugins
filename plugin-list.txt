@@ -27,13 +27,19 @@ dsh-tool-git            0.1.2-rc.1  # nested member dsh-git/packages/git/tool-gi
 
 dsh-logseq                    # verify packages/logseq package name before publishing
 dsh-session-intelligence      # fork uses relative file: until published, then switch to ^version
-dsh-api-wiki-controller       # not in the original queue, still unpublished
+
+## EXCLUDED — private/never-publish, moved to dsh-plugins-private (2026-09-08)
+
+# Blocked from the workspace and publish flow by scripts/excluded-plugins.list
+# (fail-closed guard in scripts/lib/ordered-packages.mjs).
+
+dsh-client-ui-countdown
+dsh-client-ui-wiki
+dsh-api-wiki-controller
 
 ## NOT in the queue, also unpublished (decide: public or private?)
 
 # dsh-tool-library-search
-# dsh-client-ui-countdown
-# dsh-client-ui-wiki
 
 ## Note
 
