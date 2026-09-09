@@ -155,6 +155,11 @@ before touching the fork**.
 - All listed public plugins are on npm (`0.1.x-rc.x`); only `dsh-logseq` (+
   `dsh-session-intelligence`) are still unpublished. `api-wiki-controller` is
   private (excluded from this repo's publish flow).
+- Maka back-port (2026-09-09): the Agent Graph family (`dsh-graph-control/stream/
+  executor`, `dsh-tool-graph`, `dsh-graph-wakes/projection/host`) and
+  `dsh-memory-extraction` from fork-only `@deepseek-ai/dsh-*` packages — all
+  `0.1.2-rc.1`, unpublished; Maka-derived code carries Apache-2.0 attribution in
+  each container's `THIRD-PARTY-NOTICES.md`.
 - The in-fork `@deepseek-ai/dsh-*` packages are the fork's **default composition**
   (depended on by `dsh-base`, the `dsh` CLI, web-app bundle, graph-host,
   memory-extraction, tool-fs, session-persistence…) and use upstream
