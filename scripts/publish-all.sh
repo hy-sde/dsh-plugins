@@ -24,7 +24,8 @@ pnpm -r check
 pnpm -r test
 pnpm -r build
 
-mapfile -t dirs < <(node scripts/lib/ordered-packages.mjs)
+dirs=()
+while IFS= read -r d; do dirs+=("$d"); done < <(node scripts/lib/ordered-packages.mjs)
 echo "== will process ${#dirs[@]} packages in dependency order =="
 if [[ "$mode" == "--check" ]]; then
   for d in "${dirs[@]}"; do
