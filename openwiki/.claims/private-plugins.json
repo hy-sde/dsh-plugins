@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:8277f885dfc4f789d70dbbf9eac3950480c74358f556a3306a11bbc3d3995e59",
+  "claims": [
+    {
+      "id": "claim_7b0b48c44f2c4563ba8e9dccd0d7e5a8",
+      "statement": "Private plugins are excluded via scripts/excluded-plugins.list.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/excluded-plugins.list#L1-L18",
+          "version": "repo-lines-v1:sha256:db41f4a84b564533568ef111a849d3ffddda90a6b3e1044ee4744bf80cdedca1:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4ZDM0ZWRlMzZmNjU0YzUyODBiNDkxOGMwNjJhZGVlODcxMDMwYzMyNjdhNjQ5MzI3Yzg3OGUwYzRkMjJlYTEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5OTFiOGY2ZWIyYmRjNTk2NDMzYzhkMTk5NjJmYTQzNzA2YWZiMmQxMGVhOWMwMjA2ZDQ1Y2VkMjI0ZWJmYWIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_297d74c10d374cd79e2df10f2d49e537",
+      "statement": "A guard failure in the publish order aborts publish-all instead of silently continuing.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/publish-all.sh#L28-L31",
+          "version": "repo-lines-v1:sha256:989d7305c916764d6d26bb27863d552472909dd03a1fe4f7f87e5560c1e03173:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYzMwYTUwOTFkM2EwZjU1YTU2ZmRkNDU1YWMzZmZjYTE0NWYwNWRlMzIyMzY1YmE3OTFhMWY3YWI5ZTRhNTZmZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTExMjM0NDUyZGI4NzY5ZDYwZTQ4MWNiYzM4ZjY2MTE2ZTMwMjUxODE2MTNiNzJkOTMxNDhkMGVlOGZhZGI1NiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2E2YjMyOWM4MTQwYTcwYzM3NDNiZGYyY2UxMGMwN2U1MDQ0ODQ5ZDVhMzRlOTc2N2YxMzFjZDQ5ZjliODNhNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOWVhNmIzNTFhZjA0ZGU0OWYzODI5OWUzZDE4MjMxYjY2ZDYwOGU3MDljYTA1ZDc0MGFiM2NhMmU2NmVjNjcyMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f978f4fe368743278e12f82b10d73927",
+      "statement": "Never-publish plugins live in the separate dsh-plugins-private repo.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L13-L17",
+          "version": "repo-lines-v1:sha256:cef6d6171580721c4adc25cc41a476369981ef6ddc8a62cd0bb2735ae114b5f7:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDNmMDAzMjU3YTk0ZDExN2JiYTFiYmIwYzVkMWI0NTlhNzdhNmFlNTBhNDJhNmE4MWU4OGEyYTg5ZWM4NjYwMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjk3YzIwZDE3ZDMzZmZiYmFiYmJiMmY3NWUwNTU5MzcyZDA3YjlhOWE4MDU4MmI2NDAzNDRhOWU2OGE4NmM0MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODc2NmY1MDFmYTE1ODUxZWUwYmYwYTZkYzA3ZjliMDFmMzY3YzdjMmNhMjI1MTAxNmY1NGVmN2VmNGRjYmE4YyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2U4OTY2Y2IyODc3MDUyNTYwZjE2NmQ4OWMxMjVkZTRiZmJkNjRjOWM5MjExOWEwMGZmMjE1NjJjNzFmNWRmZiJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-09-09T04:22:17.072Z"
+  }
+}

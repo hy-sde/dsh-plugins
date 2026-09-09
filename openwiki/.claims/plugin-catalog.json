@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:7ffa7a61f603a64f60925e29ea91dff1c1175e79a1e76c6581d1f5f1ec5c47a7",
+  "claims": [
+    {
+      "id": "claim_40026bd20ec241f683783918e5d7fc9a",
+      "statement": "The monorepo organizes every plugin into capability groups in a catalog table.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L22-L54",
+          "version": "repo-lines-v1:sha256:df045bd4070cd71f75be449cedd43045869f34881248cfaa36bbbd8a93574371:eyJzZWxlY3RlZExpbmVDb3VudCI6MzMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxNjA4OWIwYjAxMWIyNThlZjUzZGVhNGEzNGNhMmZhYzc3YTc1YWVjMTM4ODE4NzEyMTYzNTJkNGM2Y2VhYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFlMzQzNjcwMTVhMjRjZmI2ZTM1MTRmYmI2MDBhYTAyNmQxMGI4N2U4ZGQ5YzQ2NzdmOWI1YWU2ZmFmZjMxYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijc4Y2JlMDY2MGEyNTRkMjg5OGYxNWMwZTY1YTkwMmJiNjRkZTE3MTQ3ZjVhZTYwMTBlN2UxMjA0NDYxYmQ1YzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_608ff6bb7cf641449791b29f30e64b58",
+      "statement": "A group row is atomic: packages from one port or engine+tool pair are documented together.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L23-L27",
+          "version": "repo-lines-v1:sha256:a00c68544fe8f213d1e286fea4287ae0c5c608e314108ab48b244afcd80f8745:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNjNTdmZWYzNWUzYTUwZmVjYmY4ZjY2OWE0YzMxYzA2YTQyZTEwZThiZDVlMDA1NjM2M2M5ZmZjZDNmYzFjZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjQwYzRjOTQ2YTBmNzk3MTQ5YjliZGM2ODQ1YmMzZTBmMTc1ZWYzNTg1MzdjNzM2NzlmMzhkYTE5YzhjODJmOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMWY2NTk5OTY4ZDk4NmRlMGMxMTEyMzliOGUzY2IyMTUzODIzZTE3NjRkY2U0MzIwNWMyMjlhNDkzYjk0ZTZhOCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-09-09T04:22:17.072Z"
+  }
+}

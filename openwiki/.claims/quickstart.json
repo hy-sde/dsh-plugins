@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:7cfdfb093537b9c87d96ca9e700ada025050adff1311ef76feede5a3c79b63ac",
+  "claims": [
+    {
+      "id": "claim_a93aea0a425a41f38d9f02d6d42b67e9",
+      "statement": "The repository is one pnpm workspace.",
+      "evidence": [
+        {
+          "resource": "repo://pnpm-workspace.yaml#L1-L6",
+          "version": "repo-lines-v1:sha256:ccb1b7940b05580ff2d1d64b726fd35129af4ec88fc8e3a57ca4bd139af9424e:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZWRiMDc2ZWI4MGFkZTE5ZmVhM2UwYTQzMTk4NmI2NTVmNWZhNTllZDYyNjdlMTA3ZDY4OGI2MWMzZjQyMTc5NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZmM4OTgxNWMwZDA1OTIwZmQ5ZTIzMzE4NTk4ZmZjNWUxMzYwOWY3M2Y3Mjk3MWUxNWVmNjY4OGY5ZDc1OTlhOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzY1NDNhOTgzMmFjNjkwNzJhZWEyYjk5YjQyYTI2ZDY4NDJkNTIzMGY5NjE2MGE3YjkzZWEzNmQwMmE3ODlhMyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_63419995569542d39f2c540168e2318a",
+      "statement": "The whole workspace is installed and verified with pnpm install and pnpm -r check.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L69-L80",
+          "version": "repo-lines-v1:sha256:074be3b120837a637d0e22d8340ba600fd19a7405c9360e2a1072d75987436cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MTIsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk2OGU1MmQwOWQ4YjE3MTlmNWJkYmIzMDY5NWI1ZDc2M2U4YmYwYzYwZTRhMzY3YjQwMTI5YWYyYzEwZDhlODYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjljOTkwYTA1Y2QwMjAyNDZhOTRjYTZjZjBmODkwNjlmNTA1NzQ4NTZhNjk4MzAxYzNkNmQzNGMzMzViZmNhNGYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjI3NjQ1YjE0YWMyZTFkOTk0ZjliNDVkYzA3MjlkZGRiMmVlZDE1M2ZkNGZmMzJiNTA2ZjM4ODUwYTg3YjJlOTEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-09-09T04:22:17.072Z"
+  }
+}

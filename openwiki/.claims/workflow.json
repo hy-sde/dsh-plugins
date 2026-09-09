@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:119287de893d909786f465943b631d6526da270c54476c4ed7c42c5b0dbd0046",
+  "claims": [
+    {
+      "id": "claim_43bb659a07854b53b1fa6be312ac9319",
+      "statement": "Standalone-first is the default when a capability has a life outside the harness.",
+      "evidence": [
+        {
+          "resource": "repo://WORKFLOW.md#L23-L25",
+          "version": "repo-lines-v1:sha256:cfcc8e735ddc54fbd7bda74488909fcb6cebf6b745e03bddea24efc7990c65db:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNGNjN2YzZTE3ODM4ODIxYWNkZGIzY2YzNjE0Y2ExYzk2ZjZhZjVmNTA3M2M0ZTFkMDFiYmE3MTYyZGI3MGJhNyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYWM4MTM4OTIwZWI5Yjk4YTk1YzBiNTc3MDI1ODllOTllNTQ3YmVkOWYyZDVjNzZkYmY4MjNlOGIyMDAxODZiNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTBlMDg0NThmMjJjNTc4NjQ5N2YzOTIwYjY2NTYzYTE1YjRkY2VhMDdmZjE0OTQ2MDBkZTk1NjE1MGZjNDI4OSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2I4ZWU2NDYyZGU5YmU2OTk5NTA3NjkxMDUyNzM3YWM0MzYwZmVjYTZkOGI0ZmZhOWFkY2NmMTU4Yzg4NTliYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7280aba43a0f4f55bfae4fbec8872561",
+      "statement": "Fork-only covers capabilities with no outside life.",
+      "evidence": [
+        {
+          "resource": "repo://WORKFLOW.md#L26-L28",
+          "version": "repo-lines-v1:sha256:cb8ee6462de9be6999507691052737ac4360feca6d8b4ffa9adccf158c8859bc:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDQ2MWQzZjQ3YjA3M2VkM2FiNmIyZmMxZWIzMmRkMjU1OGI2ZjFjZDk3ZWYzNmUzZDlkNTQyZjliZGRjNTQwNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTQyODI0YzZmZmVmYTgwN2VjNDUwMmRmODBmYjg4ZTMyZWZkZjMxNjNjNzFlM2Y5YWNjNzkxNGI5MDNiOGYyOSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiY2ZjYzhlNzM1ZGRjNTRmYmQ3YmRhNzQ0ODg5MDlmY2I2Y2ViZjZiNzQ1ZTAzYmRkZWEyNGVmYzc5OTBjNjVkYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGNjOTZiYWRlMTQxZTBmMWNmMzlhM2ZlYmEzZDkxNjlkOTk3YmUzZGVhNDM3M2VjZWRjNjUxZTJlMDA3NDM2MSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3e789f6d5d7c480fbcb386460a60f6be",
+      "statement": "Private plugins live outside this repo and are blocked from the publish flow.",
+      "evidence": [
+        {
+          "resource": "repo://WORKFLOW.md#L49-L56",
+          "version": "repo-lines-v1:sha256:135db8cf0b216c40bfdc6061b2ce3be0e2fa243f3cd2712a0d9595fca060d1de:eyJzZWxlY3RlZExpbmVDb3VudCI6OCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODA2MGRlODYzMWU2YWI1OGI0MDE0NzVkMTRkMzE4OTk5MmQ0NTJmNzUwNzAxNDgwODdkMTMxNGExNmM3ZTY1NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGVmNmI0YjMyOWE1NWFiNGY4NTE5NzBiOTJlNDNiY2ZmNDUzM2ZiN2ZiYjM1ZmY5OTAwZjY3MTQzMzFjNjgxYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGEyZDExYWMyZDVmOGQ3MzA5OWRlN2I4NTc5ZjYxZGQ3YmZjY2U3ZDhmNjA4NmQ3NzJiZDIwNzY4ODU4YmIyYyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmZiMWNlOTQxMTAyMTllODM3OWQ0ODEzOGEwZDI4ODhkNTRiOTY1MTA4ZmExZGY5NTAwZDdjNWRjNGY5ZTE2ZCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-09-09T04:22:17.072Z"
+  }
+}

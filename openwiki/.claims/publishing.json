@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:b5c82cf1cc2fe6ccd3d2355d10f8f1caf2fa3822f53ae21a98e336ea68395623",
+  "claims": [
+    {
+      "id": "claim_8aba4f384916424aa072f4b50a455623",
+      "statement": "The release guard requires a clean git worktree, a @hy-sde-org package name and a LICENSE.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/release-public.sh#L36-L49",
+          "version": "repo-lines-v1:sha256:e09a589381c8ca006359fea54000a9afcb265954a8c99ec4de24597dc667fefd:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdmNTRkNjU4ZDQ5OTk4OTM4OTUyZGJjYWYzZjkyNWMwY2Q5NGRlYjU3NmEwMWMwNWE5MDI0MWFiNGFhMGNkYjUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM3NjlkMjM3Y2Q0MjBiOWQzOGI5ODFhMGE0ZjY3NzAxOTBhNGE4M2RjYTFmZTU2YzRmNWJhMWUyY2JjMGVmNzYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImVkZTVjMjFlYjFiYTY0MTBmNDE2ZDFmNGRhZjg0MjI4ZjU1ZTg0Y2UxZGQ1NDhkZDIyYTMxNTg1NDA4MjFhYjciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViNDQ3M2M0ZmZiNzFjYTI1ZGVjNjk4YzRmOThkMTEyZTllZjcwYzdmNjdjM2NjZTQxNmU1MmIwZGM0NWVhYzMifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b91a611a1e3411ea3bfb70b2d99a898",
+      "statement": "Publishing uses pnpm, not npm, so workspace:^ is rewritten to published ranges.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/release-public.sh#L98-L101",
+          "version": "repo-lines-v1:sha256:d1662aa26c2c07c35f279235a6b7a51041b90193c39651604008a7c294a29a19:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZDUyYzE1NDBhYThkYzM1ZmVkNmZjZmNkMDMzY2I5ZmY2MjZmNzEwZDI0ZGIxOTgyZjQ4NDU1NTY5NjAxZGMwZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjNkMjlkNjI5ZjhmMTQyYzM3OGY4YzQ5NThmZGMzM2ZlOTU5ZDBkNzM1N2Q1NGRlYzg5Y2M3NjM0MWFlNDA3MCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzFjZTFhYTExNjk1ZDliNTE1NzBkYTE1ZjIzOWQ3MGQyZjVjYWQ1OGE3ODUwZDJhOGRhOWNlZDU4NjFkNDgzMiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e395bfe8a3d344628c33fb25f1e8cea5",
+      "statement": "publish-all.sh gates the full workspace and processes packages in dependency order.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/publish-all.sh#L21-L30",
+          "version": "repo-lines-v1:sha256:d7df380a8e7ea99a1b6bb6b767ac99abf0f6d243ca13a83682742c25e6491ef6:eyJzZWxlY3RlZExpbmVDb3VudCI6MTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU2YjlhOTQxZTQ4NTNiYzBjNjlkN2RmZTU4YzgwMTliNTU5OTc2NzBhNGFlYmUwYTZlMDQ5ZTYyOTY1ZDgyZDciLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNlNjJhNzRhNjc0ZDJiZWZiYmVkNGRjYTRmNDk1ZjcwNTM0YjhmYzg2ZTkxY2ExNjdlZGI5MGU2MDdmZmI1ZjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQwNWVjNjE5ZGJhNmJmOTZkZjY5YzZiYjk5MGU2ZmU1ZTYwMjlmMTUzNTUxNmMzYWUzYjYxZGZkYjRmZDAzNTYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjNkODE1ZGQ0ZTNkYzFiN2IxZDRkYzAzOTYyMjM1ZDg5NTYwZmM2YTYwOWY1OWFiMmM2NDExZTZhN2ExODcxZmIifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.3",
+    "at": "2026-09-09T04:22:17.072Z"
+  }
+}

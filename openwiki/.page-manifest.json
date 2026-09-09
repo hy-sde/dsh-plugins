@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/plugin-catalog.md": {
+      "pageVersion": "sha256:7ffa7a61f603a64f60925e29ea91dff1c1175e79a1e76c6581d1f5f1ec5c47a7",
+      "completedBy": "pipeline",
+      "completedRunId": "539d6720-5491-4b88-96b1-9aea99f6f4bd",
+      "gitHead": "a8dc5072171f777c587feef0dd30772d615029f8",
+      "sourceFingerprint": "sha256:ecfb59e338681ea0ad8fadaae1a3d7ccd21af1ae7599871790738e733aded368"
+    },
+    "/openwiki/private-plugins.md": {
+      "pageVersion": "sha256:8277f885dfc4f789d70dbbf9eac3950480c74358f556a3306a11bbc3d3995e59",
+      "completedBy": "pipeline",
+      "completedRunId": "539d6720-5491-4b88-96b1-9aea99f6f4bd",
+      "gitHead": "a8dc5072171f777c587feef0dd30772d615029f8",
+      "sourceFingerprint": "sha256:ecfb59e338681ea0ad8fadaae1a3d7ccd21af1ae7599871790738e733aded368"
+    },
+    "/openwiki/publishing.md": {
+      "pageVersion": "sha256:b5c82cf1cc2fe6ccd3d2355d10f8f1caf2fa3822f53ae21a98e336ea68395623",
+      "completedBy": "pipeline",
+      "completedRunId": "539d6720-5491-4b88-96b1-9aea99f6f4bd",
+      "gitHead": "a8dc5072171f777c587feef0dd30772d615029f8",
+      "sourceFingerprint": "sha256:ecfb59e338681ea0ad8fadaae1a3d7ccd21af1ae7599871790738e733aded368"
+    },
+    "/openwiki/quickstart.md": {
+      "pageVersion": "sha256:7cfdfb093537b9c87d96ca9e700ada025050adff1311ef76feede5a3c79b63ac",
+      "completedBy": "pipeline",
+      "completedRunId": "539d6720-5491-4b88-96b1-9aea99f6f4bd",
+      "gitHead": "a8dc5072171f777c587feef0dd30772d615029f8",
+      "sourceFingerprint": "sha256:ecfb59e338681ea0ad8fadaae1a3d7ccd21af1ae7599871790738e733aded368"
+    },
+    "/openwiki/workflow.md": {
+      "pageVersion": "sha256:119287de893d909786f465943b631d6526da270c54476c4ed7c42c5b0dbd0046",
+      "completedBy": "pipeline",
+      "completedRunId": "539d6720-5491-4b88-96b1-9aea99f6f4bd",
+      "gitHead": "a8dc5072171f777c587feef0dd30772d615029f8",
+      "sourceFingerprint": "sha256:ecfb59e338681ea0ad8fadaae1a3d7ccd21af1ae7599871790738e733aded368"
+    }
+  }
+}
