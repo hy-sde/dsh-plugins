@@ -1,0 +1,19 @@
+# @hy-sde-org/dsh-session-url — install surface for the session:// scheme.
+#
+# The `session://` HANDLER is host-plane: it registers a scheme into the
+# internal-URL registry (`ctx.internalUrls`) and reads the session-query
+# service (`ctx.sessionQuery`), both of which cross sessions. This bundle
+# inserts one row into the profile's base composition — it touches no existing
+# row, so `dsh plugin add @hy-sde-org/dsh-session-url` never breaks boot on a
+# stock DeepSeek Harness (0.1.1-rc.2 and later).
+#
+# The row stays dormant ("waiting for …") until a process mounts BOTH
+# `internalUrls` (e.g. `@hy-sde-org/dsh-internal-urls`, the sibling standalone
+# registry) and `sessionQuery` (a session-query engine), so installing this
+# package alone is harmless. It adds no tool code: the internal-URL-aware
+# read/grep tools shipped by the internal-urls companion packages route any
+# registered scheme through the registry.
+
+- insert:
+    - id: session-url
+      name: '@hy-sde-org/dsh-session-url'

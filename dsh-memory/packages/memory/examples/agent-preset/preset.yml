@@ -1,0 +1,3 @@
+name: Long-Horizon Memory
+description: Coding agent with durable project memory — retain / recall / reflect / memory_edit / learn tools plus first-turn project-memory prompt injection. For stock DeepSeek Harness releases (rc.2+).
+order: 6

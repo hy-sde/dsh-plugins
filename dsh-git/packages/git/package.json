@@ -1,0 +1,117 @@
+{
+  "name": "@hy-sde-org/dsh-git",
+  "version": "0.1.2-rc.1",
+  "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff capture/parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree/conventional layers backing the commit, review, and worktree tools in @hy-sde-org/dsh-tool-git — a standalone plugin with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
+    },
+    "./diff": {
+      "types": "./dist/diff.d.ts",
+      "default": "./dist/diff.js"
+    },
+    "./topo-sort": {
+      "types": "./dist/topo-sort.d.ts",
+      "default": "./dist/topo-sort.js"
+    },
+    "./lock-files": {
+      "types": "./dist/lock-files.d.ts",
+      "default": "./dist/lock-files.js"
+    },
+    "./vcs": {
+      "types": "./dist/vcs.d.ts",
+      "default": "./dist/vcs.js"
+    },
+    "./repo-lock": {
+      "types": "./dist/repo-lock.d.ts",
+      "default": "./dist/repo-lock.js"
+    },
+    "./worktree": {
+      "types": "./dist/worktree.d.ts",
+      "default": "./dist/worktree.js"
+    },
+    "./conventional": {
+      "types": "./dist/conventional/index.d.ts",
+      "default": "./dist/conventional/index.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-git/packages/git"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-atomic-write": "^0.1.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-atomic-write": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess-local": "^0.1.2-rc.1",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "git",
+    "commit",
+    "review",
+    "worktree"
+  ]
+}

@@ -1,0 +1,7 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and record the new hashes here
+# (this standalone repo has no verify-translation-pairing script; the hashes are
+# provenance for the pair carried over from the deepseek-harness fork).
+README.md: 0b774b9e5c74cdba82d0010e204af22a2a227301
+README.zh.md: 15711e50fd53db1373ad2bbdcdc6e01cf237d7da

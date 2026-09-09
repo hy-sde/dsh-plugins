@@ -1,0 +1,34 @@
+# @hy-sde-org/dsh-tool-codebase-memory — a self-contained model-facing
+# codebase-memory CLI tool surface.
+#
+# The plugin mounts as ONE plain agent-plane row, exactly like the official
+# harness's own `tool-codebase-memory` row in the stock base bundle. It
+# consumes the deployment's host services — `tools` and `systemPrompt` (stock
+# base provides both via the agent bundle) — so it needs no service or
+# filesystem realm of its own: each call spawns `codebase-memory-mcp cli
+# --json <tool>` once against the same local daemon the stdio MCP client
+# fronts, so indexes, mutation locks and index supervisors are shared.
+#
+# The row id carries the `hy-sde-` prefix to avoid clashing with any shipped
+# row of the same name (a duplicate loader id fails the boot); if the
+# deployment already mounts a `tool-codebase-memory` row of its own, disable
+# this one or drop the insert and keep the stock row.
+#
+# Override per deployment (e.g. point at a non-PATH CLI binary) by patching
+# the row by id:
+#
+#   - id: hy-sde-cbm-tool-codebase-memory
+#     config:
+#       cliPath: /opt/codebase-memory-mcp/bin/codebase-memory-mcp
+#       project: my-monorepo
+#
+# The `codebase:tools` prompt section is registered by the same plugin, so no
+# separate prompt row is needed.
+- insert:
+    - id: hy-sde-cbm-tool-codebase-memory
+      name: '@hy-sde-org/dsh-tool-codebase-memory'
+      config:
+        cliPath: codebase-memory-mcp
+        timeoutMs: 60000
+        indexTimeoutMs: 600000
+        maxChars: 200000

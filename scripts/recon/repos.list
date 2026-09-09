@@ -1,0 +1,14 @@
+# Recon registry — one repo per line: <url> [name]
+#
+#   * non-comment, non-blank lines are candidates
+#   * [name] defaults to the URL's last path segment (with .git stripped)
+#   * codebase-memory project = "harvest-<name>", clone dir = $HSR_HOME/repos/<name>
+#   * re-running updates clones (scratch: local edits are discarded) and re-indexes
+#
+# Example lines:
+#   https://github.com/some-org/interesting-repo.git
+#   git@github.com:some-org/another-repo.git my-alias
+
+# Upstream harness — capability watch / upstream-merge recon (fork is indexed separately
+# as "deepseek-harness"; this one becomes "harvest-upstream-harness").
+https://github.com/deepseek-ai/deepseek-harness.git upstream-harness

@@ -1,0 +1,15 @@
+# workspace artifacts
+node_modules/
+dist/
+lib/
+coverage/
+*.tgz
+*.tsbuildinfo
+
+# native builds
+target/
+
+# local archives / logs
+*.log
+.DS_Store
+.recon-home/

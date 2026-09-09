@@ -1,0 +1,104 @@
+{
+  "name": "@hy-sde-org/dsh-openwiki",
+  "version": "0.1.2-rc.1",
+  "description": "The OpenWiki 0.4.3 deterministic engine (MIT) as an in-process library for DeepSeek Harness: resumable page-job lifecycle with durable .run.json/.page-manifest.json/.last-update.json, Grounded Claims store/session/evidence resolver with .claims/ sidecars, OKF v0.2 front matter validation/repair + index sync + generated provenance, Mermaid + wiki-link validation, behind a minimal WikiFs filesystem seam — no external openwiki CLI and no DeepAgents coupling.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./agent/*": {
+      "types": "./dist/agent/*.d.ts",
+      "default": "./dist/agent/*.js"
+    },
+    "./claims/*": {
+      "types": "./dist/claims/*.d.ts",
+      "default": "./dist/claims/*.js"
+    },
+    "./fs/*": {
+      "types": "./dist/fs/*.d.ts",
+      "default": "./dist/fs/*.js"
+    },
+    "./generation/*": {
+      "types": "./dist/generation/*.d.ts",
+      "default": "./dist/generation/*.js"
+    },
+    "./integrations/*": {
+      "types": "./dist/integrations/*.d.ts",
+      "default": "./dist/integrations/*.js"
+    },
+    "./mermaid/*": {
+      "types": "./dist/mermaid/*.d.ts",
+      "default": "./dist/mermaid/*.js"
+    },
+    "./okf/*": {
+      "types": "./dist/okf/*.d.ts",
+      "default": "./dist/okf/*.js"
+    },
+    "./platform/*": {
+      "types": "./dist/platform/*.d.ts",
+      "default": "./dist/platform/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-openwiki/packages/openwiki"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "jsdom": "^29.1.1",
+    "mermaid": "^11.16.0"
+  },
+  "peerDependenciesMeta": {
+    "jsdom": {
+      "optional": true
+    },
+    "mermaid": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^24.0.0",
+    "jsdom": "^29.1.1",
+    "mermaid": "^11.16.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "openwiki",
+    "grounded-claims",
+    "wiki"
+  ]
+}

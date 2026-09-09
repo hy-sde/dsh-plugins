@@ -1,0 +1,91 @@
+{
+  "name": "@hy-sde-org/dsh-session-intelligence",
+  "version": "0.1.0-rc.1",
+  "description": "The `session_health` tool for DeepSeek Harness — per-session health intelligence (outcome classification, tool-health signals, prompt/workflow heuristics, context pressure, A–F health grade) computed in-process from the session store, plus a standalone CLI over the same engine — a standalone plugin with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "default": "./dist/cli.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "dsh-session-intelligence": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-session-intelligence/packages/session-intelligence"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@hy-sde-org/dsh-zstd-frame": "workspace:^"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session-query": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-timeout": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session-query": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-timeout": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@hy-sde-org/dsh-zstd-frame": "workspace:^",
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "sessions",
+    "health",
+    "outcome",
+    "signals"
+  ]
+}

@@ -1,0 +1,26 @@
+# User agent preset for @hy-sde-org/dsh-internal-urls on OFFICIAL DeepSeek
+# Harness releases (dsh-v0.1.1-rc.2 and later).
+#
+# Install: copy this directory to ~/.dsh/.agent-presets/<id>/ (pick any id),
+# then select the preset in the Web UI preset picker (or `dsh agent` CLI).
+# All three packages must be installed (`dsh plugin add`) so these rows
+# resolve; the `internal-urls` SERVICE row is added host-wide by the bundle.
+#
+# These rows mount the ROUTING `read`/`write`/`edit` (dsh-tool-fs-internal-urls)
+# and `grep` (dsh-tool-fs-search-internal-urls) — fork builds of the harness
+# tool packages that resolve conflict://, issue://, pr:// etc. through the
+# host registry and behave exactly like the stock tools on plain filesystem
+# paths. Agent-scope shadowing makes them THE read/write/grep for this
+# session; the deployment's stock read/write/grep keep serving other scopes.
+#
+# Copy any other rows from the preset you normally use (persona, bash, todo,
+# ask-user, skills, ...) next to these; only the two filesystem rows are
+# special. `sampleOverCapGlobResults` is a required tool-fs-search config.
+
+- id: tool-fs-internal-urls
+  name: '@hy-sde-org/dsh-tool-fs-internal-urls'
+
+- id: tool-fs-search-internal-urls
+  name: '@hy-sde-org/dsh-tool-fs-search-internal-urls'
+  config:
+    sampleOverCapGlobResults: false

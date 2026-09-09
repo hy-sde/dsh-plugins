@@ -1,0 +1,101 @@
+{
+  "name": "@hy-sde-org/dsh-browser",
+  "version": "0.1.2-rc.1",
+  "description": "Agentic browser plumbing for DeepSeek Harness: the host ctx.browser service (launch with stealth, CDP-attach, and a local relay + companion Chrome extension driving the user's own tabs) backing the browser tool in @hy-sde-org/dsh-tool-browser — a standalone plugin with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./service": {
+      "types": "./dist/service.d.ts",
+      "default": "./dist/service.js"
+    },
+    "./stealth": {
+      "types": "./dist/stealth.d.ts",
+      "default": "./dist/stealth.js"
+    },
+    "./aria": {
+      "types": "./dist/aria.d.ts",
+      "default": "./dist/aria.js"
+    },
+    "./relay": {
+      "types": "./dist/relay/index.d.ts",
+      "default": "./dist/relay/index.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "cordis.patch.yml",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json && cp -r src/assets dist/assets",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-browser/packages/browser/browser"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "playwright-core": "^1.61.1",
+    "ws": "^8.21.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.5.0",
+    "playwright-core": "^1.61.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
+    "ws": "^8.21.0"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "browser",
+    "cdp",
+    "chrome"
+  ]
+}

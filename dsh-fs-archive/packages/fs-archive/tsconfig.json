@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    // Vendored-style port: upstream idioms assume unchecked indexing and
+    // plain optional properties; keep the fork's relaxed policy here.
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src", "tests"]
+}

@@ -1,0 +1,91 @@
+{
+  "name": "@hy-sde-org/dsh-memory",
+  "version": "0.1.2-rc.2",
+  "description": "Agent-curated long-horizon memory (ctx.memory) for DeepSeek Harness: durable project-scoped memory banks with a provider registry and a shipped local backend — a standalone plugin with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./local": {
+      "types": "./dist/local.d.ts",
+      "default": "./dist/local.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./frame-codec": {
+      "types": "./dist/frame-codec.d.ts",
+      "default": "./dist/frame-codec.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-memory/packages/memory"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-home-paths": "^0.1.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-internal-urls": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-internal-urls": "workspace:^",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "memory",
+    "retain",
+    "recall",
+    "reflect",
+    "learn"
+  ]
+}

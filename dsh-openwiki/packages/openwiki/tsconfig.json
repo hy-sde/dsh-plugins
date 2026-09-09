@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    // Ported from upstream openwiki 0.4, whose code contract writes optional
+    // fields as `?: T` and assigns `undefined` freely. The base enables
+    // exactOptionalPropertyTypes + noUncheckedIndexedAccess; relaxing both at
+    // package level keeps the port byte-faithful (same as the fork's port).
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src", "tests"]
+}

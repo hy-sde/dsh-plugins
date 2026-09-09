@@ -1,0 +1,2 @@
+name: OpenWiki 文档作者
+description: 在仓库中生成/维护 Grounded Wiki：内置 OpenWiki 生命周期工具（openwiki_begin/submit_plan/next_page/submit_page/finish，进程内确定性引擎）与 codebase-memory 结构化发现工具。

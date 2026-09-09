@@ -1,0 +1,44 @@
+# User agent preset for @hy-sde-org/dsh-session-intelligence — "how did past
+# sessions go?".
+#
+# Install: copy this directory to ~/.dsh/.agent-presets/<id>/ (pick any id),
+# then select the preset in the Web UI preset picker (or `dsh agent` CLI).
+#
+# Structure: exactly one special host row resolves the deployment's `tools`,
+# `systemPrompt`, and `sessionQuery` services — no realm is needed. Copy any
+# other rows from the preset you normally use (bash, todo, ask-user, skills,
+# ...) next to these; only the intelligence row is special.
+#
+# The tools are `session_health` and `session_recent_edits`:
+#   session_health { action: "recent" | "session", sessionId?, limit?, since? }
+# Action "recent" returns a health table (outcome, grade, score, signals)
+# across the most-recent sessions; action "session" returns the full report
+# (basis categories, penalties, tool-health and heuristic details).
+#   session_recent_edits { path?, limit?, perFile?, since? }
+# Returns recently edited file paths (Edit/Write calls), newest first, with
+# per-file inlined edits and an optional case-insensitive path filter.
+
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    text: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+      Use `session_health` to check how past sessions in this workspace went —
+      `session_health { action: "recent" }` for one table of outcomes and
+      A–F grades, `session_health { action: "session", sessionId: "..." }`
+      for the full report behind a grade. Use `session_recent_edits` to see
+      which files were recently edited (newest first), and
+      `session_insights { action: "tool-frequency" }` to rank tool-call
+      frequency with session coverage and error counts.
+
+- id: agent-instructions
+  name: '@deepseek-ai/dsh-agent-instructions'
+  config:
+    maxBytes: 65536
+
+- id: hy-sde-tool-session-intelligence
+  name: '@hy-sde-org/dsh-session-intelligence'
+  config:
+    maxSessions: 200
+    recentLimit: 20
+    timeoutMs: 60000

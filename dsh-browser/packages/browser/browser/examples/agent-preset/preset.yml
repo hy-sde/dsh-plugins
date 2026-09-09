@@ -1,0 +1,3 @@
+name: Agentic Browser
+description: Coding agent with an agentic browser tool — open/run/state over launch (stealth), CDP-attach, or the local relay + extension over the host ctx.browser service. For stock DeepSeek Harness releases (rc.2+).
+order: 8

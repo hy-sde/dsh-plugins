@@ -1,0 +1,3 @@
+name: Session Intelligence
+description: Coding agent with session health intelligence — `session_health` reports outcome, A–F health grade, tool/progress/context signals for past sessions.
+order: 8

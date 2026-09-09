@@ -1,0 +1,3 @@
+name: Internal URLs (fs-shaped)
+description: Coding agent whose read/write/grep resolve conflict://, pr://, and issue:// URLs through the internal-urls registry. For stock DeepSeek Harness releases (rc.2+).
+order: 7

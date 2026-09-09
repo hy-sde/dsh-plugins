@@ -1,0 +1,91 @@
+{
+  "name": "@hy-sde-org/dsh-tool-git",
+  "version": "0.1.2-rc.1",
+  "description": "Model-facing agentic git tools (commit analyze + commit_apply split execution with validation and a P2 review gate on push, review with P0-P3 verdicts, and worktree isolated per-task checkouts with durable leases) over the host ctx.git service — a standalone plugin for DeepSeek Harness with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./commit": {
+      "types": "./dist/commit.d.ts",
+      "default": "./dist/commit.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "default": "./dist/review.js"
+    },
+    "./worktree": {
+      "types": "./dist/worktree.d.ts",
+      "default": "./dist/worktree.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-git.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hy-sde-org/dsh-git": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subagent": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-git": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subagent": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess-local": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-git": "workspace:*",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "git",
+    "commit",
+    "review",
+    "worktree"
+  ]
+}

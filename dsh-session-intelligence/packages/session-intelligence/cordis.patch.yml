@@ -1,0 +1,28 @@
+# @hy-sde-org/dsh-session-intelligence — workspace session health for the model.
+#
+# One plain host row, like the official harness's own `tool-session-query`
+# row. It consumes the deployment's host services — `tools` (stock base),
+# `systemPrompt` (stock base), and `sessionQuery` (stock base mounts
+# `@deepseek-ai/dsh-session-query` with the sqlite index backend) — so it
+# needs no realm, no filesystem access, and no persistence of its own: the
+# tools (`session_health`, `session_recent_edits`, `session_insights`) are
+# scoped to the caller workspace by `sessionQuery.filterSessions` with a
+# `cwd` clause, and unreadable sessions are counted and reported.
+#
+# The row id carries the `hy-sde-` prefix to avoid clashing with any shipped
+# row of the same name (a duplicate loader id fails the boot).
+#
+# Override per deployment by patching the row by id:
+#
+#   - id: hy-sde-tool-session-intelligence
+#     config:
+#       maxSessions: 200
+#       recentLimit: 20
+#       timeoutMs: 60000
+- insert:
+    - id: hy-sde-tool-session-intelligence
+      name: '@hy-sde-org/dsh-session-intelligence'
+      config:
+        maxSessions: 200
+        recentLimit: 20
+        timeoutMs: 60000

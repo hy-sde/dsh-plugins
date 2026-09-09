@@ -1,0 +1,88 @@
+{
+  "name": "@hy-sde-org/dsh-tool-fs-internal-urls",
+  "version": "0.1.2-rc.2",
+  "description": "Agent-scope shadow of the DeepSeek Harness read/write/edit fs tools that also resolves conflict://, pr://, issue:// URLs through ctx.internalUrls — the routing surface that makes internal URLs work on stock harness releases.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-internal-urls/packages/tool-fs-internal-urls"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/schemastery": "3.18.1",
+    "diff": "^9.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-attachment": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-user-approval": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-internal-urls": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-attachment": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-user-approval": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-internal-urls": "workspace:^",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "read",
+    "write",
+    "internal-urls",
+    "conflict"
+  ]
+}

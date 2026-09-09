@@ -1,0 +1,25 @@
+# @hy-sde-org/dsh-internal-urls — install surface for FS-shaped internal URLs.
+#
+# The `ctx.internalUrls` SERVICE is host-plane: the resolver registry (and the
+# per-session conflict histories it keys) crosses sessions, so this bundle
+# inserts one row into the profile. The read/write/grep ROUTING that consumes
+# it cannot live on the host plane on stock DeepSeek Harness: the official
+# `dsh-tool-fs` always registers `read`/`write`/`edit` (and `dsh-tool-fs-search`
+# registers `grep`), so a second owner anywhere in the host tree fails boot
+# with "prompt section `tool:read` is already registered". The routing
+# therefore ships in agent-scope shadow tools — `@hy-sde-org/dsh-tool-fs-internal-urls`
+# and `@hy-sde-org/dsh-tool-fs-search-internal-urls` — mounted from a user
+# agent preset (see examples/agent-preset/), where scoped shadowing makes
+# them THE `read`/`write`/`grep` for that session while the deployment's
+# stock tools keep serving every other scope untouched.
+#
+# `insert` is the stock harness patch form for rows that don't exist in the
+# deployment's composition (a plain `id:`+`name:` entry is a modification of
+# an existing row). This patch INSERTS a new row only — it touches no existing
+# row, so `dsh plugin add @hy-sde-org/dsh-internal-urls` never breaks boot on
+# a stock DeepSeek Harness (0.1.1-rc.2 and later). Without the preset rows the
+# registry exists but no tool consults it.
+
+- insert:
+    - id: internal-urls
+      name: '@hy-sde-org/dsh-internal-urls'

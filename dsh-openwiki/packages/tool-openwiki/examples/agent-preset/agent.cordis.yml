@@ -1,0 +1,34 @@
+# User agent preset for @hy-sde-org/dsh-tool-openwiki on DeepSeek Harness
+# releases (standalone plugin, no upstream harness changes required).
+#
+# Install: copy this directory to ~/.dsh/.agent-presets/<id>/ (pick any id),
+# then select the preset in the Web UI preset picker (or `dsh agent` CLI).
+# Copy any other rows from the preset you normally use (persona, bash, todo,
+# ask-user, skills, ...) next to these; only the OpenWiki rows are special.
+#
+# This package is the AGENT-plane half: it injects `tools` + `systemPrompt`,
+# registers the five openwiki_* lifecycle tools and the `openwiki:tools`
+# prompt section, and publishes no service of its own — so no realm/isolate
+# and no host patch is needed. The engine (@hy-sde-org/dsh-openwiki) is a
+# regular npm/workspace dependency resolved in-process.
+#
+# Pairing the OpenWiki row with @deepseek-ai/dsh-tool-codebase-memory gives
+# the agent structural discovery (codebase_index_repository / search_graph /
+# query_graph / trace_path / get_code_snippet) for planning and research —
+# optionally; the lifecycle tools work without it.
+
+# ── OpenWiki wiki generation ────────────────────────────────────────────────
+
+# The five OpenWiki lifecycle tools over the standalone deterministic engine
+# (packages/openwiki + tool-openwiki in the dsh-openwiki monorepo). The
+# engine runs in-process — no external openwiki CLI, no DeepAgents coupling.
+# `host`/`producerActor` default to `harness`; leave them unless a provenance
+# identity is needed.
+- id: tool-openwiki
+  name: '@hy-sde-org/dsh-tool-openwiki'
+
+# Structural repository discovery (codebase_* tools) — OPTIONAL pairing for
+# planning/research. Requires the @deepseek-ai/dsh-tool-codebase-memory
+# package (ships with the official DeepSeek Harness release).
+- id: tool-codebase-memory
+  name: '@deepseek-ai/dsh-tool-codebase-memory'

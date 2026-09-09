@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    // Ported from upstream openwiki 0.4: byte-faithful port writes optional
+    // fields as `?: T` and assigns `undefined` freely (same relaxations the
+    // fork's openwiki-core package applies).
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src"]
+}

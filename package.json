@@ -1,0 +1,18 @@
+{
+  "name": "dsh-plugins",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo of standalone @hy-sde-org/dsh-* plugins for DeepSeek Harness.",
+  "scripts": {
+    "check": "pnpm -r check",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "release:check": "bash scripts/release-public.sh",
+    "release:publish": "bash scripts/release-public.sh --publish",
+    "publish:all": "bash scripts/publish-all.sh"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

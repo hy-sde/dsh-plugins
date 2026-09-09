@@ -1,0 +1,43 @@
+# @hy-sde-org/dsh-tool-ast — a self-contained AST structural search/rewrite
+# surface.
+#
+# The plugin mounts as ONE plain host row, exactly like the official harness's
+# own `tool-ast` row in the stock base bundle. It consumes the deployment's
+# host services — `tools`, `subprocess` (stock base mounts
+# `@deepseek-ai/dsh-subprocess-local`), `systemPrompt`, and `fs` (stock base
+# provides `ctx.fs` host-wide via `@deepseek-ai/dsh-fs-sandbox`) — so it needs
+# no filesystem realm of its own: `ast_grep`/`ast_edit` share the same fs
+# instance, observation ledger, and sandbox policy as the deployment's
+# `read`/`write`/`edit` tools. `ast_edit` applies rewrites ONLY with
+# `apply: true`, through the same `fs/observed` + `fs/edit-intent` +
+# writeText-with-version-guard flow the observation policy enforces.
+#
+# The row id carries the `hy-sde-` prefix to avoid clashing with any shipped
+# row of the same name (a duplicate loader id fails the boot); if the
+# deployment already mounts a `tool-ast` row of its own, disable this one or
+# drop the insert and keep the stock row.
+#
+# Override per deployment (e.g. shrink the match cap) by patching the row by
+# id:
+#
+#   - id: hy-sde-ast-tool-ast
+#     config:
+#       astGrepMaxMatches: 50
+#
+# To pair with @hy-sde-org/dsh-tool-edit (rich editor): install this bundle
+# and the tool-edit bundle together — neither owns a filesystem realm, they
+# share the host `ctx.fs` and their tool sets are disjoint
+# (`ast_grep`/`ast_edit` vs `edit`), so they compose freely.
+- insert:
+    - id: hy-sde-ast-tool-ast
+      name: '@hy-sde-org/dsh-tool-ast'
+      config:
+        astGrepMaxMatches: 100
+        astGrepMaxNodeBytes: 2000
+        astEditMaxHunkBytes: 4000
+        astEditMaxFiles: 200
+        searchMetaMaxBytes: 65536
+        rawOutputMaxBytes: 8388608
+        graceMs: 3000
+        stderrMaxBytes: 65536
+        timeoutMs: 30000

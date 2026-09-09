@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@hy-sde-org/dsh-av": ["../av/src/index.ts"],
+      "@hy-sde-org/dsh-tool-av": ["./src/index.ts"]
+    }
+  },
+  "include": ["src", "tests"]
+}

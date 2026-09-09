@@ -1,0 +1,112 @@
+{
+  "name": "@hy-sde-org/dsh-internal-urls",
+  "version": "0.1.2-rc.2",
+  "description": "FS-shaped internal URL schemes (conflict://, pr://, issue://, …) resolved through one registry behind the read/grep/write tools — a standalone service plugin for DeepSeek Harness with no upstream harness changes required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./parse": {
+      "types": "./dist/parse.d.ts",
+      "default": "./dist/parse.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
+    },
+    "./router": {
+      "types": "./dist/router.d.ts",
+      "default": "./dist/router.js"
+    },
+    "./conflict": {
+      "types": "./dist/conflict.d.ts",
+      "default": "./dist/conflict.js"
+    },
+    "./gh": {
+      "types": "./dist/gh.d.ts",
+      "default": "./dist/gh.js"
+    },
+    "./issue-pr": {
+      "types": "./dist/issue-pr.d.ts",
+      "default": "./dist/issue-pr.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml",
+    "examples/agent-preset/agent.cordis.yml",
+    "examples/agent-preset/preset.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-internal-urls/packages/internal-urls"
+  },
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-session-query": "^0.0.1-rc.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-session-query": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-tool-fs-internal-urls": "workspace:^",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "internal-urls",
+    "conflict",
+    "github",
+    "pr",
+    "issue"
+  ]
+}

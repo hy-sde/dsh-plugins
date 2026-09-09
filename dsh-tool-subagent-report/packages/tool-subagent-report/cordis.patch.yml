@@ -1,0 +1,30 @@
+# @hy-sde-org/dsh-tool-subagent-report — the child-scoped `report` tool for
+# continuable in-process subagents.
+#
+# The plugin mounts as ONE plain host row. It consumes the deployment's host
+# services — `subagents` (a continuable subagent service carrying the fork's
+# report channel: `registerContinuableSetup` + `reportFrom` + the keyed
+# open-decisions ledger), `tools`, and `systemPrompt` — so it needs no
+# filesystem realm of its own.
+#
+# IMPORTANT: the published @deepseek-ai/dsh-subagent@0.1.2-rc.1 predates the
+# fork's report channel. Mounting this row requires a subagent service built
+# from the DeepSeek Harness fork (or a standalone port carrying the same
+# channel). On a stock published stack the row fails at boot with a missing
+# `registerContinuableSetup` service method; that is the documented
+# contract, not a misconfiguration of this plugin.
+#
+# The row id carries the `hy-sde-` prefix to avoid clashing with any shipped
+# row of the same name (a duplicate loader id fails the boot); if the
+# deployment already mounts a `tool-subagent-report` row of its own, disable
+# this one or drop the insert and keep the stock row.
+#
+# Override per deployment (e.g. quiet delivery for a parked-parent model) by
+# patching the row by id:
+#
+#   - id: hy-sde-subagent-tool-subagent-report
+#     config:
+#       reportDelivery: quiet
+- insert:
+    - id: hy-sde-subagent-tool-subagent-report
+      name: '@hy-sde-org/dsh-tool-subagent-report'

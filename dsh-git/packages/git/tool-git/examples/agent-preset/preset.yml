@@ -1,0 +1,3 @@
+name: Agentic Git
+description: Coding agent with agentic git commit + review — commit / commit_apply / review tools over the host ctx.git service. For stock DeepSeek Harness releases (0.1.2-rc.1+).
+order: 7

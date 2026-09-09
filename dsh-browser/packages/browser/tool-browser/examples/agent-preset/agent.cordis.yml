@@ -1,0 +1,14 @@
+# User agent preset for @hy-sde-org/dsh-tool-browser on OFFICIAL DeepSeek
+# Harness releases (dsh-v0.1.1-rc.2 and later).
+#
+# Install: copy this directory to ~/.dsh/.agent-presets/<id>/ (pick any id),
+# then select the preset in the Web UI preset picker (or `dsh agent` CLI).
+#
+# The `browser` SERVICE row comes from @hy-sde-org/dsh-browser's own
+# cordis.patch.yml (installed when you run `dsh plugin add`); this preset
+# contributes ONLY the model-facing tool row. No realm/isolate is needed —
+# the tool resolves the host instance across the plane boundary.
+
+- id: tool-browser
+  name: '@hy-sde-org/dsh-tool-browser'
+  config: {}

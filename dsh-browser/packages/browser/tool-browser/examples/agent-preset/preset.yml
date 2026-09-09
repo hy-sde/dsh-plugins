@@ -1,0 +1,3 @@
+name: Agentic Browser
+description: Coding agent with the browser tool (open/run/state over launch, CDP-attach, or local relay + extension). For stock DeepSeek Harness releases (rc.2+).
+order: 8

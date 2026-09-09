@@ -1,0 +1,40 @@
+# Plugin publication tracker (audited 2026-09-08)
+
+## PUBLISHED on npm as @hy-sde-org/dsh-* (0.1.2-rc.x) — bump version before re-publishing
+
+dsh-vcs                 0.1.2-rc.1
+dsh-session-url         0.1.2-rc.1
+dsh-llm-slots           0.1.2-rc.1
+dsh-av                  0.1.2-rc.1
+dsh-orchestration-policy 0.1.2-rc.1
+dsh-tool-codebase-memory 0.1.2-rc.1
+dsh-tool-subagent-report 0.1.2-rc.1
+dsh-openwiki            0.1.2-rc.1
+dsh-tool-ast            0.1.2-rc.1
+dsh-tool-edit           0.1.2-rc.2
+dsh-web-search-public   0.1.2-rc.1
+dsh-tool-debug          0.1.2-rc.1
+dsh-stream-rules        0.1.2-rc.2
+dsh-zstd-frame          0.1.2-rc.1
+dsh-code-runtime-kernels 0.1.2-rc.1  # fork apps/cli already depends ^0.1.2-rc.1; mounted in cordis-plus preset
+dsh-memory              0.1.2-rc.2
+dsh-fs-archive          0.1.2-rc.1
+dsh-browser             0.1.2-rc.1
+dsh-git                 0.1.2-rc.1
+
+## STILL TO PUBLISH (npm returns 404)
+
+dsh-logseq                    # verify packages/logseq package name before publishing
+dsh-session-intelligence      # fork uses relative file: until published, then switch to ^version
+dsh-api-wiki-controller       # not in the original queue, still unpublished
+
+## NOT in the queue, also unpublished (decide: public or private?)
+
+# dsh-tool-library-search
+# dsh-client-ui-countdown
+# dsh-client-ui-wiki
+
+## Note
+
+plugin-list.txt is a PUBLICATION tracker, NOT a reason to remove in-fork packages.
+See WORKFLOW.md → "Do not mass-swap" before touching fork-side copies.

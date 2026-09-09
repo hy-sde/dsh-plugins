@@ -1,0 +1,75 @@
+{
+  "name": "@hy-sde-org/dsh-tool-openwiki",
+  "version": "0.1.2-rc.1",
+  "description": "Model-facing OpenWiki lifecycle tools (openwiki_begin/openwiki_submit_plan/openwiki_next_page/openwiki_submit_page/openwiki_finish) over the in-process deterministic engine @hy-sde-org/dsh-openwiki, plus an openwiki:tools system-prompt section that wires codebase-memory tools as structural discovery — a standalone agent-plane plugin for DeepSeek Harness, no external openwiki CLI.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./invariant": {
+      "types": "./dist/invariant.d.ts",
+      "default": "./dist/invariant.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "examples/agent-preset/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-openwiki/packages/tool-openwiki"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hy-sde-org/dsh-openwiki": "workspace:^"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-util-values": "^0.1.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@hy-sde-org/dsh-openwiki": "workspace:^",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
+    "@deepseek-ai/dsh-util-values": "^0.1.2-rc.1"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "openwiki",
+    "grounded-claims",
+    "wiki"
+  ]
+}

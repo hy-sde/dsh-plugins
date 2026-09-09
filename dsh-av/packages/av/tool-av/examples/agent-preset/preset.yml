@@ -1,0 +1,3 @@
+name: Automic Vault Auditor
+description: Coding agent with read-only Automic Vault tools (av_scan / av_doctor / av_catalog / av_list over the host ctx.av service) — audits for exposed credentials, verifies hardening, never releases secret values. For stock DeepSeek Harness releases (0.1.2-rc.1+).
+order: 9
