@@ -58,14 +58,14 @@ and select it in the Web UI preset picker (or `dsh agent`).
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-internal-urls.git
-cd dsh-internal-urls
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-internal-urls build
 
-IU_TGZ="$(cd packages/internal-urls && pnpm pack --silent --pack-destination /tmp)"
-FS_TGZ="$(cd packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
-SEARCH_TGZ="$(cd packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
+IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && ppnpm pack --silent --pack-destination /tmp)"
+FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
+SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$IU_TGZ" "$FS_TGZ" "$SEARCH_TGZ"
 ```
 

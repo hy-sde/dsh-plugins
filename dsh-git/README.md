@@ -70,13 +70,13 @@ cp packages/git/examples/agent-preset/agent.cordis.yml \
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-git.git
-cd dsh-git
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-git build
 
-GIT_TGZ="$(cd packages/git && pnpm pack --silent --pack-destination /tmp)"
-TOOLGIT_TGZ="$(cd packages/git/tool-git && pnpm pack --silent --pack-destination /tmp)"
+GIT_TGZ="$(cd dsh-git/packages/git && ppnpm pack --silent --pack-destination /tmp)"
+TOOLGIT_TGZ="$(cd dsh-git/packages/git/tool-git && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$GIT_TGZ" "$TOOLGIT_TGZ"
 ```
 

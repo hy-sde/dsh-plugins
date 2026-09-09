@@ -50,7 +50,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-git.git"
+    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
+    "directory": "dsh-git/packages/git/tool-git"
   },
   "license": "MIT",
   "dependencies": {
@@ -63,7 +64,7 @@
     "@deepseek-ai/dsh-subagent": "^0.1.2-rc.1",
     "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
     "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
-    "@hy-sde-org/dsh-git": "^0.1.2-rc.1"
+    "@hy-sde-org/dsh-git": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",

@@ -9,9 +9,10 @@ Reference layout:
 | Where | What |
 |---|---|
 | `/Users/hui/Documents/github/deepseek-harness` | the working fork (upstream: `deepseek-ai/deepseek-harness`, already indexed in codebase-memory as `deepseek-harness`) |
-| `/Users/hui/Documents/github/dsh-plugins/<plugin>/` | one **monorepo** per plugin: root `package.json` is `private: true`; the publishable package is `packages/<name>/` → npm `@hy-sde-org/dsh-<name>` |
-| `scripts/release-public.sh` (per plugin repo) | `--check` / `--publish` release guard |
-| `plugin-list.txt` | publish queue / order |
+| `/Users/hui/Documents/github/dsh-plugins` | **one git repo / one pnpm workspace** (all publishable `@hy-sde-org/dsh-*` packages — `pnpm-workspace.yaml` lists them, incl. nested members like `dsh-git/packages/git/tool-git`). `dsh-<plugin>/` = container dir; the publishable package is `dsh-<plugin>/packages/<name>/` → npm `@hy-sde-org/dsh-<name>` (flat repos like `dsh-web-search-public/` publish from the dir root). Per-plugin git repos were consolidated 2026-09-08; old histories archived in `~/.dsh/archives/dsh-plugins-git/` |
+| `scripts/release-public.sh <pkg-dir>` | shared `--check` / `--publish` release guard (one package) |
+| `scripts/publish-all.sh [--publish]` | checks/publishes every package in intra-monorepo dependency order |
+| `plugin-list.txt` | publication tracker (published versions + still-to-publish queue) |
 | `scripts/recon/` | **Phase 0 recon harness** (clone → index → analysis notes) |
 
 ---

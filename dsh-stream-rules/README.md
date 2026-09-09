@@ -44,10 +44,10 @@ per-agent rows through the provided [agent preset](#giving-agents-stream-rules).
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-stream-rules.git
-cd dsh-stream-rules
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm -r build
+pnpm --filter @hy-sde-org/dsh-stream-rules build
 dsh plugin --profile web link ../dsh-stream-rules/packages/stream-rules
 ```
 

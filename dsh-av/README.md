@@ -67,13 +67,13 @@ cp packages/av/av/examples/agent-preset/agent.cordis.yml \
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-av.git
-cd dsh-av
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-av build
 
-AV_TGZ="$(cd packages/av/av && pnpm pack --silent --pack-destination /tmp)"
-TOOLAV_TGZ="$(cd packages/av/tool-av && pnpm pack --silent --pack-destination /tmp)"
+AV_TGZ="$(cd dsh-av/packages/av/av && ppnpm pack --silent --pack-destination /tmp)"
+TOOLAV_TGZ="$(cd dsh-av/packages/av/tool-av && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$AV_TGZ" "$TOOLAV_TGZ"
 ```
 

@@ -2,6 +2,8 @@
 
 Turns a list of candidate repos into explored, indexed, documented candidates —
 the input to the build-or-skip decision in [`WORKFLOW.md`](../../WORKFLOW.md).
+(2016-09-08: dsh-plugins is now one git repo / pnpm workspace; the registry below
+refers to *external* candidate repos, cloned into `$HSR_HOME`.)
 
 ## One command
 

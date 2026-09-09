@@ -74,12 +74,12 @@ npm install @hy-sde-org/dsh-tool-ast   # or pnpm add / yarn add
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-tool-ast.git
-cd dsh-tool-ast
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-tool-ast build
 
-AST_TGZ="$(cd packages/tool-ast && pnpm pack --silent --pack-destination /tmp)"
+AST_TGZ="$(cd dsh-tool-ast/packages/tool-ast && ppnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$AST_TGZ"
 ```
 

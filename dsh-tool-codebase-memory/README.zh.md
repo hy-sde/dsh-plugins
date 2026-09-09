@@ -43,12 +43,12 @@ npm install @hy-sde-org/dsh-tool-codebase-memory   # 或 pnpm add / yarn add
 ### 从本仓库（发布前 / 开发）
 
 ```bash
-git clone git@github.com:hy-sde/dsh-tool-codebase-memory.git
-cd dsh-tool-codebase-memory
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-tool-codebase-memory build
 
-CBM_TGZ="$(cd packages/tool-codebase-memory && pnpm pack --silent --pack-destination /tmp)"
+CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && ppnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$CBM_TGZ"
 ```
 

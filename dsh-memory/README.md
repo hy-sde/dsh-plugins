@@ -42,13 +42,13 @@ cp packages/memory/examples/agent-preset/agent.cordis.yml \
 ### From the git checkout (pre-publish / development)
 
 ```bash
-git clone git@github.com:hy-sde/dsh-memory.git
-cd dsh-memory
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
 pnpm install
-pnpm run build
+pnpm --filter @hy-sde-org/dsh-memory build
 
-MEMORY_TGZ="$(cd packages/memory && pnpm pack --silent --pack-destination /tmp)"
-TOOLMEMORY_TGZ="$(cd packages/tool-memory && pnpm pack --silent --pack-destination /tmp)"
+MEMORY_TGZ="$(cd dsh-memory/packages/memory && ppnpm pack --silent --pack-destination /tmp)"
+TOOLMEMORY_TGZ="$(cd dsh-memory/packages/tool-memory && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$MEMORY_TGZ" "$TOOLMEMORY_TGZ"
 ```
 

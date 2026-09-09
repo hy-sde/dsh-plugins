@@ -21,6 +21,7 @@ dsh-memory              0.1.2-rc.2
 dsh-fs-archive          0.1.2-rc.1
 dsh-browser             0.1.2-rc.1
 dsh-git                 0.1.2-rc.1
+dsh-tool-git            0.1.2-rc.1  # nested member dsh-git/packages/git/tool-git (test parity package, deps: dsh-git workspace:*)
 
 ## STILL TO PUBLISH (npm returns 404)
 
@@ -38,3 +39,7 @@ dsh-api-wiki-controller       # not in the original queue, still unpublished
 
 plugin-list.txt is a PUBLICATION tracker, NOT a reason to remove in-fork packages.
 See WORKFLOW.md → "Do not mass-swap" before touching fork-side copies.
+
+Since 2026-09-08 every plugin lives in this single git repo / pnpm workspace
+(dsh-plugins); per-plugin repos were archived. Publishing: `bash scripts/publish-all.sh`.
+

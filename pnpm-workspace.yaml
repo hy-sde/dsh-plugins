@@ -3,28 +3,19 @@ packages:
   - "dsh-av/packages/*/*"
   - "dsh-browser/packages/*/*"
   - "dsh-logseq/packages/*/*"
+  - "dsh-git/packages/git/tool-git"
   - "dsh-web-search-public"
 
-# pnpm 10 blocks dependency postinstall scripts by default; native/CLI deps
-# used by the plugins need theirs allowed (was implicit under older pnpm/per-repo).
-onlyBuiltDependencies:
-  - "@ast-grep/cli"
-  - "@deepseek-ai/dsh-subprocess-local"
-  - esbuild
-  - koffi
-  - msgpackr-extract
-  - node-pty
-  - onnxruntime-node
-  - protobufjs
-  - sharp
-
+# pnpm 11 blocks dependency postinstall scripts by default; native/CLI deps
+# used by the plugins need theirs allowed. pnpm 11 key: allowBuilds (map of
+# package -> boolean); older pnpm used onlyBuiltDependencies (list).
 allowBuilds:
-  '@ast-grep/cli': set this to true or false
-  '@deepseek-ai/dsh-subprocess-local': set this to true or false
-  esbuild: set this to true or false
-  koffi: set this to true or false
-  msgpackr-extract: set this to true or false
-  node-pty: set this to true or false
-  onnxruntime-node: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
+  "@ast-grep/cli": true
+  "@deepseek-ai/dsh-subprocess-local": true
+  esbuild: true
+  koffi: true
+  msgpackr-extract: true
+  node-pty: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
