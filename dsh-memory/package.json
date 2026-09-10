@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-memory (the durable project-memory service for DeepSeek Harness), @hy-sde-org/dsh-tool-memory (the retain/recall/reflect/memory_edit/learn tools + first-turn prompt injection), and @hy-sde-org/dsh-memory-extraction (automatic extraction at compaction checkpoints).",
   "type": "module",

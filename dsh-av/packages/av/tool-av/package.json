@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-tool-av",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "description": "Model-facing Automic Vault tools (av_scan audit, av_doctor hardening check, av_catalog, av_list) over the host ctx.av service — read-only, never returns secret values — plus an av:tools system-prompt section for DeepSeek Harness, a standalone plugin with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
@@ -51,16 +51,16 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
     "@hy-sde-org/dsh-av": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-subprocess-local": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-subprocess-local": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
     "@hy-sde-org/dsh-av": "workspace:^",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",

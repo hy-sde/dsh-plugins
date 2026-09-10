@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-fs-archive",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "description": "Pure-TS multi-format archive engine (zip/tar/tar.gz/rar/7z/iso/deb/rpm/cpio/cab/arj/asar + codecs), ported from @oh-my-pi/pi-utils (MIT), as a standalone npm package.",
   "type": "module",
   "main": "./dist/index.js",
@@ -42,11 +42,11 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1"
+    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

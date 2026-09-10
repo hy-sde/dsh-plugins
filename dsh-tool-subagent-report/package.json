@@ -1,6 +1,6 @@
 {
   "name": "dsh-tool-subagent-report",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-tool-subagent-report (the child-scoped report tool plugin for DeepSeek Harness).",
   "type": "module",

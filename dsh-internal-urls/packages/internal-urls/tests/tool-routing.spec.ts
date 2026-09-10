@@ -63,6 +63,10 @@ class FakeFs extends FileSystem {
     if (bytes.length > maxBytes) throw new FsError(`too large: ${target.displayPath}`, 'FS_TOO_LARGE')
     return bytes
   }
+  override async readByteRange(target: FsTarget, range: { offset: number; length: number }, _signal?: AbortSignal): Promise<Uint8Array> {
+    const bytes = new TextEncoder().encode(this.files.get(String(target.targetKey)) ?? '')
+    return bytes.subarray(range.offset, range.offset + range.length)
+  }
   override async listDir(_target: FsTarget): Promise<FsDirEntry[]> {
     return []
   }

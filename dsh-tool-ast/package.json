@@ -1,6 +1,6 @@
 {
   "name": "dsh-tool-ast",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-tool-ast (the ast_grep / ast_edit structural tools plugin for DeepSeek Harness).",
   "type": "module",

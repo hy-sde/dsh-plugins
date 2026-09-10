@@ -65,7 +65,7 @@ export function applyWriteTool(ctx: Context, sandbox: FsSandboxController): void
   ctx.systemPrompt.section({
     name: 'tool:write',
     order: ctx.systemPrompt.getSectionOrder('TOOL_WRITE'),
-    text: 'Use the write tool to create files or completely replace file contents. Existing files are overwritten, so read an existing file first (the default fs-observation-policy requires it) and prefer edit for targeted changes.',
+    text: ({ scope }) => ctx.tools.get('write', scope) === undefined ? '' : ('Use the write tool to create files or completely replace file contents. Existing files are overwritten, so read an existing file first (the default fs-observation-policy requires it) and prefer edit for targeted changes.'),
   })
 
   ctx.tools.register(defineTool({
@@ -139,7 +139,7 @@ export function applyWriteTool(ctx: Context, sandbox: FsSandboxController): void
         // A sandbox denial becomes the shared [sandbox: …] marker (the model
         // recognizes it from bash); stale/not-observed failures gain their
         // model-facing remedy; anything else passes through.
-        throw remediateFsError(sandbox.mapError(error, sandboxPolicy))
+        throw remediateFsError(sandbox.mapError(error, sandboxPolicy), target.displayPath)
       }
       // Record the present observation (a no-op when no policy plugin listens).
       ctx.emit('fs/observed', target, { kind: 'present', version: outcome.version }, exec)

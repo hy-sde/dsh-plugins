@@ -442,8 +442,8 @@ export function applyGrepTool(ctx: Context, caps: GrepToolCaps): void {
   ctx.systemPrompt.section({
     name: 'tool:grep',
     order: ctx.systemPrompt.getSectionOrder('TOOL_GREP'),
-    text: 'Use the grep tool — not shell grep or rg — to search file contents. Results are ranked so git-modified files come first (marked [M in git]). '
-      + `A capped grep returns the first ${caps.maxMatches} matches plus a continuation cursor — pass the cursor back unchanged with the same pattern/path/include to fetch the next page; read the top match instead of paging deep. Use read on a matched file for surrounding context.`,
+    text: ({ scope }) => ctx.tools.get('grep', scope) === undefined ? '' : ('Use the grep tool — not shell grep or rg — to search file contents. Results are ranked so git-modified files come first (marked [M in git]). '
+      + `A capped grep returns the first ${caps.maxMatches} matches plus a continuation cursor — pass the cursor back unchanged with the same pattern/path/include to fetch the next page; read the top match instead of paging deep. Use read on a matched file for surrounding context.`),
   })
 
   const tool = defineTool({

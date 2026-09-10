@@ -1,6 +1,6 @@
 {
   "name": "dsh-vcs",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-vcs — the host ctx.vcs service (pi-vcs CLI resolution + probe, repo-info / rev-diff / staged-diff / worktree-diff / status / watch over the subprocess seam) exposing the narrow native gitoxide slice of the omp vcs surface, purely additive to the git service.",
   "type": "module",

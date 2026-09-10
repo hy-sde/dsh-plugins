@@ -91,7 +91,7 @@ class SubagentReportSeam {
       if (status !== 'idle') return
       const activation = this.activations.get(agent.id)
       if (activation === undefined || activation.disposing !== undefined) return
-      if (agent.inbox.hasPending) return
+      if (agent.inbox.nextTurn.length > 0 || agent.inbox.nextStep.length > 0) return
       const hasLiveDescendants = [...this.activations.values()]
         .some(other => other.parentId === agent.id && other.disposing === undefined)
       if (hasLiveDescendants) return

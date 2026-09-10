@@ -1,6 +1,6 @@
 {
   "name": "dsh-tool-codebase-memory",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-tool-codebase-memory (the codebase-memory CLI tools plugin for DeepSeek Harness).",
   "type": "module",

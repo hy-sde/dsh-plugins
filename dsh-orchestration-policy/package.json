@@ -1,6 +1,6 @@
 {
   "name": "dsh-orchestration-policy",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-orchestration-policy — parallelize-by-default orchestration policy (config-driven fan-out rules, fail-closed task-isolation guard, review-gate posture resolution, outcomes-not-mechanics reporting) for DeepSeek Harness.",
   "type": "module",

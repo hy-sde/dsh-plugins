@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-internal-urls",
-  "version": "0.1.2-rc.2",
+  "version": "0.1.5-rc.1",
   "description": "FS-shaped internal URL schemes (conflict://, pr://, issue://, …) resolved through one registry behind the read/grep/write tools — a standalone service plugin for DeepSeek Harness with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
@@ -70,13 +70,13 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1"
+    "@deepseek-ai/dsh-fs": "^0.1.5-rc.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.5-rc.1",
     "@deepseek-ai/dsh-session-query": "^0.0.1-rc.1"
   },
   "peerDependenciesMeta": {
@@ -86,13 +86,13 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-fs": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-invariants": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-llm": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-sandbox": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-subprocess": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.2-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1",
+    "@deepseek-ai/dsh-fs": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-sandbox": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-subprocess": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
     "@hy-sde-org/dsh-tool-fs-internal-urls": "workspace:^",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",

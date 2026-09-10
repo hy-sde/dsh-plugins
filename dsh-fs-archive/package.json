@@ -1,6 +1,6 @@
 {
   "name": "dsh-fs-archive",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-fs-archive — a pure-TS multi-format archive engine (zip/tar/tar.gz/rar/7z/iso/deb/rpm/cpio/cab/arj/asar + codecs) ported from @oh-my-pi/pi-utils.",
   "type": "module",

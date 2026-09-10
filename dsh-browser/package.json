@@ -1,6 +1,6 @@
 {
   "name": "dsh-browser",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-browser (the host ctx.browser service with launch / CDP-attach / relay backends) and @hy-sde-org/dsh-tool-browser (the browser tool) for DeepSeek Harness — a port of oh-my-pi's browser tool with stealth + relay/CDP-attach.",
   "type": "module",

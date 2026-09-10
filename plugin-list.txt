@@ -2,32 +2,37 @@
 
 ## PUBLISHED on npm as @hy-sde-org/dsh-* (0.1.x-rc.x) — bump version before re-publishing
 
-dsh-vcs                 0.1.2-rc.1
-dsh-session-url         0.1.2-rc.1
-dsh-llm-slots           0.1.2-rc.1
-dsh-av                  0.1.2-rc.1
-dsh-orchestration-policy 0.1.2-rc.1
-dsh-tool-codebase-memory 0.1.2-rc.1
-dsh-tool-subagent-report 0.1.2-rc.1
-dsh-openwiki            0.1.2-rc.1
-dsh-tool-ast            0.1.2-rc.1
-dsh-tool-edit           0.1.2-rc.2
-dsh-web-search-public   0.1.2-rc.1
-dsh-tool-debug          0.1.2-rc.1
-dsh-stream-rules        0.1.2-rc.2
-dsh-zstd-frame          0.1.2-rc.1
-dsh-code-runtime-kernels 0.1.2-rc.1  # fork apps/cli already depends ^0.1.2-rc.1; mounted in cordis-plus preset
-dsh-memory              0.1.2-rc.2
-dsh-fs-archive          0.1.2-rc.1
-dsh-browser             0.1.2-rc.1
-dsh-git                 0.1.2-rc.1
-dsh-tool-git            0.1.2-rc.1  # nested member dsh-git/packages/git/tool-git (test parity package, deps: dsh-git workspace:*)
-dsh-tool-library-search 0.1.0-rc.1  # new package name — first publish landed as `latest` (npmjs can lag a new-name packument for minutes)
+dsh-vcs                 0.1.5-rc.1
+dsh-session-url         0.1.5-rc.1
+dsh-llm-slots           0.1.5-rc.1
+dsh-av                  0.1.5-rc.1
+dsh-orchestration-policy 0.1.5-rc.1
+dsh-tool-codebase-memory 0.1.5-rc.1
+dsh-tool-subagent-report 0.1.5-rc.1
+dsh-openwiki            0.1.5-rc.1
+dsh-tool-ast            0.1.5-rc.1
+dsh-tool-edit           0.1.5-rc.1
+dsh-web-search-public   0.1.5-rc.1
+dsh-tool-debug          0.1.5-rc.1
+dsh-zstd-frame          0.1.5-rc.1
+dsh-code-runtime-kernels 0.1.5-rc.1  # fork apps/cli already depends ^0.1.5-rc.1; mounted in cordis-plus preset
+dsh-memory              0.1.5-rc.1
+dsh-fs-archive          0.1.5-rc.1
+dsh-browser             0.1.5-rc.1
+dsh-git                 0.1.5-rc.1
+dsh-tool-git            0.1.5-rc.1  # nested member dsh-git/packages/git/tool-git (test parity package, deps: dsh-git workspace:*)
+dsh-tool-library-search 0.1.5-rc.1  # new package name — first publish landed as `latest` (npmjs can lag a new-name packument for minutes)
+
+## RETIRED (removed from the workspace, 2026-09)
+
+dsh-stream-rules              # superseded upstream (0.1.5 removed assistant/chunk + replace ops);
+                              # source kept in this repo's git history
 
 ## STILL TO PUBLISH (npm returns 404)
 
 dsh-logseq                    # verify packages/logseq package name before publishing
 dsh-session-intelligence      # fork uses relative file: until published, then switch to ^version
+                              # PUBLISH ORDER: dsh-zstd-frame must go first (session-intelligence depends on it)
 dsh-graph-control             # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
 dsh-graph-stream              # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
 dsh-graph-executor            # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished

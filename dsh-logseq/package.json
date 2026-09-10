@@ -1,6 +1,6 @@
 {
   "name": "dsh-logseq",
-  "version": "0.1.2-rc.1",
+  "version": "0.1.5-rc.1",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-logseq-graph (the host ctx.wikiGraph service over the Logseq CLI) and @hy-sde-org/dsh-tool-logseq (the model-facing logseq_* CLI tools) for DeepSeek Harness — a port of @deepseek-ai/dsh-logseq-graph + @deepseek-ai/dsh-tool-logseq.",
   "type": "module",

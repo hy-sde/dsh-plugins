@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the composition/stock smoke test over every packed rc.1 plugin tarball
 # present in any dsh-plugins repo, on both the fork CLI and the upstream stock
-# CLI. Repos are auto-discovered (any dir with hy-sde-org-*-0.1.2-rc.1.tgz),
+# CLI. Repos are auto-discovered (any dir with hy-sde-org-*-0.1.5-rc.1.tgz),
 # so newly ported repos join automatically.
 set -u
 P=/Users/hui/Documents/github/dsh-plugins
@@ -12,7 +12,7 @@ pass=0; fail=0; skipped=0
 for repo in */; do
   repo="${repo%/}"
   [[ "$repo" == scripts ]] && continue
-  tarballs=( "$P/$repo"/hy-sde-org-*-0.1.2-rc.1.tgz )
+  tarballs=( "$P/$repo"/hy-sde-org-*-0.1.5-rc.1.tgz )
   if [[ ! -e "${tarballs[0]:-}" ]]; then
     echo "SKIP $repo (no rc.1 tarball yet)"
     skipped=$((skipped+1))
