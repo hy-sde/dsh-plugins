@@ -22,6 +22,14 @@ dsh-browser             0.1.5-rc.1
 dsh-git                 0.1.5-rc.1
 dsh-tool-git            0.1.5-rc.1  # nested member dsh-git/packages/git/tool-git (test parity package, deps: dsh-git workspace:*)
 dsh-tool-library-search 0.1.5-rc.1  # new package name — first publish landed as `latest` (npmjs can lag a new-name packument for minutes)
+dsh-graph-control       0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1, bump before re-publishing
+dsh-graph-stream        0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-graph-executor      0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-tool-graph          0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-graph-wakes         0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-graph-projection    0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-graph-host          0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 1); npm serves 0.1.2-rc.1
+dsh-memory-extraction   0.1.5-rc.1  # back-ported 2026-09-09 from fork (Maka No. 2); npm serves 0.1.2-rc.1
 
 ## RETIRED (removed from the workspace, 2026-09)
 
@@ -33,14 +41,6 @@ dsh-stream-rules              # superseded upstream (0.1.5 removed assistant/chu
 dsh-logseq                    # verify packages/logseq package name before publishing
 dsh-session-intelligence      # fork uses relative file: until published, then switch to ^version
                               # PUBLISH ORDER: dsh-zstd-frame must go first (session-intelligence depends on it)
-dsh-graph-control             # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-graph-stream              # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-graph-executor            # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-tool-graph                # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-graph-wakes               # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-graph-projection          # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-graph-host                # back-ported 2026-09-09 from fork (Maka No. 1) — unpublished
-dsh-memory-extraction         # back-ported 2026-09-09 from fork (Maka No. 2) — unpublished
 
 ## EXCLUDED — private/never-publish, moved to dsh-plugins-private (2026-09-08)
 

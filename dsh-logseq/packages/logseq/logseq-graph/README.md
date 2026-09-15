@@ -1,8 +1,3 @@
----
-description: "Host-plane ctx.wikiGraph service exposing the Logseq CLI's db-worker-node graph operations as structured JSON calls for the wiki drawer and model-facing tools."
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-logseq-graph
 
 English | [中文](README.zh.md)

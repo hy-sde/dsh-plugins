@@ -1,8 +1,3 @@
----
-description: "面向模型的 Logseq CLI 工具，用于从终端驱动 Logseq 数据库图——列出、展示、搜索、Datalog 查询、upsert、删除以及图/服务生命周期，输出确定性 JSON。"
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-tool-logseq
 
 [English](README.md) | 中文

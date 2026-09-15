@@ -1,8 +1,3 @@
----
-description: "Model-facing codebase-memory tools that run one-shot queries against the local codebase-memory daemon, spawning the CLI once per call and sharing the same daemon the stdio MCP client fronts."
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-tool-codebase-memory
 
 English | [中文](README.zh.md)

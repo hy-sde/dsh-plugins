@@ -1,8 +1,3 @@
----
-description: "主机平面的 ctx.wikiGraph 图服务：把 Logseq CLI 的 db-worker-node 图操作暴露为结构化 JSON 调用，供 wiki 抽屉与面向模型的工具使用。"
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-logseq-graph
 
 [English](README.md) | 中文

@@ -1,8 +1,3 @@
----
-description: "面向模型的 codebase-memory 工具：经 CLI 对本地 codebase-memory daemon 发起一次性查询，与 stdio MCP 客户端共享同一 daemon。"
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-tool-codebase-memory
 
 [English](README.md) | 中文

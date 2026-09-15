@@ -1,13 +1,16 @@
 # dsh-memory — durable project memory for DeepSeek Harness
 
-Three standalone packages, installable as **one plugin** for the DeepSeek
+Two standalone packages here, installable as **one plugin** for the DeepSeek
 Harness CLI:
 
 | package | role | installed by users? |
 |---|---|---|
 | `@hy-sde-org/dsh-memory` | the plugin: host-plane `ctx.memory` service + shipped `local` backend (bundle row + preset example) | yes |
 | `@hy-sde-org/dsh-tool-memory` | the model-facing tools (`retain` / `recall` / `reflect` / `memory_edit` / `learn`) + first-turn prompt injection | yes |
-| `@hy-sde-org/dsh-memory-extraction` | automatic memory extraction at compaction checkpoints (host row; additive to the explicit memory surface) | optional |
+
+(`@hy-sde-org/dsh-memory-extraction`, automatic extraction at compaction
+checkpoints, ships from the sibling [`dsh-memory-extraction/`](../dsh-memory-extraction)
+workspace directory.)
 
 This is the oh-my-pi agent-memory surface, ported onto the harness
 `ctx.memory` service contract as a **standalone

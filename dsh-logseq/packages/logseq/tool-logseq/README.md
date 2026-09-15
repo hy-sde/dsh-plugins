@@ -1,8 +1,3 @@
----
-description: "Model-facing Logseq CLI tools for driving a Logseq database graph from the terminal: list, show, search, Datalog query, upsert, remove, and graph/server lifecycle with deterministic JSON output."
-kind: "package-reference"
----
-
 # @hy-sde-org/dsh-tool-logseq
 
 English | [中文](README.zh.md)
