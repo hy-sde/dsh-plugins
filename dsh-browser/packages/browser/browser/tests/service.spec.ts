@@ -23,6 +23,16 @@ const CHROME_CANDIDATES = [
 const CHROME = CHROME_CANDIDATES.find(existsSync)
 const LIVE = CHROME !== undefined
 
+/** Whether the optional `cloakbrowser` peer resolves (then the error-path test is skipped). */
+function hasCloakBrowserInstall(): boolean {
+  try {
+    import.meta.resolve('cloakbrowser')
+    return true
+  } catch {
+    return false
+  }
+}
+
 const DATA_URL = `data:text/html,${encodeURIComponent('<h1 role="heading">Hello Browser</h1><a href="#x" role="link">Go</a><input aria-label="Name">')}`
 
 let ctx: Context
@@ -108,5 +118,32 @@ describe('kind + wait resolution (pure)', () => {
   it('resolves launch when nothing is given', () => {
     const kind = service.resolveKind({})
     expect(kind.kind).toBe('launch')
+  })
+
+  it('resolves patch from an explicit flag, before launch defaults', () => {
+    const kind = service.resolveKind({ patch: true })
+    expect(kind).toEqual({ kind: 'patch' })
+  })
+
+  it('prefers an explicit path and cdp_url over the patch flag', () => {
+    expect(service.resolveKind({ path: '/opt/chrome', patch: true })).toEqual({ kind: 'launch', path: '/opt/chrome' })
+    expect(service.resolveKind({ cdpUrl: 'http://127.0.0.1:9222/', patch: true })).toEqual({ kind: 'attach', cdpUrl: 'http://127.0.0.1:9222' })
+  })
+
+  it('falls back to patch from the usePatch config when nothing is requested', () => {
+    const patchCtx = new Context()
+    try {
+      const patchService = new BrowserService(patchCtx, { usePatch: true, headless: true })
+      expect(patchService.resolveKind({})).toEqual({ kind: 'patch' })
+      // explicit patch:false overrides the config
+      expect(patchService.resolveKind({ patch: false }).kind).not.toBe('patch')
+    } finally {
+      patchCtx.fiber.dispose()
+    }
+  })
+
+  it.skipIf(hasCloakBrowserInstall())('app.patch fails helpfully when the cloakbrowser peer is missing', async () => {
+    await expect(service.open('patch-tab', DATA_URL, { kind: { kind: 'patch' }, cwd: dir }))
+      .rejects.toThrow(/cloakbrowser/)
   })
 })

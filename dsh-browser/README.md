@@ -19,9 +19,11 @@ hy-sde fork.
 
 ## The surface
 
-- **Three backends** — `app.path` spawns a stealth-patched browser binary
+- **Four backends** — `app.path` spawns a stealth-patched browser binary
   (14 omp-puppeteer init scripts + stripped launch flags + spoofed
-  UA/client-hints), `app.cdp_url` attaches to any real Chrome-family CDP
+  UA/client-hints), `app.patch` spawns the CloakBrowser Chromium (71
+  source-level C++ fingerprint patches, optional `cloakbrowser` peer),
+  `app.cdp_url` attaches to any real Chrome-family CDP
   endpoint, and `app.relay`/`DSH_BROWSER_RELAY=1` drives the user's own
   Chrome tabs through the in-process relay + companion MV3 extension.
 - **`browser` tool** — `open` (navigate, optional post-load code), `run`

@@ -34,6 +34,15 @@ attribution in its header; this notice aggregates the provenance.
   seam conventions (`Service`, inject, effect-scoped registration); the
   invariant companion follows `dsh-invariants` installs.
 
+## CloakBrowser (optional runtime integration)
+
+- **Project**: https://github.com/CloakHQ/cloakbrowser (MIT License)
+- **Copyright**: Copyright (c) 2026 CloakHQ
+- **Relationship**: not vendored and not compiled in — loaded at runtime as
+  the optional `cloakbrowser` peer behind the `app.patch` backend
+  (`src/cloak.ts`). dsh-browser contains no CloakBrowser code; users who want
+  the backend install `npm i cloakbrowser` themselves.
+
 License text (identical for all MIT-listed projects):
 
 ```

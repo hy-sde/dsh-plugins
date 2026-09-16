@@ -3,6 +3,8 @@
  *
  * Three backends, mirroring omp's browser tool:
  * - **launch** — spawn a (stealth-patched) browser executable,
+ * - **patch** — spawn the CloakBrowser Chromium (source-level C++
+ *   fingerprint patches) via the optional `cloakbrowser` peer,
  * - **attach** — connect to an existing CDP endpoint (`cdp_url`), and
  * - **relay** — connect to the local relay server whose companion Chrome
  *   extension drives the user's own tabs.
@@ -31,6 +33,7 @@ import {
 } from './stealth.ts'
 import { startRelayServer, type RelayServer } from './relay/server.ts'
 import { resolveRelayKind } from './relay/kind.ts'
+import { launchCloakBrowser } from './cloak.ts'
 import type { BrowserConfig, BrowserKind, PageObservation, ScreenshotResult } from './types.ts'
 
 export type { BrowserConfig, BrowserKind, BrowserKindTag, PageObservation, ObservationEntry, ScreenshotResult } from './types.ts'
@@ -70,6 +73,8 @@ const DEFAULT_TIMEOUT_MS = 30_000
 /** One browser connection per (cwd + kind), one tab per name. */
 export class BrowserService extends Service {
   private readonly browserPath: string | undefined
+  private readonly usePatch: boolean
+  private readonly patchOptions: { proxy?: string; geoip?: boolean; humanize?: boolean }
   private readonly headless: boolean
   private readonly viewport: { width: number; height: number; deviceScaleFactor?: number }
   private readonly relayUrl: string
@@ -85,6 +90,8 @@ export class BrowserService extends Service {
   ) {
     super(ctx, 'browser')
     this.browserPath = config.browserPath
+    this.usePatch = config.usePatch ?? false
+    this.patchOptions = config.patchOptions ?? {}
     this.headless = config.headless ?? true
     this.viewport = config.viewport ?? DEFAULT_VIEWPORT
     this.relayUrl = config.relayUrl?.replace(/\/+$/, '') ?? 'http://127.0.0.1:9224'
@@ -106,7 +113,7 @@ export class BrowserService extends Service {
   }
 
   private browserKeyFor(kind: BrowserKind, cwd: string): string {
-    if (kind.kind === 'launch') return `launch:${cwd}`
+    if (kind.kind === 'launch' || kind.kind === 'patch') return `${kind.kind}:${cwd}`
     return `${kind.kind}:${'cdpUrl' in kind ? kind.cdpUrl : ''}`
   }
 
@@ -147,19 +154,28 @@ export class BrowserService extends Service {
       return { kind, server, browser, headless: this.headless, cwd }
     }
 
+    if (kind.kind === 'patch') {
+      // CloakBrowser randomizes fingerprints per session at the C++ layer; the
+      // JS-level stealth scripts and UA override are deliberately NOT applied
+      // on this backend (they would fight the per-session randomization).
+      const browser = await launchCloakBrowser({ headless: this.headless, ...this.patchOptions })
+      return { kind, browser: browser as unknown as PlaywrightBrowser, headless: this.headless, cwd }
+    }
+
     // attach + relay both speak Chrome CDP discovery; the relay impersonates it.
     const browser = await chromium.connectOverCDP(kind.cdpUrl)
     return { kind, browser, headless: false, cwd }
   }
 
   /**
-   * Resolve the browser kind for a session (attach/launch/relay), like omp.
-   * @param input - optional app-path, cdp URL, or explicit relay opt-in.
+   * Resolve the browser kind for a session (attach/launch/patch/relay), like omp.
+   * @param input - optional app-path, cdp URL, patch flag, or explicit relay opt-in.
    * @returns the resolved {@link BrowserKind} to drive.
    */
-  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean }): BrowserKind {
+  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean; patch?: boolean }): BrowserKind {
     if (input.cdpUrl) return { kind: 'attach', cdpUrl: input.cdpUrl.replace(/\/+$/, '') }
     if (input.path) return { kind: 'launch', path: input.path }
+    if (input.patch ?? this.usePatch) return { kind: 'patch' }
     const relay = resolveRelayKind({ settingEnabled: input.relay ?? false, url: this.relayUrl })
     if (relay) return { kind: 'relay', cdpUrl: relay.cdpUrl }
     return this.browserPath !== undefined ? { kind: 'launch', path: this.browserPath } : { kind: 'launch' }

@@ -6,6 +6,7 @@
 /** Which browser backend a tab belongs to. */
 export type BrowserKind =
   | { kind: 'launch'; path?: string }
+  | { kind: 'patch' }
   | { kind: 'attach'; cdpUrl: string }
   | { kind: 'relay'; cdpUrl: string }
 
@@ -40,6 +41,17 @@ export interface ScreenshotResult {
 export interface BrowserConfig {
   /** Resolvable browser executable path; empty lets Playwright find one. */
   browserPath?: string
+  /** Prefer the CloakBrowser backend (`app.patch`) when no path/cdp_url/relay is requested. */
+  usePatch?: boolean
+  /** CloakBrowser launch options (proxy / geoip / humanize passthrough). */
+  patchOptions?: {
+    /** Proxy URL passed to the Chromium (e.g. a residential proxy). */
+    proxy?: string
+    /** Match timezone + locale to the proxy IP (needs `proxy`). */
+    geoip?: boolean
+    /** Human-like mouse, keyboard, scroll behaviour. */
+    humanize?: boolean
+  }
   /** Headless mode for launched browsers (default true). */
   headless?: boolean
   /** Default viewport for launched browsers. */

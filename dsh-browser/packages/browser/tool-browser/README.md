@@ -1,6 +1,6 @@
 # @hy-sde-org/dsh-tool-browser
 
-The model-facing agentic browser tool for the DeepSeek Harness (ported from omp / oh-my-pi), resolving the host [`@hy-sde-org/dsh-browser`](../browser/README.md) service through a **launch / attach / relay** backend. Agent-plane: this package mounts as a preset row and registers no service of its own. A standalone plugin — no upstream harness changes required.
+The model-facing agentic browser tool for the DeepSeek Harness (ported from omp / oh-my-pi), resolving the host [`@hy-sde-org/dsh-browser`](../browser/README.md) service through a **launch / patch / attach / relay** backend. Agent-plane: this package mounts as a preset row and registers no service of its own. A standalone plugin — no upstream harness changes required.
 
 ## What it does
 
@@ -12,7 +12,7 @@ Registers one tool (`browser`) and a `browser:tools` system-prompt section:
 - **close** — close one tab, `all` tabs, or with `kill` the spawned browser.
 - **Screenshots** — `screenshot: yes` writes a PNG (into `screenshotDir`, default `<cwd>/.dsh-browser`) and returns its path for the model to re-read.
 
-Backends mirror omp's `app` object: `app.path` spawns a stealth-patched browser, `app.cdp_url` attaches to an existing CDP endpoint, `app.relay` drives the user's own tabs through the local relay + extension.
+Backends mirror omp's `app` object: `app.path` spawns a stealth-patched browser, `app.patch` uses the CloakBrowser source-patched Chromium (optional `cloakbrowser` peer — C++-level fingerprint randomization), `app.cdp_url` attaches to an existing CDP endpoint, `app.relay` drives the user's own tabs through the local relay + extension.
 
 ## ARIA refs
 

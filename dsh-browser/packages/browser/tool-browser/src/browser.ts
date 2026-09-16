@@ -44,6 +44,7 @@ export interface BrowserRunArgs {
     path?: string
     cdp_url?: string
     relay?: boolean
+    patch?: boolean
   }
   wait_until?: 'load' | 'domcontentloaded' | 'networkidle0' | 'networkidle2'
   code?: string
@@ -109,7 +110,9 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
     name: 'browser',
     description:
       'Drive a real browser over Chrome DevTools Protocol: open URLs, evaluate JS in a tab, snapshot the page as an ARIA '
-      + 'ref tree, and close tabs. Three backends: launch a stealth-patched browser binary (app.path), attach to an existing '
+      + 'ref tree, and close tabs. Four backends: launch a stealth-patched browser binary (app.path), use the CloakBrowser '
+      + 'source-patched Chromium with C++-level fingerprint randomization (app.patch; needs the optional `cloakbrowser` peer), '
+      + 'attach to an existing '
       + 'CDP endpoint (app.cdp_url), or relay into the user\'s own Chrome tabs via the local dsh browser relay + companion '
       + 'extension (app.relay). ARIA snapshots carry [ref=eN] ids that stay valid until the next snapshot; click/type via '
       + 'CSS selectors keep working. Screenshots are written to disk as PNG paths the model can re-read. Returned observation '
@@ -130,6 +133,7 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
           path: { type: 'string', description: 'browser binary path to spawn (default resolves a system Chrome/Edge' },
           cdp_url: { type: 'string', description: 'existing CDP endpoint (http://127.0.0.1:9222) to attach to' },
           relay: { type: 'boolean', description: 'drive the user\'s own tabs via the local relay + extension' },
+          patch: { type: 'boolean', description: 'use the CloakBrowser patched Chromium (source-level C++ fingerprint patches; requires the optional `cloakbrowser` peer)' },
         },
         description: 'Which backend to use; defaults to spawning a stealth-patched browser.',
       },
@@ -181,6 +185,7 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
         ...(args.app?.path !== undefined ? { path: args.app.path } : {}),
         ...(args.app?.cdp_url !== undefined ? { cdpUrl: args.app.cdp_url } : {}),
         ...(args.app?.relay !== undefined ? { relay: args.app.relay } : {}),
+        ...(args.app?.patch !== undefined ? { patch: args.app.patch } : {}),
       })
       const cwd = resolveCwd(exec, config.cwd, undefined)
       const screenshotRoot = config.screenshotDir ?? resolve(cwd, '.dsh-browser')
