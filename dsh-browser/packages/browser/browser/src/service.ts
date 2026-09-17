@@ -38,6 +38,9 @@ import type { BrowserConfig, BrowserKind, PageObservation, ScreenshotResult } fr
 
 export type { BrowserConfig, BrowserKind, BrowserKindTag, PageObservation, ObservationEntry, ScreenshotResult } from './types.ts'
 
+/** Scratch cwd key for the scrape browser: one per kind, never touched by tool tabs. */
+export const WEB_SCRAPE_CWD = '__dsh_web_search__'
+
 /** Navigation wait condition accepted by the tool (Playwright dialect). */
 export type WaitUntil = 'load' | 'domcontentloaded' | 'networkidle' | 'commit'
 
@@ -248,6 +251,75 @@ export class BrowserService extends Service {
   ): Promise<unknown> {
     const tab = await this.tab(name, opts.kind, opts.cwd)
     return tab.page.evaluate(code)
+  }
+
+  /**
+   * Scrape one URL in a dedicated browser (launch or CloakBrowser patch — never
+   * relay/attach, which belong to other owners). Used by credential-free web
+   * search engines as the challenge-fallthrough transport: optional home-page
+   * seeding for cookies, then navigate, optionally wait for a ready selector,
+   * and return the rendered HTML plus response status and final URL.
+   * @param url - target URL.
+   * @param options - home-page seed, ready selector, per-navigation timeout.
+   * @returns rendered HTML, HTTP status of the last navigation, final page URL.
+   */
+  async fetchPageHtml(
+    url: string,
+    options?: {
+      homeUrl?: string
+      ready?: { selector: string; timeoutMs: number }
+      timeoutMs?: number
+      signal?: AbortSignal
+      /** Mojeek-style ALTCHA interstitial: click its checkbox, wait for the PoW redirect to show results. */
+      altcha?: { resultsSelector: string; waitMs: number }
+    },
+  ): Promise<{ html: string; status: number; url: string }> {
+    const timeoutMs = options?.timeoutMs ?? 30_000
+    const kind: BrowserKind = this.usePatch
+      ? { kind: 'patch' }
+      : this.browserPath !== undefined
+        ? { kind: 'launch', path: this.browserPath }
+        : { kind: 'launch' }
+    // A fixed scratch cwd keeps one scraper browser (per kind) per service;
+    // tool tabs never collide because the tool rows use real workspace cwds.
+    const entry = await this.connect(kind, WEB_SCRAPE_CWD)
+    const context = entry.browser.contexts()[0] ?? await entry.browser.newContext()
+    const page = await context.newPage()
+    const cancel = (): void => { void page.close().catch(() => undefined) }
+    options?.signal?.addEventListener('abort', cancel, { once: true })
+    try {
+      if (options?.homeUrl !== undefined) {
+        await page.goto(options.homeUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
+      }
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs })
+      if (options?.altcha !== undefined) {
+        // ALTCHA renders inside an open shadow root (pierced by locators, not by
+        // `document.querySelector`) as a custom opacity-0 checkbox, so it is
+        // not actionability-visible to Playwright — force-click it (Puppeteer,
+        // used by omp, clicks hidden elements without such checks).
+        const clicked = await page
+          .locator('altcha-widget input[type="checkbox"]')
+          .first()
+          .click({ timeout: 5_000, force: true })
+          .then(() => true)
+          .catch(() => false)
+        if (clicked) {
+          // After the click the widget computes the proof-of-work and the page
+          // navigates to the real SERP; wait for the results list (best-effort,
+          // like omp's solveCaptcha).
+          await page.waitForSelector(options.altcha.resultsSelector, { timeout: options.altcha.waitMs }).catch(() => undefined)
+        }
+      }
+      if (options?.ready !== undefined) {
+        // Best-effort: a missing selector (SERP variant, challenge page) is not
+        // an error — the caller re-checks the rendered body via `shouldFallback`.
+        await page.waitForSelector(options.ready.selector, { timeout: options.ready.timeoutMs }).catch(() => undefined)
+      }
+      return { html: await page.content(), status: response?.status() ?? 0, url: page.url() }
+    } finally {
+      options?.signal?.removeEventListener('abort', cancel)
+      await page.close().catch(() => undefined)
+    }
   }
 
   /**
