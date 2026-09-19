@@ -1,8 +1,8 @@
 {
   "name": "dsh-zstd-frame",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
-  "description": "Standalone public package: @hy-sde-org/dsh-zstd-frame — Zstandard frame primitives (scan / compress / decompress / multi-frame decoder) shared by the DeepSeek Harness session persistence backend and project memory bank.",
+  "description": "Standalone public package: @hy-sde-org/dsh-zstd-frame \u2014 Zstandard frame primitives (scan / compress / decompress / multi-frame decoder) shared by the DeepSeek Harness session persistence backend and project memory bank.",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"

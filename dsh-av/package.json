@@ -1,8 +1,8 @@
 {
   "name": "dsh-av",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
-  "description": "Standalone public packages: @hy-sde-org/dsh-av (the host ctx.av read-only Automic Vault CLI service) and @hy-sde-org/dsh-tool-av (the read-only av_scan/av_doctor/av_catalog/av_list tools) for DeepSeek Harness — ported standalone with no upstream harness changes required.",
+  "description": "Standalone public packages: @hy-sde-org/dsh-av (the host ctx.av read-only Automic Vault CLI service) and @hy-sde-org/dsh-tool-av (the read-only av_scan/av_doctor/av_catalog/av_list tools) for DeepSeek Harness \u2014 ported standalone with no upstream harness changes required.",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"

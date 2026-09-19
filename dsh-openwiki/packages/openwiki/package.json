@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-openwiki",
-  "version": "0.1.5-rc.1",
-  "description": "The OpenWiki 0.4.3 deterministic engine (MIT) as an in-process library for DeepSeek Harness: resumable page-job lifecycle with durable .run.json/.page-manifest.json/.last-update.json, Grounded Claims store/session/evidence resolver with .claims/ sidecars, OKF v0.2 front matter validation/repair + index sync + generated provenance, Mermaid + wiki-link validation, behind a minimal WikiFs filesystem seam — no external openwiki CLI and no DeepAgents coupling.",
+  "version": "0.1.6-alpha.2",
+  "description": "The OpenWiki 0.4.3 deterministic engine (MIT) as an in-process library for DeepSeek Harness: resumable page-job lifecycle with durable .run.json/.page-manifest.json/.last-update.json, Grounded Claims store/session/evidence resolver with .claims/ sidecars, OKF v0.2 front matter validation/repair + index sync + generated provenance, Mermaid + wiki-link validation, behind a minimal WikiFs filesystem seam \u2014 no external openwiki CLI and no DeepAgents coupling.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

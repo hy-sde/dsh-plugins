@@ -1,6 +1,6 @@
 {
   "name": "dsh-openwiki",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-openwiki (the OpenWiki 0.4.3 deterministic engine as an in-process library) and @hy-sde-org/dsh-tool-openwiki (the five openwiki_* lifecycle tools + openwiki:tools prompt section for DeepSeek Harness)",
   "type": "module",

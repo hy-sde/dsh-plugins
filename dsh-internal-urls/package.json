@@ -1,6 +1,6 @@
 {
   "name": "dsh-internal-urls",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-internal-urls (the FS-shaped internal-URL resolver registry), @hy-sde-org/dsh-tool-fs-internal-urls and @hy-sde-org/dsh-tool-fs-search-internal-urls (the read/write/grep routing surface that makes conflict://, pr://, issue:// work on stock DeepSeek Harness).",
   "type": "module",

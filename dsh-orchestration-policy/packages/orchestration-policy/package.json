@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-orchestration-policy",
-  "version": "0.1.5-rc.1",
-  "description": "Parallelize-by-default orchestration policy: config-driven fan-out rules, fail-closed task-isolation guard, review-gate posture resolution, and the `orchestration:policy` system-prompt section (firstmate dispatch-profile shape) — a standalone plugin for DeepSeek Harness.",
+  "version": "0.1.6-alpha.2",
+  "description": "Parallelize-by-default orchestration policy: config-driven fan-out rules, fail-closed task-isolation guard, review-gate posture resolution, and the `orchestration:policy` system-prompt section (firstmate dispatch-profile shape) \u2014 a standalone plugin for DeepSeek Harness.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -38,13 +38,13 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1"
+    "@deepseek-ai/dsh-system-prompt": "^0.1.6-alpha.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-llm": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.1.6-alpha.2",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

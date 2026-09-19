@@ -1,8 +1,8 @@
 {
   "name": "dsh-session-url",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
-  "description": "Standalone public package: @hy-sde-org/dsh-session-url — the session:// internal-URL scheme (transcripts, per-event JSON, listings, FTS search) for the DeepSeek Harness read/grep tools, with no dependency on unpublished fork packages.",
+  "description": "Standalone public package: @hy-sde-org/dsh-session-url \u2014 the session:// internal-URL scheme (transcripts, per-event JSON, listings, FTS search) for the DeepSeek Harness read/grep tools, with no dependency on unpublished fork packages.",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"

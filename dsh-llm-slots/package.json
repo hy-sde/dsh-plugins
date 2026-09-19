@@ -1,8 +1,8 @@
 {
   "name": "dsh-llm-slots",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
-  "description": "Standalone public package: @hy-sde-org/dsh-llm-slots — host-wide model-slot admission control (ctx.modelSlots) decided FIFO at the llm/stream waterfall, so 2-3 concurrent local inference slots stay predictable.",
+  "description": "Standalone public package: @hy-sde-org/dsh-llm-slots \u2014 host-wide model-slot admission control (ctx.modelSlots) decided FIFO at the llm/stream waterfall, so 2-3 concurrent local inference slots stay predictable.",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"

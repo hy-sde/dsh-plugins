@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-git",
-  "version": "0.1.5-rc.1",
-  "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff capture/parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree/conventional layers backing the commit, review, and worktree tools in @hy-sde-org/dsh-tool-git — a standalone plugin with no upstream harness changes required.",
+  "version": "0.1.6-alpha.2",
+  "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff capture/parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree/conventional layers backing the commit, review, and worktree tools in @hy-sde-org/dsh-tool-git \u2014 a standalone plugin with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -87,19 +87,19 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-atomic-write": "^0.1.5-rc.1"
+    "@deepseek-ai/dsh-atomic-write": "^0.1.6-alpha.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-subprocess": "^0.1.5-rc.1"
+    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-subprocess": "^0.1.6-alpha.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-atomic-write": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-subprocess": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-subprocess-local": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-atomic-write": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-subprocess": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-subprocess-local": "^0.1.6-alpha.2",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

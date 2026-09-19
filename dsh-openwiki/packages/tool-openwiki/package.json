@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-openwiki",
-  "version": "0.1.5-rc.1",
-  "description": "Model-facing OpenWiki lifecycle tools (openwiki_begin/openwiki_submit_plan/openwiki_next_page/openwiki_submit_page/openwiki_finish) over the in-process deterministic engine @hy-sde-org/dsh-openwiki, plus an openwiki:tools system-prompt section that wires codebase-memory tools as structural discovery — a standalone agent-plane plugin for DeepSeek Harness, no external openwiki CLI.",
+  "version": "0.1.6-alpha.2",
+  "description": "Model-facing OpenWiki lifecycle tools (openwiki_begin/openwiki_submit_plan/openwiki_next_page/openwiki_submit_page/openwiki_finish) over the in-process deterministic engine @hy-sde-org/dsh-openwiki, plus an openwiki:tools system-prompt section that wires codebase-memory tools as structural discovery \u2014 a standalone agent-plane plugin for DeepSeek Harness, no external openwiki CLI.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,22 +46,22 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-util-values": "^0.1.5-rc.1"
+    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-util-values": "^0.1.6-alpha.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-llm": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "^0.1.5-rc.1",
+    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.6-alpha.2",
+    "@deepseek-ai/dsh-tools": "^0.1.6-alpha.2",
     "@hy-sde-org/dsh-openwiki": "workspace:^",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7",
-    "@deepseek-ai/dsh-util-values": "^0.1.5-rc.1"
+    "@deepseek-ai/dsh-util-values": "^0.1.6-alpha.2"
   },
   "keywords": [
     "deepseek",

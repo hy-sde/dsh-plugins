@@ -1,8 +1,8 @@
 {
   "name": "dsh-git",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
-  "description": "Standalone public packages: @hy-sde-org/dsh-git (the host ctx.git service) and @hy-sde-org/dsh-tool-git (the commit/commit_apply/review/worktree tools) for DeepSeek Harness — a port of oh-my-pi's agentic git commit + review.",
+  "description": "Standalone public packages: @hy-sde-org/dsh-git (the host ctx.git service) and @hy-sde-org/dsh-tool-git (the commit/commit_apply/review/worktree tools) for DeepSeek Harness \u2014 a port of oh-my-pi's agentic git commit + review.",
   "type": "module",
   "engines": {
     "node": ">=22.19.0"

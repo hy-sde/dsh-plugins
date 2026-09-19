@@ -24,14 +24,9 @@ const CHROME = CHROME_CANDIDATES.find(existsSync)
 const LIVE = CHROME !== undefined
 
 /** Whether the optional `cloakbrowser` peer resolves (then the error-path test is skipped). */
-function hasCloakBrowserInstall(): boolean {
-  try {
-    import.meta.resolve('cloakbrowser')
-    return true
-  } catch {
-    return false
-  }
-}
+const hasCloakBrowserInstall: boolean = await import(/** @vite-ignore */ 'cloakbrowser')
+  .then(() => true)
+  .catch(() => false)
 
 const DATA_URL = `data:text/html,${encodeURIComponent('<h1 role="heading">Hello Browser</h1><a href="#x" role="link">Go</a><input aria-label="Name">')}`
 
@@ -142,7 +137,7 @@ describe('kind + wait resolution (pure)', () => {
     }
   })
 
-  it.skipIf(hasCloakBrowserInstall())('app.patch fails helpfully when the cloakbrowser peer is missing', async () => {
+  it.skipIf(hasCloakBrowserInstall)('app.patch fails helpfully when the cloakbrowser peer is missing', async () => {
     await expect(service.open('patch-tab', DATA_URL, { kind: { kind: 'patch' }, cwd: dir }))
       .rejects.toThrow(/cloakbrowser/)
   })

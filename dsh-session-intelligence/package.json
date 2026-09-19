@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-intelligence",
-  "version": "0.1.5-rc.1",
+  "version": "0.1.6-alpha.2",
   "private": true,
   "description": "Standalone public packages: @hy-sde-org/dsh-session-intelligence (the `session_health` tool: per-session health/outcome signals computed from the DeepSeek Harness session store) and its CLI.",
   "type": "module",
