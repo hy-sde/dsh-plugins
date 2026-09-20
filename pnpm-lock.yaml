@@ -898,8 +898,8 @@ importers:
         specifier: 3.18.1
         version: 3.18.1
       '@hy-sde-org/dsh-zstd-frame':
-        specifier: workspace:^
-        version: link:../../../dsh-zstd-frame/packages/zstd-frame
+        specifier: ^0.1.6-alpha.2
+        version: 0.1.6-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.6-alpha.2(@deepseek-ai/cordis@4.0.2))
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.2
@@ -2164,6 +2164,13 @@ packages:
 
   '@huggingface/transformers@4.2.0':
     resolution: {integrity: sha512-8BRCoBMH0XsWaEIamuR0LrJGAfftgHAfb2Vrffy0VKlSAE/MnUJ5/h/zTfEP3fDIft+nk7TqB8xXEyABGitBjQ==}
+
+  '@hy-sde-org/dsh-zstd-frame@0.1.6-alpha.2':
+    resolution: {integrity: sha512-PvO7NdTAEzBKugSa/XrSv7QK/p1/z5aLsDbiaAZoouz6ImecYSIEyOmYPD6ZUs5sjdj0QQqqbNUZUpYCkDRPYQ==}
+    engines: {node: '>=22.19.0'}
+    peerDependencies:
+      '@deepseek-ai/cordis': ^4.0.2
+      '@deepseek-ai/dsh-invariants': ^0.1.6-alpha.2
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -4513,6 +4520,11 @@ snapshots:
       onnxruntime-node: 1.24.3
       onnxruntime-web: 1.26.0-dev.20260416-b7804b056c
       sharp: 0.34.5
+
+  '@hy-sde-org/dsh-zstd-frame@0.1.6-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.6-alpha.2(@deepseek-ai/cordis@4.0.2))':
+    dependencies:
+      '@deepseek-ai/cordis': 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
+      '@deepseek-ai/dsh-invariants': 0.1.6-alpha.2(@deepseek-ai/cordis@4.0.2)
 
   '@iconify/types@2.0.0': {}
 
