@@ -1,5 +1,5 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
-# 0.1.6-alpha.2 bump prepared 2026-09-19 — NOT yet published: npm auth for @hy-sde-org unavailable in session)
+# 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 
 ## PUBLISHED on npm as @hy-sde-org/dsh-* (all at 0.1.6-alpha.2 as of 2026-09-15); 0.1.6-alpha.2 prepared locally (unpublished)
 
