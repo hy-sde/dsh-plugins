@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.1",
-    "@hy-sde-org/dsh-zstd-frame": "workspace:^"
+    "@hy-sde-org/dsh-zstd-frame": "^0.1.6-alpha.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
