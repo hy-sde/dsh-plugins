@@ -100,4 +100,37 @@ describe('analyzeSession (DSH adapter)', () => {
     expect(signals.messageCount).toBe(2)
     expect(signals.outcome.outcome).toBe('completed')
   })
+
+  it('reads the 0.1.7 message-level isError tool/result shape', () => {
+    const events = [
+      event(0, 1_000, 'user/message', {
+        role: 'user', id: 'u1',
+        content: [{ type: 'text', text: 'implement foo' }], source: { kind: 'user' },
+      }),
+      event(1, 2_000, 'assistant/message', {
+        message: {
+          role: 'assistant', id: 'a1',
+          content: [{ type: 'text', text: 'done' }, { type: 'tool-call', id: 'tc1', name: 'bash', arguments: '{"cmd":"pnpm test"}' }],
+          source: { kind: 'assistant' },
+        },
+        usage: { inputTokens: 1_000, outputTokens: 10, cacheReadTokens: 2_000 },
+        turn: 1, step: 1,
+      }),
+      event(2, 2_100, 'tool/call', { callId: 'c1', name: 'bash', arguments: '{"cmd":"pnpm test"}', turn: 1, step: 1 }),
+      event(3, 2_200, 'tool/result', {
+        message: {
+          source: { kind: 'tool', callId: 'c1' },
+          content: [{ type: 'text', text: 'exit status 1\nfatal: oops' }],
+          role: 'tool', id: 'r1', isError: true,
+        },
+        turn: 1, step: 1,
+      }),
+    ]
+    const signals = analyzeSession(session(events))
+
+    expect(signals.toolHealth).toEqual({
+      failureSignalCount: 1, retryCount: 0, editChurnCount: 0, consecutiveFailureMax: 1,
+    })
+    expect(signals.finalFailureStreak).toBe(1)
+  })
 })

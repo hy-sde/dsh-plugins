@@ -237,7 +237,7 @@ function extractToolCallRows(session: HealthSessionLike): ToolCallRow[] {
       const source = asRecord(message?.source)
       const callId = typeof source?.callId === 'string' ? source.callId : undefined
       if (callId === undefined) continue
-      const errored = payload.error !== undefined || contentHasError(message?.content)
+      const errored = payload.error !== undefined || contentHasError(message, message?.content)
       const text = contentText(message?.content)
       const entry = byCallId.get(`call:${callId}`)
       if (entry !== undefined) {
@@ -407,8 +407,14 @@ function contentText(content: unknown): string {
   return parts.join('\n')
 }
 
-/** Whether a content array carries a `tool-result` block with isError. */
-function contentHasError(content: unknown): boolean {
+  /**
+   * Whether a recorded tool result carries an error outcome. Matches both the
+   * pre-0.1.7 shape (`tool-result` content block with `isError`) and the
+   * 0.1.7+ message shape (message-level `isError`).
+   */
+function contentHasError(message: unknown, content: unknown): boolean {
+  const messageRecord = asRecord(message)
+  if (messageRecord !== undefined && messageRecord['isError'] === true) return true
   if (!Array.isArray(content)) return false
   for (const block of content) {
     const record = asRecord(block)

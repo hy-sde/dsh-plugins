@@ -172,7 +172,9 @@ before touching the fork**.
   the standalone is genuinely ahead (e.g. code-runtime-kernels — 7/7 src files
   differ; already mounted in `cordis-plus`) or when you deliberately stop
   maintaining the fork-side copy. Default: standalone plugins are mounted via
-  presets (`~/.dsh/.agent-presets/*`), the fork keeps its in-fork packages.
+  preset declaration rows (`preset-<id>` entries of `@deepseek-ai/dsh-agent-preset`
+  in `~/.dsh/profiles/web/cordis.patch.yml` — upstream 0.1.7 replaced the legacy
+  `~/.dsh/.agent-presets/<id>/` directories), the fork keeps its in-fork packages.
 
 ---
 

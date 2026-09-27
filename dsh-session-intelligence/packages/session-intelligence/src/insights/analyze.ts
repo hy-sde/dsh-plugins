@@ -473,11 +473,17 @@ function toolResultData(
   return { callId, data }
 }
 
-/** Whether a `tool/result` data record carries an error outcome. */
+/**
+ * Whether a `tool/result` data record carries an error outcome. Matches both
+ * the pre-0.1.7 shape (`tool-result` content block with `isError`) and the
+ * 0.1.7+ message shape (message-level `isError`).
+ */
 function resultHasError(data: Record<string, unknown>): boolean {
   if (data.error !== undefined) return true
   const message = data.message
-  if (!isRecord(message) || !Array.isArray(message.content)) return false
+  if (!isRecord(message)) return false
+  if (message.isError === true) return true
+  if (!Array.isArray(message.content)) return false
   return message.content.some(block => isRecord(block) && block.isError === true)
 }
 

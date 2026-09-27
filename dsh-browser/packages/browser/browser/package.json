@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-browser",
-  "version": "0.1.6-alpha.2",
+  "version": "0.1.7-rc.2",
   "description": "Agentic browser plumbing for DeepSeek Harness: the host ctx.browser service (launch with stealth, CDP-attach, and a local relay + companion Chrome extension driving the user's own tabs) backing the browser tool in @hy-sde-org/dsh-tool-browser \u2014 a standalone plugin with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
@@ -71,18 +71,18 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/cordis": "~4.0.4",
     "playwright-core": "^1.61.1",
     "ws": "^8.21.0"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-invariants": "^0.1.7-rc.2",
     "cloakbrowser": ">=0.5.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-invariants": "^0.1.6-alpha.2",
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-invariants": "^0.1.7-rc.2",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.5.0",
     "playwright-core": "^1.61.1",

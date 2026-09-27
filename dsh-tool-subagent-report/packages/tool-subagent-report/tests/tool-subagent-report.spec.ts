@@ -607,7 +607,7 @@ describe('dsh-tool-subagent-report', () => {
 
 /** Prove report delivery uses ordinary logged user messages (runtime-context snapshots excluded). */
 function userTexts(events: readonly SessionEvent[]): string[] {
-  return events.flatMap(event => event.type === 'user/message' && event.data.source.kind !== 'plugin'
+  return events.flatMap(event => event.type === 'user/message' && event.data.source.kind === 'user'
     ? event.data.content.flatMap(block => block.type === 'text' ? [block.text] : [])
     : [])
 }

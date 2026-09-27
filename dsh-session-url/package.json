@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-url",
-  "version": "0.1.6-alpha.2",
+  "version": "0.1.7-rc.2",
   "private": true,
   "description": "Standalone public package: @hy-sde-org/dsh-session-url \u2014 the session:// internal-URL scheme (transcripts, per-event JSON, listings, FTS search) for the DeepSeek Harness read/grep tools, with no dependency on unpublished fork packages.",
   "type": "module",
@@ -16,7 +16,7 @@
     "release:publish": "bash scripts/release-public.sh --publish"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/cordis": "~4.0.4",
     "@types/node": "^24.13.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
