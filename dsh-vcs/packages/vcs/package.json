@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "effect": "4.0.0-rc.112"
+    "effect": "4.0.0-rc.118"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

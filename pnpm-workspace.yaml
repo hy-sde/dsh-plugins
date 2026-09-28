@@ -69,3 +69,4 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-web@0.1.7-rc.2'
   - '@deepseek-ai/dsh-win32-process@0.1.7-rc.2'
   - '@hy-sde-org/dsh-zstd-frame@0.1.7-rc.2'
+  - effect@4.0.0-rc.118
