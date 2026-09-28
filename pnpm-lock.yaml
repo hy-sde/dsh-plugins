@@ -1046,6 +1046,10 @@ importers:
         version: 3.2.7(@types/node@24.13.3)(jsdom@29.1.1)(lightningcss@1.33.0)(tsx@4.22.1)(yaml@2.9.0)
 
   dsh-tool-debug/packages/dap:
+    dependencies:
+      effect:
+        specifier: 4.0.0-rc.118
+        version: 4.0.0-rc.118
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ~4.0.4
