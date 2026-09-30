@@ -1,8 +1,9 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
-## PREPARED for 0.2.0-rc.2 (NOT published yet); 0.1.7-rc.2 is the last published release (2026-09-28, 31 packages)
-## PUBLISHED on npm as @hy-sde-org/dsh-* (all at 0.1.7-rc.2 as of 2026-09-28); 0.2.0-rc.2 prepared locally (unpublished)
+## PUBLISHED on npm as @hy-sde-org/dsh-* at 0.2.0-rc.2 (2026-09-30): dsh-zstd-frame, dsh-session-intelligence, dsh-code-runtime-kernels
+## (the 3 packages the fork harness consumes); remaining 0.2.0-rc.2 packages prepared, NOT published
+## PREVIOUS release on npm: all 31 at 0.1.7-rc.2 (2026-09-28)
 dsh-vcs                 0.2.0-rc.2
 dsh-session-url         0.2.0-rc.2
 dsh-llm-slots           0.2.0-rc.2
@@ -15,8 +16,8 @@ dsh-tool-ast            0.2.0-rc.2
 dsh-tool-edit           0.2.0-rc.2
 dsh-web-search-public   0.2.0-rc.2
 dsh-tool-debug          0.2.0-rc.2
-dsh-zstd-frame          0.2.0-rc.2
-dsh-code-runtime-kernels 0.2.0-rc.2  # fork apps/cli already depends ^0.2.0-rc.2; mounted in cordis-plus preset
+dsh-zstd-frame          0.2.0-rc.2  # PUBLISHED 2026-09-30
+dsh-code-runtime-kernels 0.2.0-rc.2  # PUBLISHED 2026-09-30; fork apps/cli already depends ^0.2.0-rc.2; mounted in cordis-plus preset
 dsh-memory              0.2.0-rc.2
 dsh-fs-archive          0.2.0-rc.2
 dsh-browser             0.2.0-rc.2
@@ -33,7 +34,7 @@ dsh-graph-host          0.2.0-rc.2  # back-ported 2026-09-09 from fork (Maka No.
 dsh-memory-extraction   0.2.0-rc.2  # back-ported 2026-09-09 from fork (Maka No. 2)
 dsh-logseq-graph        0.2.0-rc.2  # name verified: dsh-logseq/packages/logseq/logseq-graph
 dsh-tool-logseq         0.2.0-rc.2  # name verified: dsh-logseq/packages/logseq/tool-logseq
-dsh-session-intelligence 0.2.0-rc.2 # first publish (was 404); depends on dsh-zstd-frame — publish order held
+dsh-session-intelligence 0.2.0-rc.2 # PUBLISHED 2026-09-30; depends on dsh-zstd-frame — publish order held
 
 ## RETIRED (removed from the workspace, 2026-09)
 
