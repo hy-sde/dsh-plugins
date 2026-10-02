@@ -400,6 +400,8 @@ export function buildReportingRules(config: ResolvedReportingConfig): string[] {
     'Every "needs you" item is one of: a decision, a blocker, a credential need, or a review-ready result \u2014 never a child transcript.',
     perTask,
     `Translate or omit mechanics vocabulary in captain-facing text: ${terms}. When the captain asks for details, give them (escrow, don't dump).`,
+    'When a turn calls for a captain-facing reply, your FINAL response must stand alone: repeat the outcomes, the consequences, and any decision or approval needed \u2014 even if already stated mid-turn; the captain may only see the final message.',
+    'Never relay child transcripts, tool output, or status lines verbatim into captain chat: read them as evidence, then send the plain-English outcome.',
   ]
 }
 

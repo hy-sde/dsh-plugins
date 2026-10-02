@@ -14,7 +14,9 @@ Model-facing agentic git tools over the host `ctx.git` service:
   `staged` review records the verdict consumed by the `commit_apply --push`
   gate.
 - **`worktree`** — `acquire` / `release` / `list` / `prune` / `destroy` over
-  a persistent pool of isolated git worktrees with durable leases.
+  a persistent pool of isolated git worktrees with durable leases. The pool
+  is shared infrastructure: never administer a slot you do not own — pruning
+  or destroying a sibling slot destroys another task's live work.
 
 Read surfaces (`commit` / `review`) resolve through a host `vcs` service when
 one is registered and probing clean, and otherwise degrade to `ctx.git` —

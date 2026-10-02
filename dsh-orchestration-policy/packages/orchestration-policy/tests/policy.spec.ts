@@ -278,6 +278,8 @@ describe('P3 reporting', () => {
     expect(rules[2]).toContain('one line per task')
     expect(rules[3]).toContain('subagent, workspace')
     expect(rules[3]).toContain("don't dump")
+    expect(rules[4]).toContain('FINAL response must stand alone')
+    expect(rules[5]).toContain('Never relay child transcripts')
   })
 
   it('switches per-task detail to detail blocks', () => {

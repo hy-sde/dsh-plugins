@@ -39,7 +39,9 @@ policy has five parts:
 5. **Outcomes-not-mechanics reporting (P3)** — captain-facing prose follows an
    outcome contract (one block per wave; every "needs you" is a decision,
    blocker, credential need, or review-ready result; mechanics vocabulary
-   translated or omitted; detail available on request).
+   translated or omitted; detail available on request; the final response
+   must stand alone with the outcomes, and child output is never relayed
+   verbatim — read it as evidence, then report the plain-English outcome).
 
 ## Install
 

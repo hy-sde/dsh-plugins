@@ -121,9 +121,10 @@ export function applyWorktreeTool(ctx: Context, config: WorktreeToolConfig = {})
       'Manage isolated per-task git worktrees in a persistent pool with durable leases (firstmate/treehouse model). '
       + '`acquire` cuts a fresh slot (`--branch` for a named-branch HEAD — the path for commit_apply --push and PRs) '
       + 'or reuses a provably-idle one, returning `path` + `leaseId`; `release` returns the slot (refuses dirty unless `force`) '
-      + 'and is conditional on the exact lease id; `list` shows live pool status; `prune` removes only idle slots (dry-run '
+      + 'is conditional on the exact lease id; `list` shows live pool status; `prune` removes only idle slots (dry-run '
       + 'without `yes`); `destroy` removes one slot (dry-run without `yes`, refuses leased/dirty unless the explicit flag). '
-      + 'Work at `lease.path` — it is a normal git worktree of the same repository; finish with release before shipping.',
+      + 'Work at `lease.path` — it is a normal git worktree of the same repository; finish with release before shipping. '
+      + 'Only ever administer slots you own: prune/destroy are shared-pool administration with live-work risk, so never touch another task\'s slot.',
     parameters: {
       action: {
         type: 'string',
