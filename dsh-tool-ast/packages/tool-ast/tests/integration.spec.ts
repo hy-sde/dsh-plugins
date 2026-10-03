@@ -207,6 +207,50 @@ describe('ast tools over the real subprocess service + the packaged ast-grep', (
     })
   })
 
+  describe('ast_edit scope hardening (upstream issue #1)', () => {
+    it('errors when path is missing instead of falling back to the session workspace', async () => {
+      const before = await readFile(join(dir, 'src', 'greet.ts'), 'utf8')
+      const result = await call('ast_edit', { pat: 'console.log($MSG)', rewrite: 'log.debug($MSG)' }, agent())
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('missing required property "path"')
+      expect(await readFile(join(dir, 'src', 'greet.ts'), 'utf8')).toBe(before)
+    })
+
+    it('rejects unknown argument keys (the old array-shaped paths) loudly', async () => {
+      const before = await readFile(join(dir, 'src', 'greet.ts'), 'utf8')
+      const result = await call('ast_edit', {
+        pat: 'console.log($MSG)',
+        rewrite: 'log.debug($MSG)',
+        path: 'src/greet.ts',
+        paths: ['src/greet.ts'],
+      }, agent())
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('unknown argument "paths"')
+      expect(await readFile(join(dir, 'src', 'greet.ts'), 'utf8')).toBe(before)
+    })
+
+    it('scans a directory target and echoes the resolved absolute scope in the header', async () => {
+      const result = await call('ast_edit', {
+        pat: 'console.log($MSG)',
+        rewrite: 'log.debug($MSG)',
+        path: 'src',
+        apply: true,
+      }, agent())
+      expect(result.isError).toBe(false)
+      const out = text(result)
+      expect(out).toMatch(/Applied 2 replacements across 1 file/)
+      expect(out).toContain(`(targets: ${join(dir, 'src')})`)
+      const rewritten = await readFile(join(dir, 'src', 'greet.ts'), 'utf8')
+      expect(rewritten).toContain('log.debug(`hello ${name}`)')
+    })
+
+    it('rejects unknown argument keys for ast_grep too', async () => {
+      const result = await call('ast_grep', { pat: 'console.log($MSG)', path: 'src', paths: ['src'] }, agent())
+      expect(result.isError).toBe(true)
+      expect(text(result)).toContain('unknown argument "paths"')
+    })
+  })
+
   describe('abort + cancellation', () => {
     it('classifies a pre-aborted registry call without spawning', async () => {
       const controller = new AbortController()

@@ -8,6 +8,7 @@
  * @module @hy-sde-org/dsh-tool-ast/edit
  */
 
+import { isAbsolute, join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { FsInfo, FsTarget } from '@deepseek-ai/dsh-fs'
 import { FsError } from '@deepseek-ai/dsh-fs'
@@ -23,6 +24,7 @@ import {
   buildAstGrepArgv,
   parseAstMatches,
   runAstGrep,
+  splitRoots,
   toWorkspaceTarget,
 } from './core.ts'
 import type { AstStrictness } from './core.ts'
@@ -42,11 +44,12 @@ export interface AstEditToolCaps {
   timeoutMs: number
 }
 
-/** Validated `ast_edit` arguments after defaulting. */
+/** Validated `ast_edit` arguments after defaulting. `path` is mandatory — the tool errors rather
+ * than falling back to the session workspace (see `parseAstEditArgs`). */
 export interface AstEditInput {
   pat: string
   rewrite: string
-  path: string | undefined
+  path: string
   include: string | undefined
   lang: string | undefined
   strictness: AstStrictness | undefined
@@ -64,16 +67,33 @@ interface AstEditToolArgs {
   apply?: boolean
 }
 
+/** The argument names `ast_edit` accepts; anything else is a rejected typo (e.g. the old
+ * array-shaped `paths` another plugin used). */
+const AST_EDIT_ARG_KEYS: ReadonlySet<string> = new Set([
+  'pat', 'rewrite', 'path', 'include', 'lang', 'strictness', 'apply',
+])
+
 /**
- * Validate value constraints the schema DSL can't express: non-blank `pat` and, when given,
- * non-blank `path`/`include`/`lang` and a known strictness. `rewrite` may be empty (a deletion).
- * @param args - the schema-validated raw tool arguments.
+ * Validate value constraints the schema DSL can't express: reject unknown argument keys (the
+ * parameter root is an open object by design, so a misspelled key would otherwise arrive here
+ * untouched and silently degrade the rewrite scope), require a non-blank `pat` and an explicit
+ * non-blank `path` (no whole-session-workspace fallback), and when given non-blank
+ * `include`/`lang` and a known strictness. `rewrite` may be empty (a deletion).
+ * @param args - the schema-validated raw tool arguments (possibly carrying unknown keys).
  * @returns the validated input with `apply` defaulted to false.
  */
 export function parseAstEditArgs(args: AstEditToolArgs): AstEditInput {
+  for (const key of Object.keys(args)) {
+    if (!AST_EDIT_ARG_KEYS.has(key)) {
+      throw new Error(`unknown argument "${key}" — ast_edit accepts: ${[...AST_EDIT_ARG_KEYS].join(', ')}`)
+    }
+  }
   if (args.pat.trim().length === 0) throw new Error('pat must be a non-empty string')
-  const path = args.path?.trim()
-  if (path !== undefined && path.length === 0) throw new Error('path must be a non-empty string')
+  if (args.path === undefined) {
+    throw new Error('path is required: pass the file or directory to rewrite (ast_edit does not fall back to the session workspace)')
+  }
+  const path = args.path.trim()
+  if (path.length === 0) throw new Error('path must be a non-empty string')
   const include = args.include?.trim()
   if (include !== undefined && include.length === 0) throw new Error('include must be a non-empty string')
   const lang = args.lang?.trim()
@@ -106,6 +126,8 @@ export interface AstEditResultValue {
   total: number
   /** True when apply mode actually rewrote files. */
   applied: boolean
+  /** The resolved absolute target roots this run was scoped to (echoed so the caller sees the scope). */
+  targets: string[]
 }
 
 /** The sandbox policy adapter (resolves a per-execution policy and maps denial markers), mirroring tool-fs mutation tools. */
@@ -197,17 +219,19 @@ export function applyAstEditTool(ctx: Context, caps: AstEditToolCaps, policy: Mu
     text:
       'Use ast_edit for STRUCTURAL rewrite: replace every node matching an AST pattern with a template that can reference captured metavars ($NAME). '
       + 'It always PREVIEWS first (apply defaults to false) so you can verify the hunks; pass apply: true to actually write the files. '
+      + 'Always pass an explicit path (a file or directory, several separated by ";") — the tool refuses to run without one instead of falling back to the whole session workspace. '
       + 'Rewrites are 1:1 structural substitutions: a capture cannot expand into sibling nodes unless the grammar permits it at that position.',
   })
 
   const tool = defineTool({
     name: 'ast_edit',
-    description: 'Structurally rewrite source files by AST pattern. By default it PREVIEWS the proposed hunks without writing anything; set apply: true to write the files. '
+    description: 'Structurally rewrite source files by AST pattern. An explicit path is required: a missing or misspelled scope argument errors instead of silently widening to the whole session workspace. '
+      + 'By default it PREVIEWS the proposed hunks without writing anything; set apply: true to write the files. '
       + 'Supports ast-grep pattern syntax: `$NAME` captures one node referenced in the rewrite as `$NAME`. Every matched node is rewritten; there is no interactive selection.',
     parameters: {
       pat: { type: 'string', required: true, description: 'AST pattern to match, in ast-grep syntax. Must be non-empty.' },
       rewrite: { type: 'string', required: true, description: 'Replacement template. Captured metavariables from pat substitute here (e.g. `$NAME`). Empty rewrite deletes the matched node.' },
-      path: { type: 'string', description: 'File or directory to search (or several roots separated by ";"). Defaults to the session workspace; a relative path resolves against it.' },
+      path: { type: 'string', required: true, description: 'File or directory to rewrite (or several roots separated by ";"). Required: the tool errors when missing rather than falling back to the whole session workspace; a relative path resolves against the session workspace.' },
       include: { type: 'string', description: 'One glob filter for which files to rewrite (e.g. "*.ts", "*.{js,jsx}"). Not a list; negation is not supported.' },
       lang: { type: 'string', description: 'Force the language for pattern + targets (e.g. "Python", "Rust", "TypeScript"). Normally inferred from file extensions.' },
       strictness: { type: 'string', enum: [...AST_STRICTNESSES], description: 'How strictly the pattern node kinds must match. "smart" is the default; "ast" ignores comments and trivia.' },
@@ -235,6 +259,7 @@ export function applyAstEditTool(ctx: Context, caps: AstEditToolCaps, policy: Mu
             },
           },
           total: { type: 'integer', required: true },
+          targets: { type: 'array', required: true, items: { type: 'string' } },
           applied: { type: 'boolean', required: true },
         },
       },
@@ -248,7 +273,10 @@ export function applyAstEditTool(ctx: Context, caps: AstEditToolCaps, policy: Mu
     async execute(args: AstEditToolArgs, exec) {
       const input = parseAstEditArgs(args)
       const run = await runAstGrep(ctx, exec, 'ast_edit', buildAstGrepArgv({ ...input, rewrite: input.rewrite }), caps.engine)
-      if (run.noMatches) return { files: [], total: 0, applied: false }
+      // The resolved absolute scope this call targets: the engine ran with `workdir` as its cwd,
+      // so a relative root resolves exactly as `toWorkspaceTarget` resolves match paths.
+      const targets = splitRoots(input.path).map((root) => isAbsolute(root) ? root : join(run.workdir, root))
+      if (run.noMatches) return { files: [], total: 0, applied: false, targets }
 
       const records = parseAstMatches(run.stdout)
       const files = new Map<string, { path: string; hunks: RewriteHunk[] }>()
@@ -262,7 +290,7 @@ export function applyAstEditTool(ctx: Context, caps: AstEditToolCaps, policy: Mu
         }
         entry.hunks.push(record.rewrite)
       }
-      if (files.size === 0) return { files: [], total: 0, applied: false }
+      if (files.size === 0) return { files: [], total: 0, applied: false, targets }
 
       const result: AstEditFileValue[] = []
       let total = 0
@@ -315,7 +343,7 @@ export function applyAstEditTool(ctx: Context, caps: AstEditToolCaps, policy: Mu
         result.push(fileValue)
       }
 
-      return { files: result, total, applied: input.apply }
+      return { files: result, total, applied: input.apply, targets }
     },
     presentCall: presentAstEditCall,
     presentResult: presentAstEditResult,
@@ -364,9 +392,10 @@ export function presentAstEditResult(_args: AstEditToolArgs, result: ToolResult)
 
 /** Format the model-facing `ast_edit` output: a header and per-file rows with hunks in preview. */
 function formatAstEditOutput(value: AstEditResultValue): string {
-  const header = value.applied
+  const scope = value.targets.length > 0 ? ` (targets: ${value.targets.join('; ')})` : ''
+  const header = (value.applied
     ? `Applied ${value.total} replacement${value.total === 1 ? '' : 's'} across ${value.files.length} file${value.files.length === 1 ? '' : 's'}`
-    : `Preview: ${value.total} replacement${value.total === 1 ? '' : 's'} across ${value.files.length} file${value.files.length === 1 ? '' : 's'}`
+    : `Preview: ${value.total} replacement${value.total === 1 ? '' : 's'} across ${value.files.length} file${value.files.length === 1 ? '' : 's'}`) + scope
   if (value.files.length === 0) return value.applied ? `${header}. No matches.` : `${header}. No engine matches.`
   const sections = value.files.map((file) => {
     const state = file.applied ? 'rewrote' : file.replacements > 0 ? 'proposes' : 'leaves unchanged'

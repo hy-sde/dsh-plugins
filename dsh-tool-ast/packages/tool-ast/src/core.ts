@@ -152,7 +152,7 @@ export function buildAstGrepArgv(opts: {
 }
 
 /** Split a model `path` into roots (multipart via `;`), dropping empties. */
-function splitRoots(path: string | undefined): string[] {
+export function splitRoots(path: string | undefined): string[] {
   if (path === undefined) return []
   return path.split(';').map(part => part.trim()).filter(part => part.length > 0)
 }

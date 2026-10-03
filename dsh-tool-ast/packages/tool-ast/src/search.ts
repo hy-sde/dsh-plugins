@@ -54,13 +54,23 @@ interface AstGrepToolArgs {
   strictness?: AstStrictness
 }
 
+/** The argument names `ast_grep` accepts; anything else is a rejected typo (the parameter root is
+ * an open object by design, so a misspelled key would otherwise arrive here untouched). */
+const AST_GREP_ARG_KEYS: ReadonlySet<string> = new Set(['pat', 'path', 'include', 'lang', 'strictness'])
+
 /**
- * Validate value constraints the schema DSL can't express: a non-blank `pat` and, when given, a
- * non-blank `path`/`include`/`lang` and a known strictness.
- * @param args - the schema-validated raw tool arguments.
+ * Validate value constraints the schema DSL can't express: reject unknown argument keys (e.g. an
+ * array-shaped `paths`), require a non-blank `pat`, and when given non-blank
+ * `path`/`include`/`lang` and a known strictness.
+ * @param args - the schema-validated raw tool arguments (possibly carrying unknown keys).
  * @returns the validated input with optionals defaulted to `undefined`.
  */
 export function parseAstGrepArgs(args: AstGrepToolArgs): AstGrepInput {
+  for (const key of Object.keys(args)) {
+    if (!AST_GREP_ARG_KEYS.has(key)) {
+      throw new Error(`unknown argument "${key}" — ast_grep accepts: ${[...AST_GREP_ARG_KEYS].join(', ')}`)
+    }
+  }
   if (args.pat.trim().length === 0) throw new Error('pat must be a non-empty string')
   const path = args.path?.trim()
   if (path !== undefined && path.length === 0) throw new Error('path must be a non-empty string')
