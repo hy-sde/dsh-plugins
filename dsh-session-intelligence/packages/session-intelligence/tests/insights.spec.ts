@@ -263,8 +263,8 @@ function parseThroughSince(): unknown {
 
 describe('cli helpers', () => {
   it('encodes a workspace path like the persistence backend projectKey', () => {
-    expect(projectKey('/Users/hui/Documents/workspace')).toBe('--Users-hui-Documents-workspace--')
-    expect(projectKey('/Users/hui/Documents/github/deepseek-harness')).toBe('--Users-hui-Documents-github-deepseek-harness--')
+    expect(projectKey('/Users/you/Documents/my-project')).toBe('--Users-you-Documents-my-project--')
+    expect(projectKey('/Users/you/Documents/github/some-repo')).toBe('--Users-you-Documents-github-some-repo--')
   })
 
   it('parses a JSONL artifact into header facts and tool events', () => {

@@ -60,7 +60,7 @@ describe('compressZstdFrame compression-level option', () => {
     const juicy = [
       '{"type":"assistant/chunk","seq":14,"time":1788151127516,"data":{"turn":1,"step":1,"chunk":{"type":"block-start","index":0,"blockType":"reasoning"}}}',
       ...Array.from({ length: 4096 }, (_, i) => (
-        `{"type":"reasoning-chunks","seq0":${16 + i},"time0":1788151127824,"data":{"turn":1,"step":1,"index":0,"dt":[0,1,31,65,44],"texts":[" me understand the task. The"," user is asking about omp (","/Users/hui/Documents/github${i}","3/oh-my-pi framework ported"," to the harness")]}}`
+        `{"type":"reasoning-chunks","seq0":${16 + i},"time0":1788151127824,"data":{"turn":1,"step":1,"index":0,"dt":[0,1,31,65,44],"texts":[" me understand the task. The"," user is asking about omp (","/Users/you/Documents/github${i}","3/oh-my-pi framework ported"," to the harness")]}}`
       )),
     ].join('\n') + '\n'
     const fast = await compressZstdFrame(juicy, { level: 1 })

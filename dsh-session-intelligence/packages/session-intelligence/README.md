@@ -101,11 +101,11 @@ The deployment must mount `tools`, `systemPrompt`, and `sessionQuery`
 ## CLI
 
 ```bash
-node dist/cli.js --cwd /Users/hui/Documents/workspace --recent --limit 20
-node dist/cli.js --cwd /Users/hui/Documents/workspace --session session-<id>
-node dist/cli.js --cwd /Users/hui/Documents/workspace --edits --path src --limit 30
-node dist/cli.js --cwd /Users/hui/Documents/workspace --frequency --top 20
-node dist/cli.js /Users/hui/.dsh/sessions/--Users-hui-Documents-workspace--
+node dist/cli.js --cwd /Users/you/Documents/my-project --recent --limit 20
+node dist/cli.js --cwd /Users/you/Documents/my-project --session session-<id>
+node dist/cli.js --cwd /Users/you/Documents/my-project --edits --path src --limit 30
+node dist/cli.js --cwd /Users/you/Documents/my-project --frequency --top 20
+node dist/cli.js /Users/you/.dsh/sessions/--Users-you-Documents-my-project--
 ```
 
 Reads `session.jsonl.zstd` (multi-frame zstd, torn-tail tolerant) or

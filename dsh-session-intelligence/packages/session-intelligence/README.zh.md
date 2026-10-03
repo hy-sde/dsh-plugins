@@ -89,9 +89,9 @@ const signals = analyzeSession({ id, createdAt, events })
 ## CLI
 
 ```bash
-node dist/cli.js --cwd /Users/hui/Documents/workspace --recent --limit 20
-node dist/cli.js --cwd /Users/hui/Documents/workspace --session session-<id>
-node dist/cli.js /Users/hui/.dsh/sessions/--Users-hui-Documents-workspace--
+node dist/cli.js --cwd /Users/you/Documents/my-project --recent --limit 20
+node dist/cli.js --cwd /Users/you/Documents/my-project --session session-<id>
+node dist/cli.js /Users/you/.dsh/sessions/--Users-you-Documents-my-project--
 ```
 
 从各会话目录读取 `session.jsonl.zstd`（多帧 zstd，兼容撕裂尾部）或

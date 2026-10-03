@@ -92,15 +92,15 @@ describe('presentation', () => {
 
 describe('cli helpers', () => {
   it('encodes a workspace path like the persistence backend projectKey', () => {
-    expect(projectKey('/Users/hui/Documents/workspace')).toBe('--Users-hui-Documents-workspace--')
+    expect(projectKey('/Users/you/Documents/my-project')).toBe('--Users-you-Documents-my-project--')
   })
 
   it('resolves the sessions dir under DSH_HOME', () => {
     const previous = process.env.DSH_HOME
     process.env.DSH_HOME = '/tmp/dsh-home'
     try {
-      expect(sessionsDirForCwd('/Users/hui/Documents/workspace'))
-        .toBe('/tmp/dsh-home/sessions/--Users-hui-Documents-workspace--')
+      expect(sessionsDirForCwd('/Users/you/Documents/my-project'))
+        .toBe('/tmp/dsh-home/sessions/--Users-you-Documents-my-project--')
     } finally {
       if (previous === undefined) delete process.env.DSH_HOME
       else process.env.DSH_HOME = previous

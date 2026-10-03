@@ -7,7 +7,7 @@
 // This script generated the wiki committed as openwiki/ in dsh-plugins.
 //
 // Usage (from the openwiki package dir):
-//   node examples/gen-repo-wiki.mjs /Users/hui/Documents/github/dsh-plugins
+//   node examples/gen-repo-wiki.mjs <repo-root>
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -101,7 +101,7 @@ const CLAIMS = {
       evidence: [{ resource: 'repo://scripts/publish-all.sh#L28-L31' }],
     },
     {
-      statement: 'Never-publish plugins live in the separate dsh-plugins-private repo.',
+      statement: 'Never-publish plugins live in a separate private plugins repo.',
       evidence: [{ resource: 'repo://README.md#L13-L17' }],
     },
   ],
@@ -144,7 +144,7 @@ agentsview or DSH-native — so a capability's lineage is visible at a glance.`,
 Yes → standalone-first: build it here, wire it into the fork via file:, verify,
 publish, then switch the fork to pkg:version. No → fork-only. Private or
 client-bound capabilities are the A case taken further: they never enter this
-repo or the publish flow and live in dsh-plugins-private instead.`,
+repo or the publish flow and live in a separate private plugins repo instead.`,
   '/openwiki/publishing.md': `Each package is validated by scripts/release-public.sh (clean worktree,
 @hy-sde-org name, LICENSE, check/test/build, pack) and published with pnpm so
 workspace:^ dependencies are rewritten to real published ranges. publish-all.sh
@@ -154,7 +154,7 @@ dependency order; --check dry-runs the whole pipeline without publishing.`,
 order refuses (fail-closed) if an excluded plugin is still a workspace member,
 and publish-all.sh aborts on that refusal instead of silently publishing
 nothing. The excluded plugins themselves moved to the separate
-dsh-plugins-private repository with their per-plugin git histories archived.`,
+private plugins repository with their per-plugin git histories archived.`,
   '/openwiki/quickstart.md': `This monorepo holds the standalone @hy-sde-org/dsh-* plugins for DeepSeek
 Harness as one git repo and one pnpm workspace.
 
