@@ -93,6 +93,7 @@ the existing convention:
   `devDependencies` for workspace peers (final publish shape)
 - `cordis.patch.yml` (row id/name), `examples/agent-preset/`, `LICENSE`,
   `THIRD-PARTY-NOTICES.md`, `SECURITY.md`, `README.md` (+ `*.zh.md`), CONTRIBUTING
+- README content follows the shared template [docs/PLUGIN-README-TEMPLATE.md](docs/PLUGIN-README-TEMPLATE.md) (section skeleton, variants, ported-plugin MUST-STATE)
 - `scripts/release-public.sh` (check/publish), smoke script
 - tests via vitest; import `src` directly in tests, **not** the package alias
 
