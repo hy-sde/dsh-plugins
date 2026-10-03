@@ -19,6 +19,8 @@ allowBuilds:
   onnxruntime-node: true
   protobufjs: true
   sharp: true
+  # transitive of @earendil-works/pi-ai@1.0.0 (Route A pi-durable stack)
+  "@google/genai": true
 
 minimumReleaseAgeExclude:
   # pi-durable stack published 2026-10-01 (Route A engine + tools depend on it)
