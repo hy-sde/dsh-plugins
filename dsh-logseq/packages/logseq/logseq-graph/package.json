@@ -50,8 +50,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-logseq/packages/logseq/logseq-graph"
+    "url": "git+https://github.com/hy-sde/dsh-logseq.git",
+    "directory": "packages/logseq/logseq-graph"
   },
   "license": "MIT",
   "dependencies": {
@@ -76,5 +76,9 @@
     "logseq",
     "wiki",
     "graph"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-logseq#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-logseq/issues"
+  }
 }

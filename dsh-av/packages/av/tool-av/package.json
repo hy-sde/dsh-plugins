@@ -42,8 +42,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-av/packages/av/tool-av"
+    "url": "git+https://github.com/hy-sde/dsh-av.git",
+    "directory": "packages/av/tool-av"
   },
   "license": "MIT",
   "dependencies": {
@@ -75,5 +75,9 @@
     "secrets",
     "hardening",
     "audit"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-av#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-av/issues"
+  }
 }

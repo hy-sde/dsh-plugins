@@ -7,8 +7,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-logseq/packages/logseq/tool-logseq"
+    "url": "git+https://github.com/hy-sde/dsh-logseq.git",
+    "directory": "packages/logseq/tool-logseq"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -83,5 +83,9 @@
     "logseq",
     "wiki",
     "tool"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-logseq#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-logseq/issues"
+  }
 }

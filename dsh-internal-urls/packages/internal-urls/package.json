@@ -60,8 +60,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-internal-urls/packages/internal-urls"
+    "url": "git+https://github.com/hy-sde/dsh-internal-urls.git",
+    "directory": "packages/internal-urls"
   },
   "license": "MIT",
   "dsh": {
@@ -108,5 +108,9 @@
     "github",
     "pr",
     "issue"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-internal-urls#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-internal-urls/issues"
+  }
 }

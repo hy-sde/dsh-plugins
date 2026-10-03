@@ -32,8 +32,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-orchestration-policy/packages/orchestration-policy"
+    "url": "git+https://github.com/hy-sde/dsh-orchestration-policy.git",
+    "directory": "packages/orchestration-policy"
   },
   "license": "MIT",
   "peerDependencies": {
@@ -60,5 +60,9 @@
     "fan-out",
     "isolation",
     "review-gate"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-orchestration-policy#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-orchestration-policy/issues"
+  }
 }

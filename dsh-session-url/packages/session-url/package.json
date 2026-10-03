@@ -38,8 +38,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-session-url/packages/session-url"
+    "url": "git+https://github.com/hy-sde/dsh-session-url.git",
+    "directory": "packages/session-url"
   },
   "license": "MIT",
   "dsh": {
@@ -73,5 +73,9 @@
     "session",
     "transcript",
     "search"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-session-url#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-session-url/issues"
+  }
 }

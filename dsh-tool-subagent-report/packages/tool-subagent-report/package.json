@@ -34,8 +34,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-tool-subagent-report/packages/tool-subagent-report"
+    "url": "git+https://github.com/hy-sde/dsh-tool-subagent-report.git",
+    "directory": "packages/tool-subagent-report"
   },
   "license": "MIT",
   "dsh": {
@@ -82,5 +82,9 @@
     "report",
     "continuable",
     "decision"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-tool-subagent-report#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-tool-subagent-report/issues"
+  }
 }

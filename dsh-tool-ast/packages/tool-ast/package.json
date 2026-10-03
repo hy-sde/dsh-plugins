@@ -38,8 +38,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-tool-ast/packages/tool-ast"
+    "url": "git+https://github.com/hy-sde/dsh-tool-ast.git",
+    "directory": "packages/tool-ast"
   },
   "license": "MIT",
   "dsh": {
@@ -90,5 +90,9 @@
     "code-search",
     "codemod",
     "rewrite"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-tool-ast#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-tool-ast/issues"
+  }
 }

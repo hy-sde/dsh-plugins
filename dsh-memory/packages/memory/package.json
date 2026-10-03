@@ -52,8 +52,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-memory/packages/memory"
+    "url": "git+https://github.com/hy-sde/dsh-memory.git",
+    "directory": "packages/memory"
   },
   "license": "MIT",
   "dsh": {
@@ -87,5 +87,9 @@
     "recall",
     "reflect",
     "learn"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-memory#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-memory/issues"
+  }
 }

@@ -61,8 +61,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-browser/packages/browser/browser"
+    "url": "git+https://github.com/hy-sde/dsh-browser.git",
+    "directory": "packages/browser/browser"
   },
   "license": "MIT",
   "dsh": {
@@ -103,5 +103,9 @@
     "cloakbrowser": {
       "optional": true
     }
+  },
+  "homepage": "https://github.com/hy-sde/dsh-browser#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-browser/issues"
   }
 }

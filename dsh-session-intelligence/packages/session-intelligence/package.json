@@ -44,8 +44,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-session-intelligence/packages/session-intelligence"
+    "url": "git+https://github.com/hy-sde/dsh-session-intelligence.git",
+    "directory": "packages/session-intelligence"
   },
   "license": "MIT",
   "dsh": {
@@ -87,5 +87,9 @@
     "health",
     "outcome",
     "signals"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-session-intelligence#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-session-intelligence/issues"
+  }
 }

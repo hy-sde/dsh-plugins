@@ -37,8 +37,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-openwiki/packages/tool-openwiki"
+    "url": "git+https://github.com/hy-sde/dsh-openwiki.git",
+    "directory": "packages/tool-openwiki"
   },
   "license": "MIT",
   "dependencies": {
@@ -71,5 +71,9 @@
     "openwiki",
     "grounded-claims",
     "wiki"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-openwiki#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-openwiki/issues"
+  }
 }

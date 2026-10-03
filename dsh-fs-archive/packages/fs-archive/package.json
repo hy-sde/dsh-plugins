@@ -36,8 +36,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-fs-archive/packages/fs-archive"
+    "url": "git+https://github.com/hy-sde/dsh-fs-archive.git",
+    "directory": "packages/fs-archive"
   },
   "license": "MIT",
   "peerDependencies": {
@@ -68,5 +68,9 @@
     "cab",
     "arj",
     "asar"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-fs-archive#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-fs-archive/issues"
+  }
 }

@@ -36,8 +36,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-llm-slots/packages/llm-slots"
+    "url": "git+https://github.com/hy-sde/dsh-llm-slots.git",
+    "directory": "packages/llm-slots"
   },
   "license": "MIT",
   "peerDependencies": {
@@ -67,5 +67,9 @@
     "admission",
     "concurrency",
     "fifo"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-llm-slots#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-llm-slots/issues"
+  }
 }

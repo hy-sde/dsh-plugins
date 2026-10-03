@@ -44,8 +44,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-vcs/packages/vcs"
+    "url": "git+https://github.com/hy-sde/dsh-vcs.git",
+    "directory": "packages/vcs"
   },
   "license": "MIT",
   "dsh": {
@@ -79,5 +79,9 @@
     "gitoxide",
     "diff",
     "watch"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-vcs#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-vcs/issues"
+  }
 }

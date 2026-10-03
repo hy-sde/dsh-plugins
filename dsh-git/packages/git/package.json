@@ -76,8 +76,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hy-sde/dsh-plugins.git",
-    "directory": "dsh-git/packages/git"
+    "url": "git+https://github.com/hy-sde/dsh-git.git",
+    "directory": "packages/git"
   },
   "license": "MIT",
   "dsh": {
@@ -114,5 +114,9 @@
     "commit",
     "review",
     "worktree"
-  ]
+  ],
+  "homepage": "https://github.com/hy-sde/dsh-git#readme",
+  "bugs": {
+    "url": "https://github.com/hy-sde/dsh-git/issues"
+  }
 }
