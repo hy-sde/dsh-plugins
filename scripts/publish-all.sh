@@ -6,6 +6,9 @@
 #
 # Order: intra-monorepo dependencies come first (e.g. dsh-vcs before dsh-git,
 # dsh-zstd-frame before dsh-memory/dsh-fs-archive).
+# Mirrors: --publish ends by pushing each plugin dir's subtree split to its
+# hy-sde/<dir> GitHub mirror (scripts/sync-mirrors.mjs) so per-plugin repos stay
+# discoverable; --check also verifies mirrors are not drifted.
 
 set -euo pipefail
 
@@ -35,6 +38,9 @@ if [[ "$mode" == "--check" ]]; then
   for d in "${dirs[@]}"; do
     bash scripts/release-public.sh --check "$d"
   done
+  echo
+  echo "== mirror check =="
+  node scripts/sync-mirrors.mjs --check
   echo "all packages checked OK"
   exit 0
 fi
@@ -45,3 +51,7 @@ for d in "${dirs[@]}"; do
   bash scripts/release-public.sh --publish "$d"
 done
 echo "all packages published"
+echo
+echo "== syncing GitHub mirrors =="
+node scripts/sync-mirrors.mjs
+echo "mirrors synced"

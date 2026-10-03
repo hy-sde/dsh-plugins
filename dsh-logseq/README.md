@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-logseq-graph`](https://www.npmjs.com/package/@hy-sde-org/dsh-logseq-graph) · [`@hy-sde-org/dsh-tool-logseq`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-logseq)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-logseq — headless LLM-wiki (Logseq CLI graph service + tools) for DeepSeek Harness
 
 Two standalone packages, installable as **one plugin family** for the DeepSeek

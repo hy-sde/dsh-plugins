@@ -1,3 +1,8 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+<!-- MIRROR-NOTE:END -->
+
 # dsh-omp-native
 
 English | [中文](README.zh.md)

@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-git`](https://www.npmjs.com/package/@hy-sde-org/dsh-git) · [`@hy-sde-org/dsh-tool-git`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-git)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-git — agentic git commit + review for DeepSeek Harness
 
 Two standalone packages, installable as **one plugin** for the DeepSeek

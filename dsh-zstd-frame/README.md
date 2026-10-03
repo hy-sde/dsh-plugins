@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-zstd-frame`](https://www.npmjs.com/package/@hy-sde-org/dsh-zstd-frame)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-zstd-frame — Zstandard frame primitives for DeepSeek Harness
 
 A standalone public package: **`@hy-sde-org/dsh-zstd-frame`** — append-only,

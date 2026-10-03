@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-tool-subagent-report`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-subagent-report)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-tool-subagent-report — child-scoped reporting for continuable subagents
 
 A standalone package for DeepSeek Harness, installable as **one plugin**:

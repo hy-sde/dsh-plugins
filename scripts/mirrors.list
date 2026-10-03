@@ -1,0 +1,40 @@
+# GitHub mirror repos for dsh-plugins plugin dirs (one dir per line; repo = hy-sde/<dir>).
+#
+# The monorepo is the source of truth; scripts/sync-mirrors.mjs pushes the
+# `git subtree split` history of each dir to its mirror so every plugin stays
+# individually searchable on GitHub (topics / stars / issues), matching the
+# ecosystem convention of one repo per plugin.
+#
+# - dsh-stream-rules is RETIRED (dir removed from the workspace) — its repo is
+#   intentionally left archived and is NOT listed here.
+# - Repos without an existing hy-sde/<dir> remote (dsh-graph, dsh-memory-extraction,
+#   dsh-pi-durable, dsh-session-intelligence, dsh-tool-library-search) are CREATED
+#   by `sync-mirrors.mjs --stamp`.
+# - dsh-omp-native is the Rust sidecar (no npm packages) — still mirrored.
+
+dsh-av
+dsh-browser
+dsh-code-runtime-kernels
+dsh-fs-archive
+dsh-git
+dsh-graph
+dsh-internal-urls
+dsh-llm-slots
+dsh-logseq
+dsh-memory
+dsh-memory-extraction
+dsh-omp-native
+dsh-openwiki
+dsh-orchestration-policy
+dsh-pi-durable
+dsh-session-intelligence
+dsh-session-url
+dsh-tool-ast
+dsh-tool-codebase-memory
+dsh-tool-debug
+dsh-tool-edit
+dsh-tool-library-search
+dsh-tool-subagent-report
+dsh-vcs
+dsh-web-search-public
+dsh-zstd-frame

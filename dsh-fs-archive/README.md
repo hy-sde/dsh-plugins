@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-fs-archive`](https://www.npmjs.com/package/@hy-sde-org/dsh-fs-archive)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-fs-archive — pure-TS multi-format archive engine for DeepSeek Harness
 
 A standalone public package: **`@hy-sde-org/dsh-fs-archive`** — a pure-TypeScript

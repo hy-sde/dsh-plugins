@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-openwiki`](https://www.npmjs.com/package/@hy-sde-org/dsh-openwiki) · [`@hy-sde-org/dsh-tool-openwiki`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-openwiki)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-openwiki
 
 Standalone public packages that bring the **OpenWiki** deterministic engine

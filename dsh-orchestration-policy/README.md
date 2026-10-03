@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-orchestration-policy`](https://www.npmjs.com/package/@hy-sde-org/dsh-orchestration-policy)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-orchestration-policy — parallelize-by-default policy for DeepSeek Harness
 
 A standalone public package: **`@hy-sde-org/dsh-orchestration-policy`** — the

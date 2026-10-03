@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-session-url`](https://www.npmjs.com/package/@hy-sde-org/dsh-session-url)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-session-url — session:// scheme for DeepSeek Harness
 
 A standalone public package: **`@hy-sde-org/dsh-session-url`** — the

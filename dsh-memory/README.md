@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-memory`](https://www.npmjs.com/package/@hy-sde-org/dsh-memory) · [`@hy-sde-org/dsh-tool-memory`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-memory)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-memory — durable project memory for DeepSeek Harness
 
 Two standalone packages here, installable as **one plugin** for the DeepSeek

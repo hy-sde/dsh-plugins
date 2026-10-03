@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-vcs`](https://www.npmjs.com/package/@hy-sde-org/dsh-vcs)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-vcs — native vcs service for DeepSeek Harness
 
 A standalone public package: **`@hy-sde-org/dsh-vcs`** — the host-plane

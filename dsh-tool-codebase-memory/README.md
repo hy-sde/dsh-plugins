@@ -1,3 +1,9 @@
+<!-- MIRROR-NOTE:START -->
+> [!NOTE]
+> 📦 This plugin lives in the [**dsh-plugins**](https://github.com/hy-sde/dsh-plugins) monorepo — file issues & pull requests there.
+> npm: [`@hy-sde-org/dsh-tool-codebase-memory`](https://www.npmjs.com/package/@hy-sde-org/dsh-tool-codebase-memory)
+<!-- MIRROR-NOTE:END -->
+
 # dsh-tool-codebase-memory — codebase-memory CLI tools for DeepSeek Harness
 
 A standalone package, installable as **one plugin** (fourteen tools) for the
