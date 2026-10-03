@@ -95,6 +95,10 @@ for (const p of JSON.parse(sh('pnpm -r list --depth -1 --json'))) {
   pkgsByDir.get(top).push(p.name)
 }
 
+// Escape a value for embedding in a double-quoted shell argument — backticks
+// and $ would otherwise be command-substituted (bit the `report` description).
+const shellDq = (s) => s.replace(/([`$"\\])/g, '\\$1')
+
 const descFor = (dir) => DESCRIPTIONS[dir]
   ?? `${dir} — part of the ${ORG}/dsh-plugins monorepo (DeepSeek Harness plugin).`
 
@@ -165,7 +169,7 @@ for (const dir of mirrors) {
     const desc = descFor(dir)
     if (!meta) {
       console.log(dry ? `  [dry] CREATE repo ${ORG}/${dir} (gh repo create --public)` : `  creating repo ${ORG}/${dir}`)
-      if (!dry) sh(`gh repo create ${ORG}/${dir} --public --description "${desc.replaceAll('"', '\\"')}"`)
+      if (!dry) sh(`gh repo create ${ORG}/${dir} --public --description "${shellDq(desc)}"`)
       continue
     }
     const haveTopics = (meta.repositoryTopics ?? []).map((t) => t.name)
@@ -176,7 +180,7 @@ for (const dir of mirrors) {
     }
     if (meta.description !== desc) {
       console.log(dry ? `  [dry] gh repo edit --description "${desc}"` : '  setting description')
-      if (!dry) sh(`gh repo edit ${ORG}/${dir} --description "${desc.replaceAll('"', '\\"')}"`)
+      if (!dry) sh(`gh repo edit ${ORG}/${dir} --description "${shellDq(desc)}"`)
     }
     if (missingTopics.length) {
       console.log(dry ? `  [dry] gh repo edit ${missingTopics.map((t) => '--add-topic ' + t).join(' ')}` : `  adding topics: ${missingTopics.join(', ')}`)
