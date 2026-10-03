@@ -21,6 +21,8 @@ allowBuilds:
   sharp: true
 
 minimumReleaseAgeExclude:
+  # pi-durable stack published 2026-10-01 (Route A engine + tools depend on it)
+  - '@earendil-works/*'
   - '@deepseek-ai/dsh-agent-loop-testkit@0.2.0-rc.2'
   - '@deepseek-ai/dsh-agent-loop@0.2.0-rc.2'
   - '@deepseek-ai/dsh-agent@0.2.0-rc.2'
