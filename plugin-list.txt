@@ -23,7 +23,7 @@ dsh-openwiki             0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, rel
 dsh-orchestration-policy 0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-pi-durable           0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-session-url          0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
-dsh-tool-ast             0.2.0-rc.2.1   # PUBLISHED 2026-10-05 (issue #1 ast_edit hardening: path required + unknown-arg rejection + targets echo)
+dsh-tool-ast             0.2.0-rc.2.1   # PUBLISHED 2026-10-03 (issue #1 ast_edit hardening: path required + unknown-arg rejection + targets echo)
 dsh-tool-codebase-memory 0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-dap                  0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-hashline             0.2.0-rc.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
