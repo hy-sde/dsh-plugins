@@ -17,7 +17,7 @@ const TEXT = [
   'Prefer `codebase_search_graph` over repeated grep/read cycles for definitions, callers, call chains, routes, and architecture; use `codebase_query_graph` (Cypher) for patterns the curated tools cannot express.',
   'Page with `limit`/`offset` until `has_more` is false; result sizes are capped and truncation is reported explicitly.',
   '`codebase_delete_project` is destructive — use only for superseded indexes.',
-  'Underlying CLI: `codebase-memory-mcp cli --json <tool>` — subcommands drop the `codebase_` prefix (e.g. `list_projects`, NOT `codebase_list_projects`); it shares the same daemon as any MCP client, so indexes are consistent across sessions.',
+  'Underlying CLI: `codebase-memory-mcp cli --json <tool>` — subcommands drop the `codebase_` prefix (e.g. `list_projects`, NOT `codebase_list_projects`); it shares the same daemon as any MCP client, so indexes are consistent across sessions. The `cli` subcommand reads stdin to EOF before dispatching — when invoking it from a shell, close or redirect stdin (e.g. `codebase-memory-mcp cli --json list_projects < /dev/null`) so it cannot block.',
 ].join('\n')
 
 /**

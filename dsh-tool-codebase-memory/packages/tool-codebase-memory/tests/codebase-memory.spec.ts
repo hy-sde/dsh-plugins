@@ -214,6 +214,23 @@ describe('codebase-memory tools over a shim CLI', () => {
     await setup(join(dir, 'does-not-exist'))
     await expect(call('codebase_list_projects', {})).rejects.toThrow(/not found/)
   })
+
+  it('closes stdin so a stdin-slurping CLI dispatches instead of hanging to the timeout', async () => {
+    const dir = await makeDir('slurp')
+    // Regression: the real CLI slurps stdin to EOF (cli_slurp_stream) before
+    // dispatching. execFile leaves stdin as an open pipe, which blocked the
+    // child in fread() until the timeout kill with zero output.
+    const slurpShim = `#!/bin/bash
+cat > /dev/null
+echo '{"content":[{"type":"text","text":"{\\"projects\\":[{\\"name\\":\\"demo\\"}]}"}],"isError":false}'
+exit 0
+`
+    await setup(await writeShim(dir, slurpShim), { timeoutMs: 5000 })
+    const t0 = Date.now()
+    const value = await call<{ text: string }>('codebase_list_projects', {})
+    expect(value.text).toContain('"name":"demo"')
+    expect(Date.now() - t0).toBeLessThan(4500)
+  })
 })
 
 describe('codebase-memory tools — live integration (CBM_INTEGRATION=1 only)', () => {

@@ -85,7 +85,9 @@ interface RunResult {
 }
 
 /**
- * Run the CLI once; stdout/stderr/exit-code are returned as-is.
+ * Run the CLI once; stdout/stderr/exit-code are returned as-is. The child's
+ * stdin is closed immediately: the CLI slurps stdin to EOF before dispatching,
+ * and an open execFile pipe would block it until the timeout kill.
  * @param cmd - CLI executable path.
  * @param args - full argv (including `cli --json <tool>` and, when args exist, `--args-file`).
  * @param options - run options (per-call timeout).
@@ -94,7 +96,7 @@ interface RunResult {
  */
 export async function runCli(cmd: string, args: string[], options: { timeoutMs: number }): Promise<RunResult> {
   return new Promise<RunResult>((resolve, reject) => {
-    execFile(cmd, args, {
+    const child = execFile(cmd, args, {
       timeout: options.timeoutMs,
       maxBuffer: 256 * 1024 * 1024,
       windowsHide: true,
@@ -137,6 +139,12 @@ export async function runCli(cmd: string, args: string[], options: { timeoutMs: 
         `codebase-memory CLI exited with ${code === null ? 'unknown error' : `code ${code}`}${tail ? `: ${tail}` : ''}`,
         args, stdout, stderr, code))
     })
+    // The CLI's `cli` subcommand slurps stdin to EOF (cli_slurp_stream) before
+    // dispatching, and execFile leaves the child's stdin as a pipe held open by
+    // this process (it does not honor a stdio array) — the child would block in
+    // fread() until the timeout kill with zero output. Close stdin immediately
+    // so the slurp sees EOF and dispatch proceeds.
+    child.stdin?.end()
   })
 }
 
