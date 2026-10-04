@@ -12,7 +12,7 @@ Harness CLI:
 | package | role | installed by users? |
 |---|---|---|
 | `@hy-sde-org/dsh-memory` | the plugin: host-plane `ctx.memory` service + shipped `local` backend (bundle row + preset example) | yes |
-| `@hy-sde-org/dsh-tool-memory` | the model-facing tools (`retain` / `recall` / `reflect` / `memory_edit` / `learn`) + first-turn prompt injection | yes |
+| `@hy-sde-org/dsh-tool-memory` | the model-facing tools (`retain` / `recall` / `reflect` / `memory_edit` / `learn` / `mine_sessions`) + first-turn prompt injection | yes |
 
 (`@hy-sde-org/dsh-memory-extraction`, automatic extraction at compaction
 checkpoints, ships from the sibling [`dsh-memory-extraction/`](../dsh-memory-extraction)
@@ -26,13 +26,51 @@ preset, and every `@deepseek-ai` dependency resolves from the npm registry at
 the `0.1.2-rc.1` baseline — so it installs on official DeepSeek Harness
 releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the hy-sde fork.
 
-## Install
+| Identity | Value |
+| --- | --- |
+| Packages | `@hy-sde-org/dsh-memory` (service) · `@hy-sde-org/dsh-tool-memory` (tools) |
+| Plugin ids | `memory` — host-plane service row inserted by the bundle · `tool-memory` — agent-plane preset row |
+| Seam | `ctx.memory` + the `memory://` scheme; `retain` / `recall` / `reflect` / `memory_edit` / `learn` / `mine_sessions` tools and the `memory:project` prompt section |
+
+> **Based on [oh-my-pi](https://github.com/can1357/oh-my-pi)** — the agent-memory
+> surface (durable project-scoped bank, learned lessons, consolidation, and the
+> retain/recall/reflect/memory_edit/learn data model) is ported from oh-my-pi and
+> adapted to the DeepSeek Harness `ctx.memory` seam. oh-my-pi is MIT-licensed
+> (Mario Zechner, Can Bölük); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Why
+
+Compaction and session boundaries erase working context: the next session
+starts from conversation replay, not from what the project decided. This
+plugin is the counterweight — durable, **project-scoped** memory the agent
+curates itself with the memory tools, **reloaded at the start of the next
+session** through prompt injection. It complements DSH's session-query and
+compaction instead of overlapping them: those replay conversation history,
+this bank answers "what did we decide / prefer / learn here?" across
+sessions.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.1.2-rc.1` or later, including the standard `dsh` CLI;
+- no keys and no external services — the shipped `local` backend is pure
+  Node (`node:fs`, zstd frame container) storing under
+  `<harness home>/memories/<project>/`;
+- optional: a host `sessionQuery` service (enables `mine_sessions` and the
+  session tier of `recall`) and the `@hy-sde-org/dsh-internal-urls` registry
+  (enables `memory://` reads through the read/grep tools) — both degrade
+  gracefully when absent.
+
+Install the Harness CLI and pnpm before continuing:
 
 ```bash
-pnpm install --global @deepseek-ai/dsh
+npm install --global @deepseek-ai/dsh@0.1.2-rc.1 pnpm
+dsh --version
 ```
 
-### Direct from npm (published)
+## Quick start
+
+### Route A — published npm package (recommended)
 
 ```bash
 dsh plugin --profile web add @hy-sde-org/dsh-memory @hy-sde-org/dsh-tool-memory
@@ -48,7 +86,7 @@ cp packages/memory/examples/agent-preset/agent.cordis.yml \
    ~/.dsh/.agent-presets/my-memory/
 ```
 
-### From the git checkout (pre-publish / development)
+### Route B — from source (validate this checkout or hack on the plugin)
 
 ```bash
 git clone git@github.com:hy-sde/dsh-plugins.git
@@ -56,16 +94,39 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-memory build
 
-MEMORY_TGZ="$(cd dsh-memory/packages/memory && ppnpm pack --silent --pack-destination /tmp)"
+MEMORY_TGZ="$(cd dsh-memory/packages/memory && pnpm pack --silent --pack-destination /tmp)"
 TOOLMEMORY_TGZ="$(cd dsh-memory/packages/tool-memory && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$MEMORY_TGZ" "$TOOLMEMORY_TGZ"
 ```
 
-### Verify
+`pnpm pack` runs the normal `prepack` build and produces a tarball containing
+`dist/`.
+
+### Verify the composed configuration
 
 ```bash
 dsh web --dump-config        # the memory row is present in the base bundle
 ```
+
+### Run
+
+```bash
+dsh web
+```
+
+The memory tools are model-facing, so exercising them is just conversation,
+per the shipped docs:
+
+- *"Remember: we publish via `scripts/release-public.sh --publish`."* — the
+  agent calls `retain`; the entry lands in the project bank
+  (`bank.jsonl.zstd`).
+- Start a **new session** in the same project — the `memory:project` prompt
+  section injects `memory_summary.md` + `learned.md` on the very first turn.
+- *"What did we decide about publishing?"* — `recall` (or `reflect` for a
+  synthesized answer) returns bank entries with ids that round-trip through
+  `memory_edit`.
+- `read memory://root` (via an internal-URL-aware `read` tool) shows the
+  consolidated overview — summary, learned lessons, and the working bank.
 
 ### Uninstall
 
@@ -74,6 +135,10 @@ dsh plugin --profile web remove @hy-sde-org/dsh-memory
 dsh plugin --profile web remove @hy-sde-org/dsh-tool-memory
 # remove the preset directory you copied from examples/agent-preset/ as well
 ```
+
+Removing the rows does not touch the durable bank under
+`<harness home>/memories/<project>/` — that is user data; delete it
+separately if you want it gone.
 
 ## What the bundle does
 
@@ -107,3 +172,16 @@ packages/memory/       @hy-sde-org/dsh-memory — the service bundle
   examples/agent-preset/  the ready-to-copy preset (tool row)
 packages/tool-memory/  @hy-sde-org/dsh-tool-memory — the tools + prompt section
 ```
+
+## License and attribution
+
+This repo is licensed MIT — see [LICENSE](LICENSE) (© 2026 hy-sde). The
+agent-memory surface — the durable project-scoped `local` backend, the
+learned-lessons and consolidation model, and the retain/recall/reflect/
+memory_edit/learn tool set — is ported from
+[oh-my-pi](https://github.com/can1357/oh-my-pi) (MIT License, © Mario Zechner
+2025, © Can Bölük 2025-2026); the upstream provenance is aggregated in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), together with the
+DeepSeek Harness (MIT, © 2026 DeepSeek) service-seam conventions the
+`ctx.memory` contract follows. These are separately installable packages;
+the harness remains the property of its own project.

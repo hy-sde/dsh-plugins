@@ -49,7 +49,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-memory build
 
-MEMORY_TGZ="$(cd dsh-memory/packages/memory && ppnpm pack --silent --pack-destination /tmp)"
+MEMORY_TGZ="$(cd dsh-memory/packages/memory && pnpm pack --silent --pack-destination /tmp)"
 TOOLMEMORY_TGZ="$(cd dsh-memory/packages/tool-memory && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$MEMORY_TGZ" "$TOOLMEMORY_TGZ"
 ```
