@@ -62,7 +62,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-llm-slots build
 
-SLOTS_TGZ="$(cd dsh-llm-slots/packages/llm-slots && pnpm pack --silent --pack-destination /tmp)"
+SLOTS_TGZ="$(cd dsh-llm-slots/packages/llm-slots && pnpm pack --pack-destination /tmp | tail -n 1)"
 pnpm add "$SLOTS_TGZ"
 ```
 

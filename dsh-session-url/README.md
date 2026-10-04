@@ -63,7 +63,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-session-url build
 
-SESSIONURL_TGZ="$(cd dsh-session-url/packages/session-url && pnpm pack --silent --pack-destination /tmp)"
+SESSIONURL_TGZ="$(cd dsh-session-url/packages/session-url && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$SESSIONURL_TGZ"
 ```
 

@@ -10,7 +10,7 @@ a **standalone plugin**: the registry row installs via `cordis.patch.yml`, and
 the routing tools install as agent-scope shadows
 (`@hy-sde-org/dsh-tool-fs-internal-urls` /
 `@hy-sde-org/dsh-tool-fs-search-internal-urls`). Nothing in the upstream
-DeepSeek Harness (`dsh-v0.1.2-rc.1` and later) needs to change.
+DeepSeek Harness (`dsh-v0.2.0-rc.2` and later) needs to change.
 
 ## URL shapes
 
@@ -44,7 +44,7 @@ pnpm install --global @deepseek-ai/dsh
 ### Direct from npm (published)
 
 All three packages are published on the npm registry under the `hy-sde-org`
-organization (version `0.1.2-rc.1`). Add the service, then mount the routing
+organization (version `0.2.0-rc.2`). Add the service, then mount the routing
 tools via a preset:
 
 ```bash
@@ -64,9 +64,9 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-internal-urls build
 
-IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --silent --pack-destination /tmp)"
-FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
-SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
+IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
+FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
+SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$IU_TGZ" "$FS_TGZ" "$SEARCH_TGZ"
 ```
 

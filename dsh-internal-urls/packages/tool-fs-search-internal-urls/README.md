@@ -8,7 +8,7 @@ disk; a purely virtual resource is materialized to a per-call temp file,
 searched, and removed — the reported path is always the URL). This is the
 hy-sde fork's `dsh-tool-fs-search` (with the `src/grep.ts` routing hunks)
 shipped as an agent-scope shadow so it works on **stock** DeepSeek Harness
-releases (`dsh-v0.1.2-rc.1` and later).
+releases (`dsh-v0.2.0-rc.2` and later).
 
 Mount it in an agent preset (see `examples/agent-preset/` in
 `@hy-sde-org/dsh-internal-urls`), beside

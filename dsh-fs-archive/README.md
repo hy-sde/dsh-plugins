@@ -65,7 +65,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-fs-archive build
 
-ARCHIVE_TGZ="$(cd dsh-fs-archive/packages/fs-archive && pnpm pack --silent --pack-destination /tmp)"
+ARCHIVE_TGZ="$(cd dsh-fs-archive/packages/fs-archive && pnpm pack --pack-destination /tmp | tail -n 1)"
 pnpm add "$ARCHIVE_TGZ"
 ```
 

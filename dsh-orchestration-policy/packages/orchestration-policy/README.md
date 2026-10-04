@@ -49,8 +49,8 @@ policy has five parts:
 pnpm add @hy-sde-org/dsh-orchestration-policy
 ```
 
-Peers: `@deepseek-ai/cordis` `^4.0.2` and `@deepseek-ai/dsh-system-prompt`
-`^0.1.2-rc.1` (both published).
+Peers: `@deepseek-ai/cordis` `~4.0.4` and `@deepseek-ai/dsh-system-prompt`
+`^0.2.0-rc.2` (both published).
 
 Mount next to `@deepseek-ai/dsh-tool-subagent` and the `worktree` tool
 (`@hy-sde-org/dsh-tool-git`) in a composition whose deployment wants

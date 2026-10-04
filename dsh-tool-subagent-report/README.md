@@ -97,7 +97,7 @@ git clone git@github.com:hy-sde/dsh-plugins.git
 cd dsh-plugins
 pnpm install
 cd dsh-tool-subagent-report/packages/tool-subagent-report
-PACKAGE_TARBALL="$(pnpm pack --silent)"
+PACKAGE_TARBALL="$(pnpm pack | tail -n 1)"
 dsh plugin --profile web add "$PWD/$PACKAGE_TARBALL"
 ```
 

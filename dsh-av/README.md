@@ -19,8 +19,8 @@ This ports the fork's `@deepseek-ai/dsh-av` + `@deepseek-ai/dsh-tool-av`
 a **standalone plugin with zero upstream harness changes**: the service row
 ships as a `cordis.patch.yml` bundle, the tool row ships as a ready-to-copy
 agent preset, and every `@deepseek-ai` dependency resolves from the npm
-registry at the `0.1.2-rc.1` baseline — so it installs on official DeepSeek
-Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the
+registry at the `0.2.0-rc.2` baseline — so it installs on official DeepSeek
+Harness releases (`dsh-v0.2.0-rc.2` and later) exactly as it runs in the
 hy-sde fork.
 
 ## Why
@@ -106,8 +106,8 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-av build
 
-AV_TGZ="$(cd dsh-av/packages/av/av && pnpm pack --silent --pack-destination /tmp)"
-TOOLAV_TGZ="$(cd dsh-av/packages/av/tool-av && pnpm pack --silent --pack-destination /tmp)"
+AV_TGZ="$(cd dsh-av/packages/av/av && pnpm pack --pack-destination /tmp | tail -n 1)"
+TOOLAV_TGZ="$(cd dsh-av/packages/av/tool-av && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$AV_TGZ" "$TOOLAV_TGZ"
 ```
 

@@ -6,7 +6,7 @@
 |---|---|---|
 | `@hy-sde-org/dsh-tool-codebase-memory` | `codebase_list_projects`、`codebase_index_repository`、`codebase_index_status`、`codebase_search_graph`、`codebase_query_graph`、`codebase_trace_path`、`codebase_get_code_snippet`、`codebase_get_graph_schema`、`codebase_get_architecture`、`codebase_search_code`、`codebase_detect_changes`、`codebase_manage_adr`、`codebase_ingest_traces`、`codebase_delete_project` | 是 |
 
-这是 DeepSeek Harness `packages/codebase-memory/tool-codebase-memory` 包——包在 `codebase-memory-mcp` CLI 之上的模型侧 `codebase_*` 工具——移植到 hy-sde npm scope，成为 **对上游零改动的独立插件**：所有 `@deepseek-ai` 依赖都从 npm registry 按 `0.1.2-rc.1` 基线解析，因此它在官方 DeepSeek Harness 发布版（`dsh-v0.1.2-rc.1` 及以后）上的运行方式与 fork 中完全一致。CLI 不随包附带：安装 [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)（或把 `cliPath` 指向非 PATH 的二进制）后，插件即对接 stdio MCP 客户端所前端的同一本地 daemon。
+这是 DeepSeek Harness `packages/codebase-memory/tool-codebase-memory` 包——包在 `codebase-memory-mcp` CLI 之上的模型侧 `codebase_*` 工具——移植到 hy-sde npm scope，成为 **对上游零改动的独立插件**：所有 `@deepseek-ai` 依赖都从 npm registry 按 `0.2.0-rc.2` 基线解析，因此它在官方 DeepSeek Harness 发布版（`dsh-v0.2.0-rc.2` 及以后）上的运行方式与 fork 中完全一致。CLI 不随包附带：安装 [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)（或把 `cliPath` 指向非 PATH 的二进制）后，插件即对接 stdio MCP 客户端所前端的同一本地 daemon。
 
 ## 概述
 
@@ -48,7 +48,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-codebase-memory build
 
-CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --silent --pack-destination /tmp)"
+CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$CBM_TGZ"
 ```
 

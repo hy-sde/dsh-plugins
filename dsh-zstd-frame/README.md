@@ -41,7 +41,7 @@ git clone git@github.com:hy-sde/dsh-plugins.git
 cd dsh-plugins
 pnpm install
 
-ZSTD_TGZ="$(cd dsh-zstd-frame/packages/zstd-frame && pnpm pack --silent --pack-destination /tmp)"
+ZSTD_TGZ="$(cd dsh-zstd-frame/packages/zstd-frame && pnpm pack --pack-destination /tmp | tail -n 1)"
 npm install --save-dev "$ZSTD_TGZ"   # or: pnpm add "$ZSTD_TGZ"
 ```
 

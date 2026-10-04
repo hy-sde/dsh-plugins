@@ -9,8 +9,8 @@
 
 这是 DeepSeek Harness 的 `packages/logseq` 家族——`logseq-graph` 宿主服务与
 `logseq` CLI 工具——移植到 hy-sde npm scope 的**独立插件家族，零上游改动**：
-所有 `@deepseek-ai` 依赖都从 npm registry 以 `0.1.2-rc.1` 基线解析，因此它
-在官方 DeepSeek Harness 发行版（`dsh-v0.1.2-rc.1` 及以后）上的行为与在 fork
+所有 `@deepseek-ai` 依赖都从 npm registry 以 `0.2.0-rc.2` 基线解析，因此它
+在官方 DeepSeek Harness 发行版（`dsh-v0.2.0-rc.2` 及以后）上的行为与在 fork
 中完全一致。服务行作为普通包发布（包内不含 `cordis.patch.yml`——见
 [挂载](#mounting)），工具行作为 agent 平面插件发布。
 

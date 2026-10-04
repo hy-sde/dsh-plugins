@@ -8,7 +8,7 @@ filesystem reads for git conflict blocks — registering them with the session
 history and appending a resolution notice. This is the hy-sde fork's
 `dsh-tool-fs` (with `src/internal-routing.ts` + the `read.ts`/`write.ts`
 hunks) shipped as an agent-scope shadow so it works on **stock** DeepSeek
-Harness releases (`dsh-v0.1.2-rc.1` and later).
+Harness releases (`dsh-v0.2.0-rc.2` and later).
 
 Mount it in an agent preset (see `examples/agent-preset/` in
 `@hy-sde-org/dsh-internal-urls`): agent-scope shadowing makes these THE

@@ -17,8 +17,8 @@ This is the DeepSeek Harness `packages/codebase-memory/tool-codebase-memory`
 package — the model-facing `codebase_*` tools wrapped over the
 `codebase-memory-mcp` CLI — ported to the hy-sde npm scope as a **standalone
 plugin with zero upstream harness changes**: every `@deepseek-ai` dependency
-resolves from the npm registry at the `0.1.2-rc.1` baseline, so it installs on
-official DeepSeek Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it
+resolves from the npm registry at the `0.2.0-rc.2` baseline, so it installs on
+official DeepSeek Harness releases (`dsh-v0.2.0-rc.2` and later) exactly as it
 runs in the fork. The CLI is not bundled: install
 [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) (or
 point `cliPath` at a non-PATH binary) and the plugin runs against the same
@@ -104,7 +104,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-codebase-memory build
 
-CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --silent --pack-destination /tmp)"
+CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$CBM_TGZ"
 ```
 

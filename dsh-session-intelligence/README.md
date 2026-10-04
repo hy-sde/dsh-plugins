@@ -82,8 +82,8 @@ dsh plugin --profile web add @hy-sde-org/dsh-session-intelligence
 git clone git@github.com:hy-sde/dsh-plugins.git
 cd dsh-plugins
 pnpm install
-PACKAGE_TARBALL="$(cd dsh-session-intelligence/packages/session-intelligence && pnpm pack --silent)"
-dsh plugin --profile web add "dsh-session-intelligence/packages/session-intelligence/$PACKAGE_TARBALL"
+PACKAGE_TARBALL="$(cd dsh-session-intelligence/packages/session-intelligence && pnpm pack --pack-destination /tmp | tail -n 1)"
+dsh plugin --profile web add "$PACKAGE_TARBALL"
 ```
 
 `pnpm pack` runs the normal `prepack` build and produces a tarball containing

@@ -15,12 +15,12 @@ predates that channel, so the host service must be built from the DeepSeek
 Harness fork (or a standalone port carrying `registerContinuableSetup`,
 `reportFrom`, and the keyed open-decisions ledger):
 
-- `@deepseek-ai/cordis` `^4.0.2`
-- `@deepseek-ai/dsh-agent` `^0.1.2-rc.1`
-- `@deepseek-ai/dsh-llm` `^0.1.2-rc.1`
-- `@deepseek-ai/dsh-subagent` `^0.1.2-rc.1`
-- `@deepseek-ai/dsh-system-prompt` `^0.1.2-rc.1`
-- `@deepseek-ai/dsh-tools` `^0.1.2-rc.1`
+- `@deepseek-ai/cordis` `~4.0.4`
+- `@deepseek-ai/dsh-agent` `^0.2.0-rc.2`
+- `@deepseek-ai/dsh-llm` `^0.2.0-rc.2`
+- `@deepseek-ai/dsh-subagent` `^0.2.0-rc.2`
+- `@deepseek-ai/dsh-system-prompt` `^0.2.0-rc.2`
+- `@deepseek-ai/dsh-tools` `^0.2.0-rc.2`
 
 ## Install
 

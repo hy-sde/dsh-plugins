@@ -50,7 +50,7 @@ git clone git@github.com:hy-sde/dsh-plugins.git
 cd dsh-plugins
 pnpm install
 
-VCS_TGZ="$(cd dsh-vcs/packages/vcs && pnpm pack --silent --pack-destination /tmp)"
+VCS_TGZ="$(cd dsh-vcs/packages/vcs && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$VCS_TGZ"
 cd ..
 ```

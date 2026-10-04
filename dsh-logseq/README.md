@@ -17,9 +17,9 @@ Harness CLI:
 This is the DeepSeek Harness `packages/logseq` family — the `logseq-graph`
 host service and the `logseq` CLI tools — ported to the hy-sde npm scope as a
 **standalone plugin family with zero upstream harness changes**: every
-`@deepseek-ai` dependency resolves from the npm registry at the `0.1.2-rc.1`
+`@deepseek-ai` dependency resolves from the npm registry at the `0.2.0-rc.2`
 baseline, so it installs on official DeepSeek Harness releases
-(`dsh-v0.1.2-rc.1` and later) exactly as it runs in the fork. The service row
+(`dsh-v0.2.0-rc.2` and later) exactly as it runs in the fork. The service row
 ships as a normal package (no `cordis.patch.yml` inside — see
 [Mounting](#mounting)), and the tool row ships as an agent-plane plugin.
 

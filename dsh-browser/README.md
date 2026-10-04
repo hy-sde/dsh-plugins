@@ -19,8 +19,8 @@ relay/CDP-attach — ported onto the harness `ctx.browser` service contract as
 a **standalone plugin with zero upstream harness changes**: the service row
 ships as a `cordis.patch.yml` bundle, the tool row ships as a ready-to-copy
 agent preset, and every `@deepseek-ai` dependency resolves from the npm
-registry at the `0.1.2-rc.1` baseline — so it installs on official DeepSeek
-Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the
+registry at the `0.2.0-rc.2` baseline — so it installs on official DeepSeek
+Harness releases (`dsh-v0.2.0-rc.2` and later) exactly as it runs in the
 hy-sde fork.
 
 ## Why

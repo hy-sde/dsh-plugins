@@ -23,8 +23,8 @@ This is the oh-my-pi agent-memory surface, ported onto the harness
 plugin with zero upstream harness changes**: the service row ships as a
 `cordis.patch.yml` bundle, the tool row ships as a ready-to-copy agent
 preset, and every `@deepseek-ai` dependency resolves from the npm registry at
-the `0.1.2-rc.1` baseline — so it installs on official DeepSeek Harness
-releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the hy-sde fork.
+the `0.2.0-rc.2` baseline — so it installs on official DeepSeek Harness
+releases (`dsh-v0.2.0-rc.2` and later) exactly as it runs in the hy-sde fork.
 
 | Identity | Value |
 | --- | --- |
@@ -52,7 +52,7 @@ sessions.
 ## Prerequisites
 
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
-- DeepSeek Harness `0.1.2-rc.1` or later, including the standard `dsh` CLI;
+- DeepSeek Harness `0.2.0-rc.2` or later, including the standard `dsh` CLI;
 - no keys and no external services — the shipped `local` backend is pure
   Node (`node:fs`, zstd frame container) storing under
   `<harness home>/memories/<project>/`;
@@ -64,7 +64,7 @@ sessions.
 Install the Harness CLI and pnpm before continuing:
 
 ```bash
-npm install --global @deepseek-ai/dsh@0.1.2-rc.1 pnpm
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
 dsh --version
 ```
 
@@ -94,8 +94,8 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-memory build
 
-MEMORY_TGZ="$(cd dsh-memory/packages/memory && pnpm pack --silent --pack-destination /tmp)"
-TOOLMEMORY_TGZ="$(cd dsh-memory/packages/tool-memory && pnpm pack --silent --pack-destination /tmp)"
+MEMORY_TGZ="$(cd dsh-memory/packages/memory && pnpm pack --pack-destination /tmp | tail -n 1)"
+TOOLMEMORY_TGZ="$(cd dsh-memory/packages/tool-memory && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$MEMORY_TGZ" "$TOOLMEMORY_TGZ"
 ```
 

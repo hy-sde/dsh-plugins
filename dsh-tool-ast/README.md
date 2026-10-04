@@ -110,7 +110,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-ast build
 
-AST_TGZ="$(cd dsh-tool-ast/packages/tool-ast && pnpm pack --silent --pack-destination /tmp)"
+AST_TGZ="$(cd dsh-tool-ast/packages/tool-ast && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$AST_TGZ"
 ```
 

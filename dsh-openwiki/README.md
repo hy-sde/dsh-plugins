@@ -43,9 +43,9 @@ workspace/`npm` dependency and never needs a forked harness.
 
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
 - for `@hy-sde-org/dsh-tool-openwiki` — DeepSeek Harness `0.2.0-rc.2` or
-  newer, peer range `^0.2.0-rc.2` (`@deepseek-ai/cordis`,
-  `@deepseek-ai/dsh-invariants`, `@deepseek-ai/dsh-system-prompt`,
-  `@deepseek-ai/dsh-tools`, `@deepseek-ai/dsh-util-values`);
+  newer, peer range `^0.2.0-rc.2` (`@deepseek-ai/dsh-invariants`,
+  `@deepseek-ai/dsh-system-prompt`, `@deepseek-ai/dsh-tools`,
+  `@deepseek-ai/dsh-util-values`; `@deepseek-ai/cordis` pins `~4.0.4`);
 - for `@hy-sde-org/dsh-openwiki` — the `jsdom` (`^29.1.1`) and `mermaid`
   (`^11.16.0`) peers, resolved by your install.
 

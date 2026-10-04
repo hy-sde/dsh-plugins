@@ -19,8 +19,8 @@ This is the oh-my-pi `internal-urls` system, ported onto the harness as a
 **standalone plugin with zero upstream harness changes**: the
 registry row ships as a `cordis.patch.yml` bundle, the routing tools ship as
 agent-scope shadows in a ready-to-copy preset, and every `@deepseek-ai`
-dependency resolves from the npm registry at the `0.1.2-rc.1` baseline — so
-it installs on official DeepSeek Harness releases (`dsh-v0.1.2-rc.1` and
+dependency resolves from the npm registry at the `0.2.0-rc.2` baseline — so
+it installs on official DeepSeek Harness releases (`dsh-v0.2.0-rc.2` and
 later) exactly as it runs in the hy-sde fork.
 
 ## Why shadows, not replaced tools
@@ -56,7 +56,7 @@ dsh --version
 ### Direct from npm (published)
 
 All three packages are published on the npm registry under the `hy-sde-org`
-organization (version `0.1.2-rc.1`):
+organization (version `0.2.0-rc.2`):
 
 ```bash
 dsh plugin --profile web add @hy-sde-org/dsh-internal-urls \
@@ -83,9 +83,9 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-internal-urls build
 
-IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --silent --pack-destination /tmp)"
-FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
-SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
+IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
+FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
+SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --pack-destination /tmp | tail -n 1)"
 dsh plugin --profile web add "$IU_TGZ" "$FS_TGZ" "$SEARCH_TGZ"
 ```
 
