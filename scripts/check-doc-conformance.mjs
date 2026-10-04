@@ -21,7 +21,7 @@
 // Containers listed in scripts/excluded-plugins.list are skipped.
 
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve, dirname, isAbsolute, sep } from "node:path";
+import { join, resolve, dirname, isAbsolute, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -50,7 +50,14 @@ function publicContainers() {
 }
 
 function containerOf(pkgDir) {
-  const parts = isAbsolute(pkgDir) ? pkgDir.split(sep) : pkgDir.split("/");
+  // Resolve absolute paths to repo-relative so the first dsh-* segment is the
+  // container — not the repo directory (e.g. .../dsh-plugins/dsh-vcs/packages/vcs).
+  let rel = pkgDir;
+  if (isAbsolute(pkgDir)) {
+    rel = relative(root, pkgDir);
+    if (rel.startsWith("..")) fail(`check-doc-conformance: "${pkgDir}" is not inside ${root}`);
+  }
+  const parts = rel.split("/");
   const idx = parts.findIndex((p) => p.startsWith("dsh-"));
   if (idx === -1) fail(`check-doc-conformance: cannot derive a dsh-* container from "${pkgDir}"`);
   return parts[idx];
