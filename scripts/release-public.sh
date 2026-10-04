@@ -38,6 +38,13 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# Doc conformance (docs/PLUGIN-README-TEMPLATE.md): a package whose container
+# README does not conform is not releasable.
+if ! node scripts/check-doc-conformance.mjs "$dir"; then
+  echo "release refused: doc-conformance gate failed for $dir" >&2
+  exit 1
+fi
+
 if [[ ! -f "$dir/package.json" || ! -f "$dir/LICENSE" ]]; then
   echo "release refused: $dir/package.json and $dir/LICENSE are required" >&2
   exit 1
