@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-codebase-memory",
   "description": "Model-facing codebase-memory CLI tools (codebase_list_projects/index_repository/index_status/search_graph/query_graph/trace_path/get_code_snippet/get_graph_schema/get_architecture/search_code/detect_changes/manage_adr/ingest_traces/delete_project) that run one-shot queries against the codebase-memory daemon from the terminal \u2014 the local alternative to the stdio MCP client row",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.0-rc.2.1",
   "publishConfig": {
     "access": "public"
   },
