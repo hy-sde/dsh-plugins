@@ -13,14 +13,37 @@ posture resolution, and the `orchestration:policy` system-prompt section
 ([firstmate](https://github.com/kunchenguid/firstmate) dispatch-profile shape), rendered from the same resolved config that
 drives the guards so text and enforcement cannot drift.
 
-Published **standalone** because `@deepseek-ai/dsh-orchestration-policy` is a
-fork-only package that was never published to npm; until this standalone
-existed, consumers had to copy `src/index.ts` by hand (the standalone `dsh-git`
-repo vendors exactly such a local stand-in).
+> **Conceptually inspired by
+> [firstmate](https://github.com/kunchenguid/firstmate)** (MIT, © 2026 Kun Chen) —
+> its dispatch-profile and precedence concepts. No firstmate code is included.
+>
+> What changed on the port from the fork (`packages/orchestration/policy`,
+> never published to npm):
+>
+> - `tests/policy.spec.ts` is a faithful port of the fork's unit suite; the
+>   standalone adds `tests/wave.e2e.spec.ts`, which exercises wave fan-out and
+>   the fail-closed isolation guard over a real temporary git repository.
+> - firstmate contributes the dispatch-profile shape and precedence concepts
+>   only — the config knobs, the fail-closed `OrchestrationPolicyService`
+>   isolation guard, review-gate posture resolution, and the
+>   outcomes-not-mechanics reporting rules are the fork's own surface.
+> - The `orchestration:policy` prompt section renders from the *same resolved
+>   config* that arms the guard, so prompt text and enforcement cannot drift.
 
-**Provenance:** conceptually inspired by
-[firstmate](https://github.com/kunchenguid/firstmate) (MIT, © 2026 Kun Chen) —
-its dispatch-profile and precedence concepts. No firstmate code is included.
+## Why
+
+`@deepseek-ai/dsh-orchestration-policy` was a fork-only package that was
+never published to npm — until this standalone existed, consumers had to copy
+`src/index.ts` by hand (the standalone `dsh-git` repo vendors exactly such a
+local stand-in). This package publishes that policy layer so any official
+DeepSeek Harness installation can opt into parallelize-by-default with an
+ordinary npm install.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- peers `@deepseek-ai/cordis` `~4.0.4` and `@deepseek-ai/dsh-system-prompt`
+  `^0.2.0-rc.2` (both published) — npm resolves them on install.
 
 ## Install
 
@@ -29,8 +52,26 @@ pnpm add @hy-sde-org/dsh-orchestration-policy
 # or: npm install @hy-sde-org/dsh-orchestration-policy
 ```
 
-Node `>=22.19.0` — peers are `@deepseek-ai/cordis` and
-`@deepseek-ai/dsh-system-prompt` (both published).
+## Verify
+
+Library contract, not a mounted row — `pnpm -r test` runs the policy unit
+tests (`tests/policy.spec.ts`, the faithful port of the fork's unit suite)
+and the wave E2E (`tests/wave.e2e.spec.ts`, fan-out + fail-closed guard over
+a real temp git repository); see Development. `pnpm pack` runs the normal
+`prepack` build and yields a tarball containing `dist/` — the sanity check
+that the package is publishable.
+
+No `dsh` routes apply: no bundle row ships, so there is nothing to check
+with `dsh web --dump-config` and `dsh plugin add` is not an install path —
+the deployment authors the row itself (see Use).
+
+## Uninstall
+
+Remove the `@hy-sde-org/dsh-orchestration-policy` row from the composition
+(or set its `enabled` to `false`) — the policy is INERT unless
+`enabled: true`, so the isolation guard and the prompt section disarm with
+the row — then `pnpm remove @hy-sde-org/dsh-orchestration-policy` from the
+host project. No `dsh plugin remove` route applies: no bundle row ships.
 
 ## Use
 
@@ -82,3 +123,19 @@ packages/orchestration-policy/   @hy-sde-org/dsh-orchestration-policy
   tests/wave.e2e.spec.ts         wave fan-out + fail-closed guard over a real
                                  temp git repository
 ```
+
+## License and attribution
+
+This repo is licensed MIT — see [LICENSE](LICENSE) (© 2026 hy-sde). The
+policy layer — `resolvePolicyConfig` config resolution with actionable
+load-time errors, the fail-closed `OrchestrationPolicyService.assertWorkspace`
+isolation guard, `resolvePosture` review-gate posture resolution, the
+`orchestration:policy` system-prompt section, and the outcomes-not-mechanics
+reporting rules — is derived from the DeepSeek Harness codebase (MIT,
+© 2026 DeepSeek), from the fork's `packages/orchestration/policy`; the
+provenance is aggregated in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[firstmate](https://github.com/kunchenguid/firstmate) (MIT, © 2026 Kun Chen)
+inspired the dispatch-profile shape and precedence concepts — no firstmate
+code is included. This is a separately installable package; the harness
+remains the property of its own project.
