@@ -17,6 +17,34 @@ standard library, published **standalone** so any TypeScript project — and
 especially official DeepSeek Harness installations — can read archives
 without depending on the fork that originally hosted `@deepseek-ai/dsh-fs-archive`.
 
+Faithful vs. adapted: the port is algorithmically 1:1 — the format engines
+and codecs, the `ArchiveLimits` bounds, and the sniff/extension detection
+rules are the original oh-my-pi (`pi-utils`) logic. What was adapted is the
+runtime shell: `Bun.hash.crc32` became a table-driven CRC-32,
+`Bun.CryptoHasher` became `node:crypto` SHA-256, and `Bun.file`/`Bun.write`
+became `node:fs`/`node:fs/promises` — so the engine runs on stock Node with
+no Bun dependency — and relative imports carry `.ts` extensions, with
+`formatBytes`, the small `LRUCache`, and the public `index.ts` surface
+replacing upstream package-level re-exports.
+
+## Why
+
+Reading `bundle.zip:dir/file.txt` should not require shelling out to external
+tools or a Bun runtime. This engine is the durable core of the harness `read`
+tool's multi-format support — `foo.zip` lists an archive's root,
+`foo.zip:dir` lists a directory, `foo.zip:dir/file.txt` reads one member as
+text — and member reads are bounded by `ArchiveLimits` (entry count, index
+size, in-memory size, member size, path bytes, link depth) so
+attacker-controlled archives cannot drive unbounded allocation.
+
+## Prerequisites
+
+- Node.js 22.19 or newer (relies on `node:zlib` zstd support) with npm and
+  pnpm on `PATH`;
+- no runtime dependencies — peers `@deepseek-ai/cordis` `~4.0.4` and
+  `@deepseek-ai/dsh-invariants` `^0.2.0-rc.2` are needed only for the
+  optional `./invariant` Cordis companion entry.
+
 ## Install
 
 ```bash
@@ -24,8 +52,25 @@ pnpm add @hy-sde-org/dsh-fs-archive
 # or: npm install @hy-sde-org/dsh-fs-archive
 ```
 
-Node `>=22.19.0` (relies on `node:zlib` zstd support). No runtime
-dependencies.
+No `dsh` routes apply: no bundle row ships and `dsh plugin add` is not an
+install path — this is a plain npm library. (Inside the DeepSeek Harness
+fork, the `read` tool consumes the engine directly; there is no mounted
+plugin row to verify with `dsh web --dump-config`.)
+
+### From source (validate this checkout or hack on the engine)
+
+```bash
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
+pnpm install
+pnpm --filter @hy-sde-org/dsh-fs-archive build
+
+ARCHIVE_TGZ="$(cd dsh-fs-archive/packages/fs-archive && pnpm pack --silent --pack-destination /tmp)"
+pnpm add "$ARCHIVE_TGZ"
+```
+
+`pnpm pack` runs the normal `prepack` build and produces a tarball containing
+`dist/`.
 
 ## Use
 
@@ -79,3 +124,14 @@ packages/fs-archive/   @hy-sde-org/dsh-fs-archive — the engine
 ```
 
 See `packages/fs-archive/README.md` for engine details.
+
+## License and attribution
+
+This repo is licensed MIT — see [LICENSE](LICENSE) (© 2026 hy-sde). The
+archive engine is ported from [oh-my-pi](https://github.com/can1357/oh-my-pi)'s
+`pi-utils` (`packages/utils/src/ar`) (MIT License, © Mario Zechner 2025,
+© Can Bölük 2025-2026); the upstream provenance is aggregated in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), together with the
+DeepSeek Harness (MIT, © 2026 DeepSeek) invariant-companion pattern the
+`./invariant` entry follows. This is a separately installable package; the
+harness remains the property of its own project.
