@@ -61,11 +61,11 @@ dsh plugin --profile web add @hy-sde-org/<package>
 
 ```bash
 git clone git@github.com:hy-sde/dsh-plugins.git
-cd dsh-plugins
+cd dsh-plugins/dsh-<container>
 pnpm install
 PACKAGE_TARBALL="$(pnpm pack | tail -n 1)"
 dsh plugin --profile web add "$PWD/$PACKAGE_TARBALL"
-cd ..
+cd ../..
 ```
 
 ### Verify the composed configuration
