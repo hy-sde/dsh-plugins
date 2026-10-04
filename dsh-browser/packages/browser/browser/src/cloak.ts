@@ -70,3 +70,19 @@ export async function launchCloakBrowser(options: CloakLaunchOptions): Promise<u
   if (options.humanize === true) launchOptions.humanize = true
   return mod.launch(launchOptions)
 }
+
+/**
+ * OS pid of a launched CloakBrowser Chromium, when the peer exposes its
+ * process. CloakBrowser's `launch()` returns a plain Playwright-compatible
+ * `Browser` with no launchServer handle, so a crashed host's patch browser is
+ * only reapable if the peer surfaces the pid (duck-typed — a peer without the
+ * accessor records nothing, same as before this existed).
+ * @param browser - the value returned by {@link launchCloakBrowser}.
+ * @returns the browser's OS pid, or undefined when not exposed.
+ */
+export function cloakBrowserPid(browser: unknown): number | undefined {
+  const processFn = (browser as { process?: () => { pid?: number } | undefined }).process
+  if (typeof processFn !== 'function') return undefined
+  const pid = processFn.call(browser)?.pid
+  return typeof pid === 'number' && Number.isInteger(pid) ? pid : undefined
+}

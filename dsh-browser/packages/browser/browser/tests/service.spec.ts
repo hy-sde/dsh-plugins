@@ -7,12 +7,15 @@
 
 import { existsSync } from 'node:fs'
 import { rmSync } from 'node:fs'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { BrowserService, type BrowserKind } from '../src/service.ts'
+import { BrowserService, mayForgetClosedBrowser, type BrowserKind } from '../src/service.ts'
+import { cloakBrowserPid } from '../src/cloak.ts'
+import { forgetOwnedBrowser, recordOwnedBrowser, resetOrphanRegistryForTest } from '../src/orphan-registry.ts'
 
 const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -29,6 +32,15 @@ const hasCloakBrowserInstall: boolean = await import(/** @vite-ignore */ 'cloakb
   .catch(() => false)
 
 const DATA_URL = `data:text/html,${encodeURIComponent('<h1 role="heading">Hello Browser</h1><a href="#x" role="link">Go</a><input aria-label="Name">')}`
+
+/** A pid that has been spawned and reaped, so `kill(pid, 0)` reports ESRCH. */
+function spawnDeadPid(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('true', [], { stdio: 'ignore' })
+    proc.once('exit', () => { resolve(proc.pid as number) })
+    proc.once('error', reject)
+  })
+}
 
 let ctx: Context
 let service: BrowserService
@@ -140,5 +152,51 @@ describe('kind + wait resolution (pure)', () => {
   it.skipIf(hasCloakBrowserInstall)('app.patch fails helpfully when the cloakbrowser peer is missing', async () => {
     await expect(service.open('patch-tab', DATA_URL, { kind: { kind: 'patch' }, cwd: dir }))
       .rejects.toThrow(/cloakbrowser/)
+  })
+})
+
+describe('patch backend pid recording (pure)', () => {
+  it('duck-types the pid off the peer browser when exposed', () => {
+    expect(cloakBrowserPid({ process: () => ({ pid: 4242 }) })).toBe(4242)
+  })
+
+  it('records nothing when the peer exposes no process accessor or a bogus pid', () => {
+    expect(cloakBrowserPid({})).toBeUndefined()
+    expect(cloakBrowserPid({ process: 'not-a-function' })).toBeUndefined()
+    expect(cloakBrowserPid({ process: () => ({ pid: Number.NaN }) })).toBeUndefined()
+    expect(cloakBrowserPid({ process: () => undefined })).toBeUndefined()
+  })
+})
+
+describe('confirmed-close registry discipline (pure)', () => {
+  it('forgets a pid only once the process is provably gone', () => {
+    // Nothing recorded (attach/relay browsers): nothing to keep.
+    expect(mayForgetClosedBrowser(undefined)).toBe(true)
+    // Close confirmed: the pid is dead — the record may go.
+    expect(mayForgetClosedBrowser(4242, () => false)).toBe(true)
+    // Close failed with the process still alive: the record must stay so a
+    // later boot's reap can collect the orphan.
+    expect(mayForgetClosedBrowser(4242, () => true)).toBe(false)
+  })
+
+  it('keeps a failed close reapable until a later boot collects it', async () => {
+    const registryDir = join(tmpdir(), `dsh-browser-close-test-${process.pid}-${Math.random().toString(36).slice(2)}`)
+    await mkdir(registryDir, { recursive: true })
+    try {
+      const deadPid = await spawnDeadPid()
+      await recordOwnedBrowser(deadPid, registryDir)
+      // A close that failed while the process lives skips forgetOwnedBrowser:
+      // the ownership file must still be on disk for the next boot's reaper.
+      expect(mayForgetClosedBrowser(deadPid, () => true)).toBe(false)
+      const kept = JSON.parse(await readFile(join(registryDir, `${process.pid}.json`), 'utf8')) as { browserPids: number[] }
+      expect(kept.browserPids).toContain(deadPid)
+      // Once the close confirms, the record is dropped.
+      expect(mayForgetClosedBrowser(deadPid, () => false)).toBe(true)
+      await forgetOwnedBrowser(deadPid, registryDir)
+      await expect(readFile(join(registryDir, `${process.pid}.json`), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+    } finally {
+      resetOrphanRegistryForTest()
+      rmSync(registryDir, { recursive: true, force: true })
+    }
   })
 })
