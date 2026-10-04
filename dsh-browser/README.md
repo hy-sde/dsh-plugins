@@ -23,6 +23,37 @@ registry at the `0.1.2-rc.1` baseline — so it installs on official DeepSeek
 Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the
 hy-sde fork.
 
+## Why
+
+An agent's plain `fetch` dies at the first bot wall or fingerprint check,
+and the usual workarounds mean accounts, API keys, or brittle one-off glue.
+This plugin is the credential-free alternative: a real browser the agent
+steers, with the stealth work already done — 14 omp-puppeteer init scripts
+with stripped launch flags and spoofed UA/client-hints (`app.path`), the
+CloakBrowser Chromium's 71 source-level fingerprint patches for the hardest
+walls (`app.patch`), attach to a browser you already run (`app.cdp_url`),
+or drive your own Chrome tabs through the relay + companion extension
+(`app.relay`). Observations come back as Playwright ARIA snapshots with
+actionable `[ref=eN]` ids rather than scraped HTML, and tabs are namespaced
+per session id, so concurrent sessions never steer each other's browser.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
+  the package's `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
+  (`@deepseek-ai/dsh-invariants`; `@deepseek-ai/cordis` pins `~4.0.4`);
+- a Chrome-family browser: `app.cdp_url` attaches to a real CDP endpoint and
+  `app.relay` drives your own Chrome via the companion MV3 extension; the
+  optional `app.patch` backend needs the `cloakbrowser` peer (`>=0.5.0`).
+
+Install the Harness CLI and pnpm before continuing:
+
+```bash
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
+dsh --version
+```
+
 ## The surface
 
 - **Four backends** — `app.path` spawns a stealth-patched browser binary
@@ -45,10 +76,6 @@ Tabs are namespaced per session id, so concurrent sessions never steer each
 other's tabs on the shared host browser.
 
 ## Install
-
-```bash
-pnpm install --global @deepseek-ai/dsh
-```
 
 ### Direct from npm (published)
 
@@ -81,6 +108,34 @@ host row plus the tool row together in your composition as described under
 - **Tool row (agent plane):** `- id: tool-browser / name:
   '@hy-sde-org/dsh-tool-browser'` in the agent preset — no realm/isolate, it
   resolves the host instance across the plane boundary.
+
+### Verify
+
+```bash
+dsh web --dump-config
+```
+
+The composed tree must show the `browser` row loading
+`@hy-sde-org/dsh-browser` (the `tool-browser` row comes from your agent
+preset).
+
+### Run
+
+```bash
+dsh web
+```
+
+Ask the agent to open a page with the `browser` tool: `open` navigates and
+returns the ARIA snapshot with `[ref=eN]` ids; `run` and `state` evaluate
+and re-observe the same tab.
+
+### Uninstall
+
+```bash
+dsh plugin --profile web remove @hy-sde-org/dsh-browser @hy-sde-org/dsh-tool-browser
+```
+
+Also remove the `tool-browser` row from any agent preset that mounts it.
 
 ## License
 
