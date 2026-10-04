@@ -61,11 +61,11 @@ dsh plugin --profile web add @hy-sde-org/<package>
 
 ```bash
 git clone git@github.com:hy-sde/dsh-plugins.git
-cd dsh-plugins/dsh-<container>/packages/<package>  # flat single-package containers (dsh-web-search-public) publish from the container root
+cd dsh-plugins/dsh-<container>/packages/<pkg-dir>  # <pkg-dir> drops the dsh- prefix (dsh-vcs → packages/vcs); flat single-package containers (dsh-web-search-public) publish from the container root
 pnpm install
 PACKAGE_TARBALL="$(pnpm pack | tail -n 1)"
 dsh plugin --profile web add "$PWD/$PACKAGE_TARBALL"
-cd ../../..
+cd ../../../..
 ```
 
 ### Verify the composed configuration
