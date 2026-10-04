@@ -46,7 +46,7 @@ export interface CodebaseMemoryToolConfig {
   cliPath?: string
   /** Default project name applied when a tool call omits `project`. */
   project?: string
-  /** Per-call process timeout in ms (default 60000). */
+  /** Per-call process timeout in ms (default 120000). */
   timeoutMs?: number
   /** Timeout for `codebase_index_repository` in ms (default 600000). */
   indexTimeoutMs?: number
@@ -103,7 +103,7 @@ export async function runCli(cmd: string, args: string[], options: { timeoutMs: 
         resolve({ stdout, stderr, exitCode: 0 })
         return
       }
-      const e = err as unknown as { code?: number | string; signal?: string }
+      const e = err as unknown as { code?: number | string; signal?: string; killed?: boolean }
       const code = typeof e.code === 'number' ? e.code : null
       if (e.code === 'ENOENT') {
         reject(new CodebaseMemoryCliError(
@@ -112,6 +112,27 @@ export async function runCli(cmd: string, args: string[], options: { timeoutMs: 
         return
       }
       const tail = stderr.trim().slice(0, 400)
+      // execFile reports an internal timeout kill as killed+signal with no numeric
+      // code, and OS spawn failures as string codes (EACCES, ENOBUFS, ...). Name the
+      // real cause instead of the opaque "exited with unknown error".
+      if (e.killed === true) {
+        reject(new CodebaseMemoryCliError(
+          `codebase-memory CLI timed out after ${options.timeoutMs}ms (signal ${e.signal ?? 'SIGTERM'}) — the daemon may be cold-starting, busy, or lock-held by a concurrent index; retry, or raise timeoutMs/indexTimeoutMs in the tool config`,
+          args, stdout, stderr, code))
+        return
+      }
+      if (code === null && e.signal !== undefined) {
+        reject(new CodebaseMemoryCliError(
+          `codebase-memory CLI was killed by signal ${e.signal}${tail ? `: ${tail}` : ''}`,
+          args, stdout, stderr, code))
+        return
+      }
+      if (typeof e.code === 'string') {
+        reject(new CodebaseMemoryCliError(
+          `codebase-memory CLI failed to spawn (${e.code})${tail ? `: ${tail}` : ''}`,
+          args, stdout, stderr, null))
+        return
+      }
       reject(new CodebaseMemoryCliError(
         `codebase-memory CLI exited with ${code === null ? 'unknown error' : `code ${code}`}${tail ? `: ${tail}` : ''}`,
         args, stdout, stderr, code))
@@ -241,7 +262,7 @@ export function applyCodebaseMemoryTools(ctx: Context, config: CodebaseMemoryToo
 
   // per-tool timeouts; indexing and heavy analysis get longer budgets
   const INDEX_TIMEOUT = config.indexTimeoutMs ?? 600000
-  const baseTimeout = config.timeoutMs ?? 60000
+  const baseTimeout = config.timeoutMs ?? 120000
 
   void ctx
 
