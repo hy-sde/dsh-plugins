@@ -13,10 +13,14 @@ bank (`bank.jsonl.zstd`): the structural scan, the one-shot compress /
 decompress API, torn-frame recovery, and the interchangeable multi-frame
 decoders.
 
+## Why
+
 Published **standalone** so any official DeepSeek Harness installation and any
 TypeScript project can read and write the same frame layout without depending
 on the fork that originally hosted `@deepseek-ai/dsh-zstd-frame` (which the
-`dsh-memory` repo had to vendor by hand before this standalone existed).
+`dsh-memory` repo had to vendor by hand before this standalone existed). The
+frame layout is the same as that fork's `@deepseek-ai/dsh-zstd-frame` — one
+frame format across `session.jsonl.zstd` and `bank.jsonl.zstd`.
 
 ## Install
 
@@ -27,6 +31,37 @@ pnpm add @hy-sde-org/dsh-zstd-frame
 
 Node `>=22.19.0` — backed entirely by `node:zlib` zstd support (no native
 module).
+
+### From source
+
+```bash
+git clone git@github.com:hy-sde/dsh-plugins.git
+cd dsh-plugins
+pnpm install
+
+ZSTD_TGZ="$(cd dsh-zstd-frame/packages/zstd-frame && pnpm pack --silent --pack-destination /tmp)"
+npm install --save-dev "$ZSTD_TGZ"   # or: pnpm add "$ZSTD_TGZ"
+```
+
+This is a library: it ships no bundle row, and there is no `dsh plugin` route —
+depend on it from npm, or install the packed tarball as a file dependency.
+
+### Verify
+
+```bash
+node --input-type=module -e '
+import { compressZstdFrame, scanZstdFrames, decompressZstdFrame } from "@hy-sde-org/dsh-zstd-frame";
+const buf = await compressZstdFrame("hello dsh\n");
+const { frames } = scanZstdFrames(buf);
+const text = Buffer.from(await decompressZstdFrame(buf.subarray(frames[0].start, frames[0].end))).toString();
+if (frames.length !== 1 || text !== "hello dsh\n") throw new Error("round-trip failed");
+console.log("round-trip ok:", JSON.stringify(text));
+'
+```
+
+`compressZstdFrame` → `scanZstdFrames` → `decompressZstdFrame`: one checksum-validated
+frame scanned out of the buffer, plaintext back — the round trip the Use section below
+exercises.
 
 ## Use
 
