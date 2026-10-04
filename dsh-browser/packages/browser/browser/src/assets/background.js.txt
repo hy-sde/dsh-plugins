@@ -22,6 +22,9 @@ function snapshot(tab) {
     url: tab.url ?? tab.pendingUrl ?? "",
     title: tab.title ?? "",
     active: tab.active,
+    // Chrome memory-saver discards: the relay must not attach these until
+    // they are revived (activation reloads them).
+    discarded: tab.discarded === true,
     windowId: tab.windowId,
     pinned: tab.pinned,
     groupId: tab.groupId
@@ -114,7 +117,9 @@ async function buildHello() {
     userAgent: navigator.userAgent,
     browserVersion: versionMatch?.[0] ?? "Chrome/unknown",
     tabs: snapshots,
-    attachedTabIds
+    attachedTabIds,
+    // Keep in sync with DISCARDED_TABS_PROTOCOL_VERSION in the relay.
+    discardedTabsProtocol: 1
   };
 }
 async function runRpc(msg) {
@@ -221,6 +226,15 @@ chrome.tabs.onUpdated.addListener((_tabId, _changeInfo, tab) => {
   const snap = snapshot(tab);
   if (snap)
     post({ t: "tabUpdated", tab: snap });
+});
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  // Activation flips `active` without an onUpdated pass, and Chrome revives a
+  // discarded tab on focus — refetch so the relay sees both immediately.
+  chrome.tabs.get(tabId).then((tab) => {
+    const snap = snapshot(tab);
+    if (snap)
+      post({ t: "tabUpdated", tab: snap });
+  }).catch(() => {});
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
   post({ t: "tabRemoved", tabId });
