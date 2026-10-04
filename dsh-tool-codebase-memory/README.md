@@ -35,13 +35,43 @@ server lives inside the session. See the package
 [README](packages/tool-codebase-memory/README.md) for the full tool surface,
 configuration, and the CLI-vs-MCP rationale.
 
+## Why
+
+Structural code questions — definitions, callers, call chains, routes, cross-service
+links, architecture — are graph questions, and answering them with ad-hoc grep/read
+cycles costs repeated scans and still misses hops. The codebase-memory knowledge graph
+answers them in one call instead: `codebase_search_graph` for definitions,
+implementations, and relationships; `codebase_trace_path` for callers/callees and
+cross-service routes; `codebase_get_architecture` for the de-facto module map; and
+`codebase_query_graph` for multi-hop Cypher the curated tools cannot express.
+
+Unlike an in-session MCP server, each tool is a one-shot terminal spawn —
+`codebase-memory-mcp cli --json <tool>` once with a temp `--args-file`, parsing the raw
+MCP result envelope — against the same local daemon the stdio MCP client fronts:
+indexes, project mutation locks, and the index supervisor are shared with that daemon,
+and no long-lived server lives inside the session.
+
 ## Table of Contents
 
+- [Why](#why)
+- [Prerequisites](#prerequisites)
 - [Install](#install)
+- [Run](#run)
 - [Mounting](#mounting)
 - [License](#license)
 
 -----
+
+## Prerequisites
+
+- Node.js 22.19 or newer (the package's `engines` floor) with npm and pnpm on `PATH`;
+- a DeepSeek Harness installation including the standard `dsh` CLI — the package's peer
+  baseline is `@deepseek-ai/cordis ~4.0.4` and
+  `@deepseek-ai/dsh-tools`/`@deepseek-ai/dsh-system-prompt`/`@deepseek-ai/dsh-invariants`
+  `^0.2.0-rc.2`;
+- the external [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)
+  CLI — not bundled. Install it (or point the row's `cliPath` config at a non-PATH
+  binary); the plugin runs against the same local daemon the stdio MCP client fronts.
 
 ## Install
 
@@ -74,7 +104,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-codebase-memory build
 
-CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && ppnpm pack --silent --pack-destination /tmp)"
+CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$CBM_TGZ"
 ```
 
@@ -85,6 +115,16 @@ dsh plugin --profile web add "$CBM_TGZ"
 ```bash
 dsh web --dump-config   # look for the hy-sde-cbm-tool-codebase-memory row
 ```
+
+### Run
+
+Ask the agent structural questions — each `codebase_*` call is one terminal spawn:
+
+- `codebase_search_graph` with a natural-language `query` (e.g. "where is the profile
+  patch loader implemented") — definitions, implementations, and relationships ranked by
+  structural importance; page with `limit`/`offset` until `has_more` is false.
+- `codebase_query_graph` with a raw `cypher` query — multi-hop patterns, aggregations,
+  and cross-service analysis the curated tools cannot express.
 
 ### Uninstall
 

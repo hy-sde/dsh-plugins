@@ -54,6 +54,31 @@ session. The harness companion-preset pattern (`code-edit`) mounts a rich
 `read`/`write` beside `ast_grep`/`ast_edit`, and can be pointed at the rich
 `@hy-sde-org/dsh-tool-edit` if you want the full editor.
 
+## Why
+
+Text grep answers "where does this string appear"; an AST pattern answers "where does
+this code shape appear". `ast_grep` matches tree structure — `console.log($MSG)` finds
+every console.log call, `fn($X)` every one-argument call to `fn` — so a codemod cannot
+be missed because of formatting or string coincidence. Because patterns bind
+metavariables (`$NAME`, `$_`, `$$$NAME`), the match that found the problem turns
+directly into the fix: `ast_edit` rewrites every matched node with a template
+referencing the captures, always previews first (`apply` defaults to `false`), and
+writes only on `apply: true` — a 1:1 structural substitution, never a text
+search-and-replace.
+
+For coding agents this is complementary to the `edit` tool, not an alternative: the
+idiomatic flow is `ast_edit` for codemods, `edit` for follow-ups. Both mutation paths
+write through the same `ctx.fs` seam, so they compose safely in one session — the
+relationship is detailed under *Relationship to the `edit` tool* below.
+
+## Prerequisites
+
+- Node.js 22.19 or newer (the package's `engines` floor) with npm and pnpm on `PATH`;
+- a DeepSeek Harness installation including the standard `dsh` CLI — the package's peer
+  baseline is `@deepseek-ai/cordis ~4.0.4` and `@deepseek-ai/dsh-* ^0.2.0-rc.2`;
+- nothing else: the `@ast-grep/cli` native binary ships inside the npm dependency, so no
+  system `ast-grep` install is needed.
+
 ## Install
 
 ```bash
@@ -85,7 +110,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-ast build
 
-AST_TGZ="$(cd dsh-tool-ast/packages/tool-ast && ppnpm pack --silent --pack-destination /tmp)"
+AST_TGZ="$(cd dsh-tool-ast/packages/tool-ast && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$AST_TGZ"
 ```
 
@@ -94,6 +119,18 @@ dsh plugin --profile web add "$AST_TGZ"
 ```bash
 dsh web --dump-config   # look for the hy-sde-ast-tool-ast row
 ```
+
+### Run
+
+Start the harness (`dsh web`) and ask the agent to search or rewrite structurally. The
+model-facing calls:
+
+- `ast_grep` with `pat: "console.log($MSG)"` and `lang: "TypeScript"` — every
+  console.log call, matched by tree shape rather than text, first 100 matches with
+  `$MSG` captured per node.
+- `ast_edit` with `pat: "console.log($MSG)"`, `rewrite: "log.debug($MSG)"`,
+  `path: "src"` — previews every proposed rewrite; re-run with `apply: true` to write
+  the files through the fs edit-intent waterfall (version-guarded, observation ledger).
 
 ### Uninstall
 
