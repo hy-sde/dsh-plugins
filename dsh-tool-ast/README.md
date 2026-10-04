@@ -218,3 +218,16 @@ packages/tool-ast/   @hy-sde-org/dsh-tool-ast — the plugin (both tools)
   src/search.ts      the ast_grep tool body
   src/edit.ts        the ast_edit tool body (preview / apply)
 ```
+
+## License and attribution
+
+This package is licensed MIT — the same license as its upstream
+oh-my-pi (https://github.com/can1357/oh-my-pi). The `ast_grep` and
+`ast_edit` tools are a full parity port of oh-my-pi's coding-agent ast
+tools (MIT License, © Mario Zechner 2025, © Can Bölük 2025-2026); the
+upstream copyright holders are recorded in LICENSE next to this package's
+own notice, and the upstream notice text is reproduced in full in
+THIRD-PARTY-NOTICES.md.
+
+This plugin is a separate installable package; the harness remains the
+property of its own project.
