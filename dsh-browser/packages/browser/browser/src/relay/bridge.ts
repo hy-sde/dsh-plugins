@@ -25,6 +25,7 @@
  *   shared root session and passed through verbatim
  */
 import type { ExtToRelayMessage, RelayRpcRequest, RelayToExtMessage, TabSnapshot } from './protocol'
+import { DSH_RELAY_PROTOCOL } from './protocol'
 
 /** Transport-agnostic websocket surface the bridge writes to. */
 export interface RelaySocket {
@@ -79,17 +80,21 @@ class TabState {
   url = ''
   title = ''
   active = false
+  /** Chrome discarded this tab (memory saver); it cannot answer debugger calls until reactivated. */
+  discarded = false
   windowId = 0
   pinned = false
   /** Chrome tab group id from the last snapshot; -1 when ungrouped. */
   groupId = -1
   /** Whether `chrome.debugger` is currently attached to this tab. */
   attached = false
-  /** Set when attach failed or the user cancelled the debugger; cleared on navigation. */
+  /** Set when attach failed or the user cancelled the debugger; cleared on navigation (and on revival from a discard). */
   banned = false
   /** Whether targets for this tab were announced to discovering connections. */
   announced = false
   attaching: Promise<boolean> | null = null
+  /** Detach RPC still landing; a new attach must wait it out or the late detach undoes it. */
+  detaching: Promise<void> | null = null
   /** True after the relay put this tab in the omp group; `ompGroupId` holds that group. */
   grouped = false
   /** Group RPC in flight — suppresses duplicate requests from load-time tabUpdated bursts. */
@@ -111,6 +116,8 @@ class TabState {
     this.url = snap.url
     this.title = snap.title
     this.active = snap.active
+    // undefined (extension predating the field) degrades to false.
+    this.discarded = snap.discarded === true
     this.windowId = snap.windowId
     this.pinned = snap.pinned
     this.groupId = snap.groupId
@@ -151,7 +158,7 @@ export class RelayBridge {
   #sessionSeq = 0
   #rpcSeq = 0
   #ext: RelaySocket | null = null
-  #extInfo: { userAgent: string; browserVersion: string } | null = null
+  #extInfo: { userAgent: string; browserVersion: string; discardedTabsProtocol?: number } | null = null
   #pendingRpc = new Map<
     number,
     { resolve: (value: unknown) => void; reject: (err: Error) => void; timer: NodeJS.Timeout }
@@ -191,6 +198,9 @@ export class RelayBridge {
       'User-Agent': ua,
       'V8-Version': '',
       'WebKit-Version': '',
+      // Build marker: lets callers tell a stale relay from an unconnected
+      // extension (oh-my-pi b4c96b126e — diagnosed stale relay after upgrades).
+      dshRelayProtocol: String(DSH_RELAY_PROTOCOL),
       webSocketDebuggerUrl: wsUrl,
     }
   }
@@ -228,6 +238,7 @@ export class RelayBridge {
     for (const tab of this.#tabs.values()) {
       tab.attached = false
       tab.attaching = null
+      tab.detaching = null
       // The extension dissolves omp groups on disconnect (or died along
       // with them); grouping state is unknowable until the next hello.
       // Without this reset, the next hello's groupId=-1 snapshots would
@@ -281,7 +292,11 @@ export class RelayBridge {
   }
 
   #onHello(msg: Extract<ExtToRelayMessage, { t: 'hello' }>): void {
-    this.#extInfo = { userAgent: msg.userAgent, browserVersion: msg.browserVersion }
+    this.#extInfo = {
+      userAgent: msg.userAgent,
+      browserVersion: msg.browserVersion,
+      ...(msg.discardedTabsProtocol !== undefined ? { discardedTabsProtocol: msg.discardedTabsProtocol } : {}),
+    }
     const seen = new Set<number>()
     const attachedNow = new Set(msg.attachedTabIds)
     for (const snap of msg.tabs) {
@@ -295,6 +310,13 @@ export class RelayBridge {
       const wasAttached = tab.attached
       tab.attached = attachedNow.has(tab.tabId)
       tab.attaching = null
+      if (tab.discarded) {
+        // A discarded tab cannot answer debugger calls: retire held sessions
+        // now so its revival reannounces and re-attaches the tab.
+        if (tab.attached) void this.#rpc({ op: 'detach', tabId: tab.tabId }).catch(() => {})
+        this.#retractTab(tab)
+        continue
+      }
       // A service-worker restart can drop attachments while downstream
       // connections still hold sessions: restore them best-effort.
       if (wasAttached && !tab.attached && this.#sessionHolders(tab.tabId).length > 0) {
@@ -338,7 +360,13 @@ export class RelayBridge {
       const tab = this.#tabs.get(tabId)
       if (tab?.attached) {
         tab.attached = false
-        void this.#rpc({ op: 'detach', tabId }).catch(() => {})
+        // Track the landing detach: Chrome rejects overlapping attach/detach
+        // on one tab, so a fast re-attach waits it out instead of being
+        // silently undone when the late detach lands.
+        const tracked = this.#rpc({ op: 'detach', tabId }).then(() => { }).catch(() => { }).finally(() => {
+          if (tab.detaching === tracked) tab.detaching = null
+        })
+        tab.detaching = tracked
       }
     }
     this.#log('cdp client closed', { conn: connId })
@@ -497,7 +525,9 @@ export class RelayBridge {
       case 'Target.setDiscoverTargets': {
         conn.discover = true
         for (const tab of this.#tabs.values()) {
-          if (!this.#eligible(tab)) continue
+          // Discarded tabs are never announced: a target that cannot attach
+          // must not reach downstream discovery.
+          if (!this.#eligible(tab) || tab.discarded) continue
           tab.announced = true
           this.#emit(conn, 'Target.targetCreated', { targetInfo: this.#tabInfo(tab, tab.attached) })
           this.#emit(conn, 'Target.targetCreated', { targetInfo: this.#pageInfo(tab, tab.attached) })
@@ -508,11 +538,14 @@ export class RelayBridge {
       case 'Target.setAutoAttach': {
         conn.autoAttach = true
         const tabs = [...this.#tabs.values()].filter(tab => this.#eligible(tab))
-        await Promise.all(tabs.map(tab => this.#ensureAttached(tab)))
+        // Discarded tabs cannot attach; leave them out so puppeteer's init
+        // never waits on a target that will not attach.
+        await Promise.all(tabs.filter(tab => !tab.discarded).map(tab => this.#ensureAttached(tab)))
         for (const tab of tabs) {
-          if (!tab.attached) {
-            // Attach failed (DevTools open, another debugger, …): retract
-            // the target so puppeteer's init never waits on it.
+          // Retract what cannot be attached — including a tab that turned
+          // discarded while the attaches above were landing — so puppeteer's
+          // init never waits on it.
+          if (!tab.attached || tab.discarded) {
             this.#retractTab(tab)
             continue
           }
@@ -526,6 +559,12 @@ export class RelayBridge {
         const tab = parsed ? this.#tabs.get(parsed.tabId) : undefined
         if (!parsed || !tab) {
           this.#replyError(conn, msg, `No target with id ${String(msg.params?.targetId)}`)
+          return
+        }
+        if (tab.discarded) {
+          // Fail now rather than burning the RPC timeout on a tab Chrome
+          // discarded; activating it reloads it, then the retry attaches.
+          this.#replyError(conn, msg, `Cannot attach to tab ${tab.tabId}: discarded by Chrome; activate it to reload, then retry`)
           return
         }
         if (!(await this.#ensureAttached(tab))) {
@@ -676,7 +715,11 @@ export class RelayBridge {
       tab = new TabState(snap.tabId, snap)
       this.#tabs.set(snap.tabId, tab)
     } else {
+      // A revived tab's earlier attach failure was the discarded state, not a
+      // debugger refusal: it may attach again.
+      const revived = tab.discarded && snap.discarded !== true
       if (tab.url !== snap.url) tab.banned = false
+      if (revived) tab.banned = false
       // The user dragging a tab out of the omp group is an opt-out; the
       // relay never fights the user over grouping.
       if (tab.grouped && tab.ompGroupId !== undefined && snap.groupId !== tab.ompGroupId) {
@@ -688,7 +731,7 @@ export class RelayBridge {
     if (opts.silent) return
     const eligible = this.#eligible(tab)
     this.#syncTabGrouping(tab)
-    if (eligible && !tab.announced) {
+    if (eligible && !tab.discarded && !tab.announced) {
       tab.announced = true
       for (const conn of this.#conns.values()) {
         if (!conn.discover) continue
@@ -703,7 +746,10 @@ export class RelayBridge {
       }
       return
     }
-    if (!eligible && tab.announced) {
+    if ((!eligible || tab.discarded) && tab.announced) {
+      // Discarding a tab strands its debugger attachment: drop it so revival
+      // starts clean instead of the attach result racing the discard.
+      if (tab.discarded && tab.attached) void this.#rpc({ op: 'detach', tabId: tab.tabId }).catch(() => {})
       this.#retractTab(tab)
       return
     }
@@ -860,6 +906,10 @@ export class RelayBridge {
 
   async #ensureAttached(tab: TabState): Promise<boolean> {
     if (tab.attached) return true
+    // Wait out an in-flight detach first: a new attach racing it would be
+    // undone when the late detach lands after the attach.
+    if (tab.detaching) await tab.detaching
+    if (tab.discarded) return false
     if (tab.banned || !this.#ext) return false
     if (tab.attaching) return await tab.attaching
     const attempt = this.#rpc({ op: 'attach', tabId: tab.tabId })

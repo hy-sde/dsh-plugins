@@ -9,6 +9,23 @@
  * pushes tab lifecycle and `chrome.debugger` events as they happen.
  */
 
+/**
+ * Relay build marker advertised on `/json/version` (both the 200 and the 503
+ * body). A stale relay from an older build answers without it, letting
+ * callers diagnose a wedged endpoint before blaming the extension. Purely
+ * diagnostic: a marker mismatch never fails a connection (capability match
+ * beats version match — oh-my-pi 0f0910f42b).
+ */
+export const DSH_RELAY_PROTOCOL = 1
+
+/**
+ * Capability version of the discarded-tab protocol the extension reports in
+ * its hello. The relay degrades safely when the field is absent
+ * (`discarded` reads as false), so a lagging sideloaded extension keeps
+ * working against a newer relay.
+ */
+export const DISCARDED_TABS_PROTOCOL_VERSION = 1
+
 /** Minimal view of a Chrome tab shared between extension and relay. */
 export interface TabSnapshot {
   tabId: number
@@ -20,6 +37,12 @@ export interface TabSnapshot {
   pinned: boolean
   /** Chrome tab group id; -1 when ungrouped. */
   groupId: number
+  /**
+   * Chrome discarded this tab (memory saver); it cannot answer debugger calls
+   * until reactivated. Optional so an extension predating the field degrades
+   * to `false`.
+   */
+  discarded?: boolean
 }
 
 /** RPCs the relay may ask the extension to perform. */
@@ -47,6 +70,8 @@ export type ExtToRelayMessage =
     tabs: TabSnapshot[]
     /** Tabs that already have a `chrome.debugger` attachment (relay reconciles after a service-worker restart). */
     attachedTabIds: number[]
+    /** Discarded-tab capability marker; absent on extensions predating it. */
+    discardedTabsProtocol?: number
   }
   | { t: 'cdpEvent'; tabId: number; sessionId?: string; method: string; params?: Record<string, unknown> }
   | { t: 'detached'; tabId: number; reason: string }

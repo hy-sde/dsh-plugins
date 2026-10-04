@@ -23,6 +23,7 @@ export * from './cloak.ts'
 export * from './service.ts'
 export * from './relay/kind.ts'
 export * from './relay/protocol.ts'
+export * from './relay/probe.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

@@ -23,6 +23,7 @@ import * as http from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { WebSocketServer, WebSocket } from 'ws'
 import { RelayBridge, type RelaySocket } from './bridge.ts'
+import { DSH_RELAY_PROTOCOL } from './protocol.ts'
 
 export interface RelayServerOptions {
   port: number
@@ -100,7 +101,12 @@ export async function startRelayServer(opts: RelayServerOptions): Promise<RelayS
     }
     if (path === '/json/version') {
       if (!bridge.ready) {
-        res.writeHead(503, { 'content-type': 'application/json' }).end(JSON.stringify({ error: 'relay extension is not connected' }))
+        // The marker travels on the 503 too: a probe can tell a live relay
+        // with an unconnected extension from a stale relay of another build.
+        res.writeHead(503, { 'content-type': 'application/json' }).end(JSON.stringify({
+          error: 'relay extension is not connected',
+          dshRelayProtocol: String(DSH_RELAY_PROTOCOL),
+        }))
         return
       }
       res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(bridge.versionInfo(`ws://127.0.0.1:${opts.port}/cdp`)))
