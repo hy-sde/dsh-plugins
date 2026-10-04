@@ -23,6 +23,38 @@ registry at the `0.1.2-rc.1` baseline — so it installs on official DeepSeek
 Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in the
 hy-sde fork.
 
+## Why
+
+A workstation accumulates credential configurations — browser profiles, CLI
+tools, helper apps that quietly hold tokens — and an agent asked to audit
+them must never end up holding the secrets themselves. Automic Vault's `av`
+CLI already separates the two: `av scan --json` reports exposed
+configurations and hazards (severity, remediation, affected files/lines, and
+the detectors that produced them), `av doctor` verifies hardening, and
+`av list` answers with secret **names only, never values**. This plugin
+hands that read-only surface to the model: the service resolves and probes
+`av` but simply never invokes a value-releasing verb (`av inject` /
+`av proxy` / `av save` / `av harden`) — those stay human-in-the-loop in a
+terminal the user controls, so the audit cannot become an exfiltration path.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
+  the package's `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
+  (`@deepseek-ai/dsh-subprocess`; `@deepseek-ai/cordis` pins `~4.0.4`);
+- the Automic Vault `av` CLI — external and never bundled; when it is
+  missing or broken the tools degrade to a structured
+  `{ available: false, reason }` value with an installation hint instead of
+  throwing.
+
+Install the Harness CLI and pnpm before continuing:
+
+```bash
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
+dsh --version
+```
+
 ## The surface
 
 - **`ctx.av` service** — resolves the `av` executable (config →
@@ -50,10 +82,6 @@ throwing.
 
 ## Install
 
-```bash
-pnpm install --global @deepseek-ai/dsh
-```
-
 ### Direct from npm (published)
 
 ```bash
@@ -78,7 +106,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-av build
 
-AV_TGZ="$(cd dsh-av/packages/av/av && ppnpm pack --silent --pack-destination /tmp)"
+AV_TGZ="$(cd dsh-av/packages/av/av && pnpm pack --silent --pack-destination /tmp)"
 TOOLAV_TGZ="$(cd dsh-av/packages/av/tool-av && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$AV_TGZ" "$TOOLAV_TGZ"
 ```
