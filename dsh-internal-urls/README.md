@@ -33,11 +33,25 @@ where harness scoped-tools semantics let the session's own registration
 shadow the global one. Only sockets using this preset get the routing; every
 other scope keeps the stock tools byte-for-byte.
 
-## Install
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
+  the packages' `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
+  (`@deepseek-ai/cordis` pins `~4.0.4`);
+- an agent preset to mount the two shadow-tool rows in — the registry row
+  inserts itself on install, but the `read`/`write`/`edit`/`grep` routing
+  only exists inside a preset that mounts the shadow packages (see
+  [Install](#install)).
+
+Install the Harness CLI and pnpm before continuing:
 
 ```bash
-pnpm install --global @deepseek-ai/dsh
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
+dsh --version
 ```
+
+## Install
 
 ### Direct from npm (published)
 
@@ -69,7 +83,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-internal-urls build
 
-IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && ppnpm pack --silent --pack-destination /tmp)"
+IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --silent --pack-destination /tmp)"
 FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
 SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$IU_TGZ" "$FS_TGZ" "$SEARCH_TGZ"
@@ -115,6 +129,15 @@ bash scripts/release-public.sh --publish    # publish in dependency order
 > through package `exports` (→ `dist`), so run it once before
 > `pnpm -r check`/`test` from a clean clone; the distributions then exist and
 > type resolution succeeds.
+
+## License and attribution
+
+This package is licensed MIT — the same license as its upstream
+[oh-my-pi](https://github.com/can1357/oh-my-pi). The internal-URL system is
+ported from oh-my-pi (MIT License, © Mario Zechner 2025, © Can Bölük
+2025-2026); the upstream copyright holders are recorded in LICENSE next to
+this package's own notice, and the upstream notice text is reproduced in
+full in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Layout
 

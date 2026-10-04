@@ -64,7 +64,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-internal-urls build
 
-IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && ppnpm pack --silent --pack-destination /tmp)"
+IU_TGZ="$(cd dsh-internal-urls/packages/internal-urls && pnpm pack --silent --pack-destination /tmp)"
 FS_TGZ="$(cd dsh-internal-urls/packages/tool-fs-internal-urls && pnpm pack --silent --pack-destination /tmp)"
 SEARCH_TGZ="$(cd dsh-internal-urls/packages/tool-fs-search-internal-urls && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$IU_TGZ" "$FS_TGZ" "$SEARCH_TGZ"
