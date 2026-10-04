@@ -48,7 +48,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-tool-codebase-memory build
 
-CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && ppnpm pack --silent --pack-destination /tmp)"
+CBM_TGZ="$(cd dsh-tool-codebase-memory/packages/tool-codebase-memory && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$CBM_TGZ"
 ```
 
