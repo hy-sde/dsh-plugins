@@ -22,15 +22,17 @@ on the fork that originally hosted `@deepseek-ai/dsh-zstd-frame` (which the
 frame layout is the same as that fork's `@deepseek-ai/dsh-zstd-frame` — one
 frame format across `session.jsonl.zstd` and `bank.jsonl.zstd`.
 
+## Prerequisites
+
+- Node `>=22.19.0` — backed entirely by `node:zlib` zstd support (no native
+  module).
+
 ## Install
 
 ```bash
 pnpm add @hy-sde-org/dsh-zstd-frame
 # or: npm install @hy-sde-org/dsh-zstd-frame
 ```
-
-Node `>=22.19.0` — backed entirely by `node:zlib` zstd support (no native
-module).
 
 ### From source
 
@@ -115,3 +117,15 @@ packages/zstd-frame/   @hy-sde-org/dsh-zstd-frame — the frame primitives
   src/zstd-public-decoder.ts       one-shot-API multi-frame decoder fallback
   src/invariant.ts                 optional Cordis ./invariant companion
 ```
+
+## License and attribution
+
+This package is licensed MIT. The Zstandard frame primitives are derived
+from the DeepSeek Harness codebase (MIT License, © 2026 DeepSeek); the
+upstream copyright holders are recorded in LICENSE next to this package's
+own notice, and the upstream notice text is reproduced in full in
+THIRD-PARTY-NOTICES.md.
+
+This package is a separate installable library; the harness remains the
+property of its own project.
+
