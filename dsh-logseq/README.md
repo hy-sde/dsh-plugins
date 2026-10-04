@@ -23,6 +23,35 @@ baseline, so it installs on official DeepSeek Harness releases
 ships as a normal package (no `cordis.patch.yml` inside — see
 [Mounting](#mounting)), and the tool row ships as an agent-plane plugin.
 
+## Why
+
+Agent wiki work is terminal-first: it reads and writes the graph from tool
+calls, not from a GUI. The upstream harness reaches this graph through the
+web GUI's wiki drawer and a browser drawer package — neither ships here,
+and neither is needed. This standalone publishes the headless surface only:
+the `ctx.wikiGraph` service backed by the installed `logseq` CLI, plus the
+model-facing `logseq_*` tools with deterministic JSON output. No desktop
+app hop, no scraped screenshots — page/block trees, tags, properties, and
+Datalog queries come back as plain-JSON wire types the model can act on
+directly.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
+  the packages' `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
+  (`@deepseek-ai/dsh-invariants`; `@deepseek-ai/cordis` pins `~4.0.4`);
+- the [Logseq](https://github.com/logseq/logseq) CLI — the `ctx.wikiGraph`
+  service is backed by the installed `logseq` CLI, so the graph must be
+  reachable from the terminal.
+
+Install the Harness CLI and pnpm before continuing:
+
+```bash
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
+dsh --version
+```
+
 ## Summary
 
 The `logseq/` family gives agents a headless LLM-wiki backed by the
@@ -50,10 +79,6 @@ standalone publishes the service + tool surface only.
 -----
 
 ## Install
-
-```bash
-pnpm install --global @deepseek-ai/dsh
-```
 
 ### Direct from npm (published)
 
@@ -105,6 +130,29 @@ rows to your composition by hand:
 `@hy-sde-org/dsh-tool-logseq` declares `@hy-sde-org/dsh-logseq-graph` as a
 peer (and a `workspace:*` sibling dep in this repo) so the family ships and
 resolves together.
+
+### Verify
+
+Nothing is inserted for you — after adding the two rows by hand (above) and
+mounting the preset, check the composed tree:
+
+```bash
+dsh web --dump-config
+```
+
+It must show the hand-added `logseq-graph` row loading
+`@hy-sde-org/dsh-logseq-graph`; the `tool-logseq` row comes from your agent
+preset, where the `logseq:tools` prompt section and the `logseq_*` tools
+appear in the session.
+
+### Uninstall
+
+Remove the hand-added `logseq-graph` row from your composition and the
+`tool-logseq` row from your agent preset, then remove the packages:
+
+```bash
+dsh plugin --profile web remove @hy-sde-org/dsh-logseq-graph @hy-sde-org/dsh-tool-logseq
+```
 
 ## License
 

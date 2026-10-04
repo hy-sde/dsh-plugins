@@ -23,6 +23,40 @@ the npm registry at the `0.1.2-rc.1` baseline — so it installs on official
 DeepSeek Harness releases (`dsh-v0.1.2-rc.1` and later) exactly as it runs in
 the hy-sde fork.
 
+## Why
+
+Hand-rolled git hygiene loses to the machinery: messages drift out of
+conventional style, hunks get staged from memory instead of against the
+real diff, a broken split is discovered only after the commits exist, and
+pushes go out with no review at all. This plugin makes the flow
+model-driven but validated end to end: `commit` is read-only analysis that
+proposes a conventional `SplitCommitPlan` (per-file counts, bounded diff,
+lock-file hints, a 22-type canonical vocabulary), and `commit_apply` writes
+nothing until that plan validates — every staged file covered exactly once,
+hunk selectors checked against the real diff, dependencies resolved
+topologically with cycles rejected up front — and resets the index on any
+failure, so nothing is lost. `review` fans the diff out to read-only
+reviewer subagents that return P0–P3-ranked findings with a ship/reject
+verdict, and under a `review-gated` posture that verdict is the only thing
+that releases `commit_apply --push`.
+
+## Prerequisites
+
+- Node.js 22.19 or newer with npm and pnpm on `PATH`;
+- DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
+  the package's `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
+  (`@deepseek-ai/dsh-invariants`, `@deepseek-ai/dsh-subprocess`;
+  `@deepseek-ai/cordis` pins `~4.0.4`);
+- `git` on `PATH` — the service is a stateless wrapper over the `git` CLI
+  (diff capture/parsing, hunk staging, commit/push/log).
+
+Install the Harness CLI and pnpm before continuing:
+
+```bash
+npm install --global @deepseek-ai/dsh@0.2.0-rc.2 pnpm
+dsh --version
+```
+
 ## The surface
 
 - **`commit`** — read-only analysis of the current git changes: staged (or
@@ -53,10 +87,6 @@ the hy-sde fork.
 
 ## Install
 
-```bash
-pnpm install --global @deepseek-ai/dsh
-```
-
 ### Direct from npm (published)
 
 ```bash
@@ -81,7 +111,7 @@ cd dsh-plugins
 pnpm install
 pnpm --filter @hy-sde-org/dsh-git build
 
-GIT_TGZ="$(cd dsh-git/packages/git && ppnpm pack --silent --pack-destination /tmp)"
+GIT_TGZ="$(cd dsh-git/packages/git && pnpm pack --silent --pack-destination /tmp)"
 TOOLGIT_TGZ="$(cd dsh-git/packages/git/tool-git && pnpm pack --silent --pack-destination /tmp)"
 dsh plugin --profile web add "$GIT_TGZ" "$TOOLGIT_TGZ"
 ```
@@ -125,3 +155,12 @@ pnpm run build          # tsc -p tsconfig.build.json per package
 pnpm run test           # vitest (89 git-service + 47 tool tests on real temp repos)
 pnpm run release:check  # build + clean-tree + pack guard before publishing
 ```
+
+## License and attribution
+
+This package is licensed MIT — the same license as its upstream
+[oh-my-pi](https://github.com/can1357/oh-my-pi). The agentic git commit +
+review surface is ported from oh-my-pi (MIT License, © Mario Zechner 2025,
+© Can Bölük 2025-2026); the upstream copyright holders are recorded in
+LICENSE next to this package's own notice, and the upstream notice text is
+reproduced in full in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
