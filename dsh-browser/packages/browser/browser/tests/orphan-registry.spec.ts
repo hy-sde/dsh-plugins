@@ -39,7 +39,8 @@ async function isolateRegistry(): Promise<string> {
 /** A pid that has been spawned and reaped, so `kill(pid, 0)` reports ESRCH. */
 function deadPid(): Promise<number> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('true', [], { stdio: 'ignore' })
+    // `true` is POSIX-only; a Node no-op child reaps the same way everywhere.
+    const proc = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' })
     proc.once('exit', () => { resolve(proc.pid as number) })
     proc.once('error', reject)
   })

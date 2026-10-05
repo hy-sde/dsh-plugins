@@ -36,7 +36,8 @@ const DATA_URL = `data:text/html,${encodeURIComponent('<h1 role="heading">Hello 
 /** A pid that has been spawned and reaped, so `kill(pid, 0)` reports ESRCH. */
 function spawnDeadPid(): Promise<number> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('true', [], { stdio: 'ignore' })
+    // `true` is POSIX-only; a Node no-op child reaps the same way everywhere.
+    const proc = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' })
     proc.once('exit', () => { resolve(proc.pid as number) })
     proc.once('error', reject)
   })
