@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-browser",
-  "version": "0.2.0-rc.2",
+  "version": "0.2.0-rc.2.1",
   "description": "Agentic browser plumbing for DeepSeek Harness: the host ctx.browser service (launch with stealth, CDP-attach, and a local relay + companion Chrome extension driving the user's own tabs) backing the browser tool in @hy-sde-org/dsh-tool-browser \u2014 a standalone plugin with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
