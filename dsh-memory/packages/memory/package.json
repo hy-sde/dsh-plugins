@@ -18,6 +18,10 @@
       "types": "./dist/local.d.ts",
       "default": "./dist/local.js"
     },
+    "./session-origin": {
+      "types": "./dist/session-origin.d.ts",
+      "default": "./dist/session-origin.js"
+    },
     "./invariant": {
       "types": "./dist/invariant.d.ts",
       "default": "./dist/invariant.js"

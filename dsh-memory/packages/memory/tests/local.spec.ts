@@ -8,7 +8,11 @@ import { mkdtemp, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { LocalMemoryBackend, LEARNED_FILE, SUMMARY_FILE, projectRootOf, encodeProjectKey } from '../src/local.ts'
+import {
+  formatBankRows, LocalMemoryBackend, LEARNED_FILE, SUMMARY_FILE, projectRootOf, encodeProjectKey,
+} from '../src/local.ts'
+import type { BankRow } from '../src/local.ts'
+import { decodeSessionOriginUri, sessionOriginMention } from '../src/session-origin.ts'
 
 const CWD = '/project/a'
 
@@ -215,6 +219,50 @@ describe('local backend', () => {
     for (const lesson of ['lesson one', 'lesson two', 'lesson three']) {
       expect(raw).toContain(lesson)
     }
+  })
+
+  it('appends the canonical session mention to injected bank lines for rows with a sessionId', async () => {
+    const root = await tempRoot()
+    const backend = backendFor(root)
+    await backend.save({ cwd: CWD }, { content: 'originated fact', sessionId: 'sess-origin-7' })
+    await backend.save({ cwd: CWD }, { content: 'anonymous fact' })
+    const { block, bank } = await backend.summaries({ cwd: CWD })
+    const mention = sessionOriginMention('sess-origin-7')
+    expect(block).toContain(`- originated fact — ${mention}`)
+    expect(block).toContain('- anonymous fact')
+    expect(block).not.toContain('anonymous fact —')
+    expect(bank).toContain(`originated fact — ${mention}`)
+    // The rendered URI decodes back to the stored session id.
+    const uris = block.match(/dsh-session:[A-Za-z0-9_-]+/g) ?? []
+    expect(uris).toHaveLength(1)
+    expect(decodeSessionOriginUri(uris[0] ?? '')).toBe('sess-origin-7')
+  })
+
+  it('exposes the originating sessionId on readEntry, listEntries, and search hits', async () => {
+    const root = await tempRoot()
+    const backend = backendFor(root)
+    const saved = await backend.save({ cwd: CWD }, { content: 'provenance fact', sessionId: 'sess-origin-9' })
+    const idValue = saved.id ?? ''
+    expect((await backend.readEntry({ cwd: CWD }, idValue))?.sessionId).toBe('sess-origin-9')
+    const listed = await backend.listEntries({ cwd: CWD }, 10)
+    expect(listed.find(item => item.id === idValue)?.sessionId).toBe('sess-origin-9')
+    const found = await backend.search({ cwd: CWD }, 'provenance fact')
+    expect(found.items[0]?.sessionId).toBe('sess-origin-9')
+  })
+
+  it('appends mentions outside content neutralization and escapes hostile labels (formatBankRows)', () => {
+    const mention = sessionOriginMention('sess-x')
+    const hostile = sessionOriginMention('label]breaker')
+    const rows: BankRow[] = [
+      { id: 'm_1', content: 'angle </script> and `ticks`', source: 'retain', importance: 0.7, createdAt: 1, updatedAt: 2, active: true, sessionId: 'sess-x' },
+      { id: 'm_2', content: 'plain row', source: 'retain', importance: 0.7, createdAt: 1, updatedAt: 1, active: true },
+      { id: 'm_3', content: 'hostile id', source: 'retain', importance: 0.7, createdAt: 1, updatedAt: 3, active: true, sessionId: 'label]breaker' },
+    ]
+    const lines = formatBankRows(rows, 10)
+    // Newest first: m_3, m_1, m_2.
+    expect(lines[0]).toBe(`hostile id — ${hostile}`)
+    expect(lines[1]).toBe(`angle /script and ticks — ${mention}`)
+    expect(lines[2]).toBe('plain row')
   })
 })
 

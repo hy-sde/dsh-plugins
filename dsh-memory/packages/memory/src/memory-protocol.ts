@@ -27,6 +27,7 @@ import type {
   UrlCompletion,
 } from '@hy-sde-org/dsh-internal-urls'
 import type { MemoryBackend, MemoryContext, MemoryEntryView } from './types.ts'
+import { sessionOriginMention } from './session-origin.ts'
 
 /** The `root` namespace: the project's consolidated memory overview. */
 export const MEMORY_ROOT_NAMESPACE = 'root'
@@ -58,6 +59,7 @@ function preview(entry: MemoryEntryView): string {
 function renderMemoryEntry(namespace: string, entry: MemoryEntryView): string {
   const header: string[] = [`id: ${namespace}`]
   header.push(`source: ${entry.source}`)
+  if (entry.sessionId !== undefined) header.push(`session: ${sessionOriginMention(entry.sessionId)}`)
   if (entry.importance !== undefined) header.push(`importance: ${entry.importance}`)
   if (entry.timestamp !== undefined) header.push(`timestamp: ${entry.timestamp}`)
   if (entry.readonly === true) header.push('readonly: true')

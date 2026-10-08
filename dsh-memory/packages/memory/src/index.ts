@@ -22,6 +22,7 @@ export * from './types.ts'
 export * from './service.ts'
 export * from './local.ts'
 export * from './frame-codec.ts'
+export * from './session-origin.ts'
 export { MemoryProtocolHandler, MEMORY_ROOT_NAMESPACE } from './memory-protocol.ts'
 export type { MemoryProtocolDeps } from './memory-protocol.ts'
 

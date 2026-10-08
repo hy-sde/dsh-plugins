@@ -29,6 +29,8 @@ export interface MemoryEntryView {
   context?: string
   /** Provenance label (`retain`, `learn`, `recall`, `invalidate`, …). */
   source: string
+  /** Session id that originated this entry, when known. */
+  sessionId?: string
   /** Bag of free-form tags when the backend supports them. */
   tags?: string[]
   /** Recency/importance hints flattened for recall rendering. */
@@ -162,6 +164,8 @@ export interface MemorySummaries {
   learned?: string
   /** Markdown block combining both, or '' when the store is empty. */
   block: string
+  /** The rendered working-bank lines (joined), when the store has any. */
+  bank?: string
 }
 
 /** The storage strategy behind `ctx.memory`. */

@@ -15,6 +15,7 @@ import type { ParsedInternalUrl } from '@hy-sde-org/dsh-internal-urls'
 import * as Memory from '../src/index.ts'
 import { MemoryProtocolHandler } from '../src/memory-protocol.ts'
 import type { MemoryBackend, MemoryContext, MemoryEntryView } from '../src/types.ts'
+import { decodeSessionOriginUri, sessionOriginMention } from '../src/session-origin.ts'
 
 async function tempRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'dsh-memory-url-'))
@@ -73,8 +74,25 @@ describe('MemoryProtocolHandler', () => {
     expect(resource.content).toContain('id: m_abc')
     expect(resource.content).toContain('the stored fact')
     expect(resource.content).toContain('source: retain')
+    expect(resource.content).not.toContain('session:')
     expect(resource.immutable).toBe(true)
     expect(resource.contentType).toBe('text/markdown')
+  })
+
+  it('renders a session header with the canonical mention for entries carrying sessionId', async () => {
+    const stub = new StubBackend()
+    stub.entries.set('m_sess', {
+      id: 'm_sess', content: 'the provenance fact', source: 'retain', sessionId: 'sess-origin-42',
+    })
+    const resource = await handlerFor(stub as unknown as MemoryBackend)
+      .resolve(parsed('memory://m_sess'), resolveContext)
+    const mention = sessionOriginMention('sess-origin-42')
+    // Header order is deterministic: id, source, session.
+    expect(resource.content.slice(0, resource.content.indexOf('\n\n')).split('\n'))
+      .toEqual(['id: m_sess', 'source: retain', `session: ${mention}`])
+    // The mention target is the canonical URI and decodes back to the stored id.
+    expect(decodeSessionOriginUri(resource.content.match(/dsh-session:[A-Za-z0-9_-]+/g)?.[0] ?? ''))
+      .toBe('sess-origin-42')
   })
 
   it('resolves memory://root to the project overview block', async () => {
@@ -153,6 +171,17 @@ describe('memory:// through ctx.internalUrls (package integration)', () => {
     const resource = await ctx.internalUrls.resolve(`memory://${saved.id}`, { cwd: '/ws', sessionKey: 's1' })
     expect(resource.content).toContain('ported handler fact')
     expect(resource.content).toContain(`id: ${saved.id}`)
+  })
+
+  it('renders session origin as a mention in entry and root reads (end to end)', async () => {
+    const { ctx } = await mount()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    const saved = await ctx.memory.save({ cwd: '/ws' }, { content: 'provenance fact', sessionId: 'sess-integration-9' })
+    const mention = sessionOriginMention('sess-integration-9')
+    const entry = await ctx.internalUrls.resolve(`memory://${saved.id}`, { cwd: '/ws', sessionKey: 's1' })
+    expect(entry.content).toContain(`session: ${mention}`)
+    const root = await ctx.internalUrls.resolve('memory://root', { cwd: '/ws', sessionKey: 's1' })
+    expect(root.content).toContain(`— ${mention}`)
   })
 
   it('read memory://root after a learn and clears correctly', async () => {

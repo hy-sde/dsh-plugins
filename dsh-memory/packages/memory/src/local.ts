@@ -46,6 +46,7 @@ import type {
   MemoryStatus,
   MemorySummaries,
 } from './types.ts'
+import { sessionOriginMention } from './session-origin.ts'
 
 /** Name of the working-memory bank file under a project root (zstd framed by default). */
 export const BANK_FILE = 'bank.jsonl.zstd'
@@ -716,6 +717,7 @@ function bankEntryView(row: BankRow): MemoryEntryView {
     content: row.content,
     ...row.context !== undefined ? { context: row.context } : {},
     source: row.source,
+    ...row.sessionId !== undefined ? { sessionId: row.sessionId } : {},
     importance: row.importance,
     timestamp: new Date(row.updatedAt).toISOString(),
   }
@@ -727,7 +729,13 @@ export function formatBankRows(rows: readonly BankRow[], cap: number): string[] 
     .filter(row => row.active)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, Math.max(0, cap))
-  return active.map(row => neutralizeInjection(row.content))
+  return active.map((row) => {
+    // The mention is appended after neutralization so the canonical origin
+    // token is never reshaped by the content sanitizer; the id itself is
+    // trusted material the backend persisted (its label is mention-escaped).
+    const line = neutralizeInjection(row.content)
+    return row.sessionId === undefined ? line : `${line} — ${sessionOriginMention(row.sessionId)}`
+  })
 }
 
 /** Parse `bank.jsonl.zstd` text into rows, skipping malformed lines (self-healing). */
