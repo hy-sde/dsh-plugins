@@ -73,3 +73,5 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-win32-process@0.2.1-alpha.2'
   - '@hy-sde-org/dsh-zstd-frame@0.2.1-alpha.2'
   - effect@4.0.0-rc.118
+
+ignoreWorkspaceCycles: true
