@@ -185,6 +185,8 @@ export class RelayBridge {
   >()
   /** Real child session id → owning tab, learned from `Target.attachedToTarget` events. */
   #realSessionTabs = new Map<string, number>()
+  /** `Date.now()` when the last ready extension socket closed; null while one is ready or none ever was. */
+  #extensionGoneSince: number | null = null
   #log: (message: string, data?: Record<string, unknown>) => void
   /** Tab-group appearance for driven tabs; null disables grouping. */
   #group: { title: string; color: string } | null
@@ -208,6 +210,11 @@ export class RelayBridge {
   get ready(): boolean {
     return this.#ext !== null && this.#extInfo !== null
   }
+  /** Milliseconds since the last ready extension disconnected, or null while one is connected or none ever was. */
+  get extensionGoneForMs(): number | null {
+    return this.#extensionGoneSince === null ? null : Date.now() - this.#extensionGoneSince
+  }
+
   /** Payload for `GET /json/version`. */
   versionInfo(wsUrl: string): Record<string, string> {
     const ua = this.#extInfo?.userAgent ?? ''
@@ -267,6 +274,7 @@ export class RelayBridge {
       tab.ompGroupId = undefined
     }
     this.#groupQueue.length = 0
+    if (!this.ready) this.#extensionGoneSince ??= Date.now()
   }
 
   extMessage(socket: RelaySocket, raw: string): void {
@@ -316,6 +324,7 @@ export class RelayBridge {
       browserVersion: msg.browserVersion,
       ...(msg.discardedTabsProtocol !== undefined ? { discardedTabsProtocol: msg.discardedTabsProtocol } : {}),
     }
+    this.#extensionGoneSince = null
     const seen = new Set<number>()
     const attachedNow = new Set(msg.attachedTabIds)
     for (const snap of msg.tabs) {

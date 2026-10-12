@@ -129,6 +129,27 @@ describe('relay protocol marker + readiness probe', () => {
     })
   })
 
+  it('reports how long the last ready extension has been gone in the 503 body', async () => {
+    await withRelay(async (baseUrl) => {
+      const fresh = await fetch(`${baseUrl}/json/version`)
+      expect((await fresh.json()) as Record<string, unknown>).not.toHaveProperty('disconnectedMs')
+
+      // A ready extension that then leaves with Chrome: the 503 says how long ago.
+      const ws = new WebSocket(`${baseUrl.replace('http', 'ws')}/ext`)
+      await new Promise<void>((resolve, reject) => {
+        ws.on('open', resolve)
+        ws.on('error', reject)
+      })
+      ws.send(JSON.stringify({ t: 'hello', userAgent: 'test', browserVersion: 'Chrome/1', tabs: [], attachedTabIds: [] }))
+      await new Promise(resolve => setTimeout(resolve, 50))
+      ws.close()
+      await new Promise(resolve => setTimeout(resolve, 50))
+      const gone = await fetch(`${baseUrl}/json/version`)
+      expect(gone.status).toBe(503)
+      const json = (await gone.json()) as Record<string, unknown>
+      expect(json.disconnectedMs).toBeTypeOf('number')
+    })
+  })
   it('marks the ready 200 /json/version body with dshRelayProtocol', async () => {
     await withRelay(async (baseUrl) => {
       const ws = new WebSocket(`${baseUrl.replace('http', 'ws')}/ext`)

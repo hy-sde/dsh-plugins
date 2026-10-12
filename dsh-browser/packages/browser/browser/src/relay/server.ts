@@ -103,9 +103,13 @@ export async function startRelayServer(opts: RelayServerOptions): Promise<RelayS
       if (!bridge.ready) {
         // The marker travels on the 503 too: a probe can tell a live relay
         // with an unconnected extension from a stale relay of another build.
+        // `disconnectedMs` says how long the last ready extension has been
+        // gone, distinguishing a just-died extension from one never seen.
+        const disconnectedMs = bridge.extensionGoneForMs
         res.writeHead(503, { 'content-type': 'application/json' }).end(JSON.stringify({
           error: 'relay extension is not connected',
           dshRelayProtocol: String(DSH_RELAY_PROTOCOL),
+          ...(disconnectedMs === null ? {} : { disconnectedMs }),
         }))
         return
       }
