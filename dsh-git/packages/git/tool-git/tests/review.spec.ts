@@ -63,10 +63,10 @@ interface CannedReviewer {
 let cannedRuns: CannedReviewer[] = []
 let erroringStart = false
 let fakeIndex = 0
-function fakeSubagents(): { getProvider: () => unknown; start: () => Promise<unknown> } {
+function fakeSubagents(): { getProvider: () => unknown; startActivation: (spec: unknown) => Promise<unknown> } {
   return {
     getProvider: () => ({ provider: 'spawn' }),
-    start: () => {
+    startActivation: (_spec: unknown) => {
       if (erroringStart) {
         return Promise.resolve({
           result: Promise.resolve({ stopReason: 'error', diagnostic: 'model transport failed', output: [] }),
