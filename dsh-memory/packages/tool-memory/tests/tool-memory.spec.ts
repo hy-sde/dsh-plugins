@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as Memory from '@hy-sde-org/dsh-memory'
 import * as ToolMemory from '@hy-sde-org/dsh-tool-memory'
@@ -113,16 +113,19 @@ describe('memory tools', () => {
     expect(text(found)).toContain('shell into')
   })
 
-  it('the memory:project prompt section injects the stored block per session', async () => {
+  it('the memory:project prompt section injects stored text literally per session', async () => {
     const { ctx } = await mount()
     // Seed memory at the service level (like a prior session would have).
     await ctx.memory.save({ cwd: CWD }, { content: 'team uses trunk-based development' })
+    await ctx.memory.save({ cwd: CWD }, { content: 'the fixture token {{cwd}} is literal memory text' })
     await ctx.memory.learn({ cwd: CWD }, { content: 'never edit the lockfile by hand' })
 
-    const sectionTextValue = await sectionText(ctx)
+    const assembly = await ctx.systemPrompt.assemble({ scope: agent, agent: agent as never })
+    const sectionTextValue = assembly.sections.find(s => s.name === 'memory:project')?.text ?? ''
     expect(sectionTextValue).toContain('# Project memory')
     expect(sectionTextValue).toContain('trunk-based development')
     expect(sectionTextValue).toContain('lockfile')
+    expect(renderPrompt(assembly)).toContain('the fixture token {{cwd}} is literal memory text')
   })
 
   it('mine_sessions degrades to an unavailable notice without the host service', async () => {

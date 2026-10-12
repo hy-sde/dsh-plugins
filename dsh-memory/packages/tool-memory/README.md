@@ -43,9 +43,10 @@ see `@hy-sde-org/dsh-memory` for the install recipe and the preset example.
 whose text is evaluated at each assembly and returns the calling session's
 project memory — `memory_summary.md` + `learned.md`, combined and head-tail
 truncated to `injectionMaxChars` (default 16000 chars) — or `''` for a
-project with no memory yet. The session identity comes from
-`context.agent.session.header.cwd`, so each project sees its own bank and a
-fresh process picks it up on the very first turn.
+project with no memory yet. Stored memory remains literal, so complete
+`{{variable}}` groups in it do not resolve as prompt variables. The session
+identity comes from `context.agent.session.header.cwd`, so each project
+sees its own bank and a fresh process picks it up on the very first turn.
 
 ## Config (the `tool-memory` row)
 

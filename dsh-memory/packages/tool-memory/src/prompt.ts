@@ -126,7 +126,7 @@ export function cwdFromAssemblyContext(context: { agent?: unknown }): string | u
   return typeof cwd === 'string' && isAbsolute(cwd) ? cwd : undefined
 }
 
-/** Build the `memory:project` prompt section for one plugin instance. */
+/** Build the `memory:project` prompt section; stored text remains literal and cannot reference prompt variables. */
 export function buildMemoryPromptSection(config: MemoryPromptConfig): PromptSection {
   const memoryRoot = config.root ? resolveMemoryRoot({ root: config.root }) : resolveMemoryRoot()
   const maxChars = config.injectionMaxChars ?? 16_000
@@ -134,6 +134,7 @@ export function buildMemoryPromptSection(config: MemoryPromptConfig): PromptSect
   return {
     name: SECTION_NAME,
     order: SECTION_ORDER,
+    interpolate: false,
     text: (context) => {
       if (!enabled) return ''
       const cwd = cwdFromAssemblyContext(context)
