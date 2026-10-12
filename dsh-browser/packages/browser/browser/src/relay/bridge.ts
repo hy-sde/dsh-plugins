@@ -637,7 +637,13 @@ export class RelayBridge {
       case 'Target.createTarget': {
         const url =
           typeof msg.params?.url === 'string' && msg.params.url.length > 0 ? msg.params.url : 'about:blank'
-        const result = (await this.#rpc({ op: 'createTab', url })) as { tab: TabSnapshot }
+        // CDP `background: true` creates the tab without selecting it; an
+        // extension that predates `active` ignores it.
+        const result = (await this.#rpc({
+          op: 'createTab',
+          url,
+          ...(msg.params?.background === true ? { active: false } : {}),
+        })) as { tab: TabSnapshot }
         this.#onTabUpsert(result.tab)
         // Creating a tab is an explicit act of driving it.
         this.#claimTab(conn, result.tab.tabId)

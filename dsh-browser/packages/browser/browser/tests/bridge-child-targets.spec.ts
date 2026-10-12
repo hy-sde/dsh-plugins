@@ -291,3 +291,35 @@ describe('relay bridge — child targets', () => {
     ])
   })
 })
+
+describe('relay bridge — Target.createTarget background tabs', () => {
+  it('creates a background tab without selecting it', async () => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [])
+    const connId = bridge.cdpConnected(new FakeSocket())
+    bridge.cdpMessage(connId, JSON.stringify({
+      id: ++msgSeq,
+      method: 'Target.createTarget',
+      params: { url: 'https://example.com/', background: true },
+    }))
+    await flush()
+    const create = ext.frames.find(f => f.t === 'rpc' && f.op === 'createTab')
+    expect(create).toMatchObject({ url: 'https://example.com/', active: false })
+  })
+
+  it.each([{ params: { url: 'https://example.com/' } }, { params: { url: 'https://example.com/', background: false } }])(
+    'leaves createTab selection to Chrome for %j',
+    async ({ params }) => {
+      const bridge = new RelayBridge()
+      const ext = new FakeSocket()
+      await connect(bridge, ext, [])
+      const connId = bridge.cdpConnected(new FakeSocket())
+      bridge.cdpMessage(connId, JSON.stringify({ id: ++msgSeq, method: 'Target.createTarget', params }))
+      await flush()
+      const create = ext.frames.find(f => f.t === 'rpc' && f.op === 'createTab')
+      expect(create).toMatchObject({ url: 'https://example.com/' })
+      expect(create).not.toHaveProperty('active')
+    },
+  )
+})

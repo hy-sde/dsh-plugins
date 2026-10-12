@@ -50,7 +50,8 @@ export type RelayRpcRequest =
   | { op: 'attach'; tabId: number }
   | { op: 'detach'; tabId: number }
   | { op: 'send'; tabId: number; sessionId?: string; method: string; params?: Record<string, unknown> }
-  | { op: 'createTab'; url: string }
+  /** `active: false` (from CDP `background: true`) creates the tab without selecting it. */
+  | { op: 'createTab'; url: string; active?: boolean }
   | { op: 'removeTab'; tabId: number }
   | { op: 'activateTab'; tabId: number }
   /** Add tabs to the per-window omp group (created/reused by title), remembering prior membership. */
