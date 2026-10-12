@@ -18,11 +18,12 @@
 # Returns recently edited file paths (Edit/Write calls), newest first, with
 # per-file inlined edits and an optional case-insensitive path filter.
 
+# Required runtime context supplies the current working directory.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     text: >-
-      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+      You are a coding agent powered by the {{model}} model.
       Use `session_health` to check how past sessions in this workspace went —
       `session_health { action: "recent" }` for one table of outcomes and
       A–F grades, `session_health { action: "session", sessionId: "..." }`
