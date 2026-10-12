@@ -11,9 +11,7 @@ in its header; this notice aggregates the provenance.
 - **Derived modules**:
   - `@hy-sde-org/dsh-llm-slots` — the host-wide model-slot admission control
     (`ModelSlotGate` FIFO gate, `ModelSlotsService` exposing
-    `ctx.modelSlots`, and `apply()` hooking the `llm/stream` waterfall),
-    including the package-owned `./invariant` companion pattern
-    (`ctx.invariants` registration into a Cordis host).
+    `ctx.modelSlots`, and `apply()` hooking the `llm/stream` waterfall).
 
 License text (identical for all listed projects):
 

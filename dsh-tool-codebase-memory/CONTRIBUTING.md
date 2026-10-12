@@ -7,7 +7,7 @@ dependency-light monorepo; keep it that way.
 
 - **No new runtime dependencies** for `@hy-sde-org/dsh-tool-codebase-memory`
   beyond its declared peers (`@deepseek-ai/cordis`,
-  `@deepseek-ai/dsh-invariants`, `@deepseek-ai/dsh-system-prompt`,
+  `@deepseek-ai/dsh-system-prompt`,
   `@deepseek-ai/dsh-tools`). Runtime Node builtins are fine (the host runs
   Node).
 - **The tool surface must stay CLI-attached.** Never embed a long-lived MCP

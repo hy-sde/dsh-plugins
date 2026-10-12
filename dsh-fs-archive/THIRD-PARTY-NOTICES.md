@@ -19,9 +19,6 @@ attribution in its header; this notice aggregates the provenance.
 
 - **Project**: https://github.com/deepseek-ai/deepseek-harness (MIT License)
 - **Copyright**: Copyright (c) 2026 DeepSeek
-- **Derived**: the `@deepseek-ai/dsh-invariants` companion pattern that the
-  `./invariant` entry follows (package-owned invariant registration into a
-  Cordis `ctx.invariants` service).
 
 License text (identical for all listed projects):
 

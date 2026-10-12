@@ -14,8 +14,7 @@ in its header; this notice aggregates the provenance.
     `decompressZstdFrame` / `decompressZstdFrameSync` one-shot API with
     checksum, `decompressZstdPrefix` torn-frame recovery, and the
     interchangeable `NodePrivateZstdFrameDecoder` / `PublicZstdFrameDecoder`
-    multi-frame decoders), including the package-owned `./invariant`
-    companion pattern (`ctx.invariants` registration into a Cordis host).
+    multi-frame decoders).
 
 License text (identical for all listed projects):
 

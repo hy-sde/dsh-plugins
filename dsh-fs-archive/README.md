@@ -41,9 +41,7 @@ attacker-controlled archives cannot drive unbounded allocation.
 
 - Node.js 22.19 or newer (relies on `node:zlib` zstd support) with npm and
   pnpm on `PATH`;
-- no runtime dependencies — peers `@deepseek-ai/cordis` `~4.0.4` and
-  `@deepseek-ai/dsh-invariants` `^0.2.0-rc.2` are needed only for the
-  optional `./invariant` Cordis companion entry.
+- no runtime dependencies — peer `@deepseek-ai/cordis` `~4.0.4`;
 
 ## Install
 
@@ -131,7 +129,6 @@ This repo is licensed MIT — see [LICENSE](LICENSE) (© 2026 hy-sde). The
 archive engine is ported from [oh-my-pi](https://github.com/can1357/oh-my-pi)'s
 `pi-utils` (`packages/utils/src/ar`) (MIT License, © Mario Zechner 2025,
 © Can Bölük 2025-2026); the upstream provenance is aggregated in
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md), together with the
-DeepSeek Harness (MIT, © 2026 DeepSeek) invariant-companion pattern the
-`./invariant` entry follows. This is a separately installable package; the
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+This is a separately installable package; the
 harness remains the property of its own project.

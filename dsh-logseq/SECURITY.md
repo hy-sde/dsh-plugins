@@ -23,6 +23,3 @@ timeline after triage.
   Datalog query the model or user supplies); treat prompt-derived query text
   as untrusted and keep the graph scoped to a dedicated `--graph <name>` if
   untrusted sessions share the host.
-- Both packages ship an invariant companion (`*/invariant`) that probes the
-  CLI at boot; the companion only checks `--version` and refuses to install
-  when the binary is missing. It never runs graph operations.

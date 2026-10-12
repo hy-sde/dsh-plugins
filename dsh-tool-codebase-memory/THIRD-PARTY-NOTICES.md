@@ -12,12 +12,12 @@ attribution in its header; this notice aggregates the provenance.
   - `@hy-sde-org/dsh-tool-codebase-memory` — ported from
     `@deepseek-ai/dsh-tool-codebase-memory` (the model-facing `codebase_*` CLI
     tools over `codebase-memory-mcp cli --json <tool>`, its MCP result-envelope
-    parser, `codebase:tools` prompt section, and `invariant`/`cli-check`
+    parser, `codebase:tools` prompt section, and `cli-check`
     companions).
 
 No other third-party code is vendored or bundled in this repository. Runtime
-dependencies (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-invariants`,
-`@deepseek-ai/dsh-system-prompt`, `@deepseek-ai/dsh-tools`) are consumed from
+dependencies (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-system-prompt`,
+`@deepseek-ai/dsh-tools`) are consumed from
 the npm registry under their own licenses.
 
 License text (identical for all MIT-listed projects):

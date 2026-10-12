@@ -22,10 +22,6 @@
       "types": "./dist/session-origin.d.ts",
       "default": "./dist/session-origin.js"
     },
-    "./invariant": {
-      "types": "./dist/invariant.d.ts",
-      "default": "./dist/invariant.js"
-    },
     "./frame-codec": {
       "types": "./dist/frame-codec.d.ts",
       "default": "./dist/frame-codec.js"
@@ -70,12 +66,10 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@hy-sde-org/dsh-internal-urls": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@hy-sde-org/dsh-internal-urls": "workspace:^",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3",

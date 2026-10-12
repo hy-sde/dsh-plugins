@@ -24,9 +24,6 @@ timeline after triage.
   any Cypher query the model or user supplies); treat prompt-derived query
   text as untrusted and keep the graph scoped to indexing only repositories
   the host already trusts.
-- The package ships an invariant companion (`invariant`) that probes the CLI
-  at boot; the companion only checks `--version` and refuses to install when
-  the binary is missing. It never runs graph operations.
 - Indexing (`codebase_index_repository`) is an explicit, potentially
   long-running and resource-intensive action exposed to the model; prefer
   `codebase_search_graph`/`codebase_query_graph` on already-indexed projects,

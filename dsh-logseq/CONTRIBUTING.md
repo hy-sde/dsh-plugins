@@ -6,9 +6,9 @@ monorepo; keep it that way.
 ## Ground rules
 
 - **No new runtime dependencies** for `@hy-sde-org/dsh-logseq-graph` beyond its
-  declared peers (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-invariants`) and no
+  declared peers (`@deepseek-ai/cordis`) and no
   new `@deepseek-ai` dependencies for `@hy-sde-org/dsh-tool-logseq` beyond its
-  declared peers (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-invariants`,
+  declared peers (`@deepseek-ai/cordis`,
   `@deepseek-ai/dsh-system-prompt`, `@deepseek-ai/dsh-tools`). Runtime Node
   builtins are fine (the host runs Node).
 - **The tool surface must stay CLI-attached.** Never depend on the desktop

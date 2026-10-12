@@ -18,7 +18,7 @@ export interface Config extends LogseqToolConfig {}
 export { buildLogseqPromptSection } from './prompt.ts'
 export { applyLogseqTools, LogseqCliError } from './logseq.ts'
 export type { LogseqToolConfig, LogseqListEntity } from './logseq.ts'
-export { checkLogseqCli } from './invariant.ts'
+export { checkLogseqCli } from './cli-check.ts'
 
 /** Cordis plugin name for loader diagnostics. */
 export const name = 'tool-logseq'

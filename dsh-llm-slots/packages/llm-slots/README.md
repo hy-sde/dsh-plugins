@@ -50,11 +50,6 @@ Additional mounts share the same global budget and are safe but redundant.
 - `setEnabled(boolean)` — toggle admission without touching capacity.
 - `setCapacity(number)` — change the budget; a shrink applies as calls drain.
 
-The optional `./invariant` entry registers package-owned admission-accounting
-checks with a Cordis host's `ctx.invariants` service and needs
-`@deepseek-ai/cordis` + `@deepseek-ai/dsh-invariants` peers only when you use
-that entry.
-
 ## Development
 
 ```sh

@@ -8,7 +8,7 @@ monorepo; keep it that way.
 - **No new runtime dependencies** for `@hy-sde-org/dsh-openwiki` beyond
   `yaml` and `zod` (the upstream engine's own deps) and no new
   `@deepseek-ai` dependencies for `@hy-sde-org/dsh-tool-openwiki` beyond its
-  declared peers (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-invariants`,
+  declared peers (`@deepseek-ai/cordis`,
   `@deepseek-ai/dsh-system-prompt`, `@deepseek-ai/dsh-tools`). Runtime Node
   builtins are fine (the host runs Node).
 - **The engine must stay in-process and deterministic.** Never introduce an

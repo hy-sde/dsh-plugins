@@ -31,8 +31,7 @@ attribution in its header; this notice aggregates the provenance.
 - **Project**: https://github.com/deepseek-ai/deepseek-harness (MIT License)
 - **Copyright**: Copyright (c) 2026 DeepSeek
 - **Derived**: the `ctx.browser` service shape follows the harness service
-  seam conventions (`Service`, inject, effect-scoped registration); the
-  invariant companion follows `dsh-invariants` installs.
+  seam conventions (`Service`, inject, effect-scoped registration).
 
 ## CloakBrowser (optional runtime integration)
 

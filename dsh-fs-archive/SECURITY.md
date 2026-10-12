@@ -21,5 +21,3 @@ timeline after triage.
 - The `read` tool integration in the harness adds a `readMaxArchiveBytes` cap
   (default 256 MiB); this package itself exposes the bounded `openArchive`
   surface and never writes to the filesystem.
-- The `./invariant` entry only registers a no-op invariant with the host's
-  `ctx.invariants` service; it performs no I/O on its own.

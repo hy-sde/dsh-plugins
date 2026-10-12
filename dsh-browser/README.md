@@ -42,7 +42,7 @@ per session id, so concurrent sessions never steer each other's browser.
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
 - DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
   the package's `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
-  (`@deepseek-ai/dsh-invariants`; `@deepseek-ai/cordis` pins `~4.0.4`);
+  (`@deepseek-ai/cordis` pins `~4.0.4`);
 - a Chrome-family browser: `app.cdp_url` attaches to a real CDP endpoint and
   `app.relay` drives your own Chrome via the companion MV3 extension; the
   optional `app.patch` backend needs the `cloakbrowser` peer (`>=0.5.0`).

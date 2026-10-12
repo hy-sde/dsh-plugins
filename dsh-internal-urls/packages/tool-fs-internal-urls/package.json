@@ -10,10 +10,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./invariant": {
-      "types": "./dist/invariant.d.ts",
-      "default": "./dist/invariant.js"
-    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -48,7 +44,6 @@
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-attachment": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-fs": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-llm": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-sandbox": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-sandbox-policy": "^0.2.0-rc.2",
@@ -62,7 +57,6 @@
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-attachment": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-fs": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-llm": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-sandbox": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-sandbox-policy": "^0.2.0-rc.2",

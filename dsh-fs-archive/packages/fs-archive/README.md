@@ -11,7 +11,6 @@ Format detection sniffs content signatures (`sniffArchiveFormat`) and falls back
 - No `Bun` runtime: `Bun.hash.crc32` is table-driven CRC-32, `Bun.CryptoHasher` is `node:crypto` SHA-256, and `Bun.file` / `Bun.write` are `node:fs` / `node:fs/promises` equivalents.
 - All relative imports carry the `.ts` extension (repo `rewriteRelativeImportExtensions`).
 - `formatBytes`, the small `LRUCache`, and the public `index.ts` surface replace the upstream package-level re-exports; tests load fixtures from one bundled `tar.gz` (the same layout upstream uses to keep checkout state quiet).
-- The optional `./invariant` companion registers the package into a Cordis host's `ctx.invariants` service (no-op); it needs `@deepseek-ai/cordis` + `@deepseek-ai/dsh-invariants` peers only when you use that entry.
 
 Otherwise the port is algorithmically 1:1 with the original source. Keep the two sources in sync when the fork backports upstream archive-engine fixes.
 

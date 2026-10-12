@@ -42,8 +42,8 @@ stock).
 ## Prerequisites
 
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
-- peers `@deepseek-ai/cordis` `~4.0.4`, `@deepseek-ai/dsh-invariants`
-  `^0.2.0-rc.2`, and `@deepseek-ai/dsh-llm` `^0.2.0-rc.2`, plus the runtime
+- peers `@deepseek-ai/cordis` `~4.0.4`
+  and `@deepseek-ai/dsh-llm` `^0.2.0-rc.2`, plus the runtime
   dependency `@deepseek-ai/schemastery` `~3.18.4` — npm resolves all of them
   on install.
 
@@ -113,7 +113,6 @@ bash scripts/release-public.sh --publish    # publish to npm
 ```
 packages/llm-slots/   @hy-sde-org/dsh-llm-slots — the model-slot gate + admission plugin
   src/index.ts                     ModelSlotGate / ModelSlotsService / apply()
-  src/invariant.ts                 optional Cordis ./invariant companion
   tests/gate.spec.ts               FIFO gate unit tests
   tests/admission.spec.ts          llm/stream waterfall admission tests
 ```

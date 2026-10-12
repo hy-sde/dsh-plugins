@@ -52,10 +52,6 @@ import {
   final-frame/checksum completion — callers must establish the torn boundary
   themselves before using it.
 
-The optional `./invariant` entry registers the package into a Cordis host's
-`ctx.invariants` service (no-op) and needs `@deepseek-ai/cordis` +
-`@deepseek-ai/dsh-invariants` peers only when you use that entry.
-
 ## License
 
 MIT. Derived from the DeepSeek Harness codebase; see
