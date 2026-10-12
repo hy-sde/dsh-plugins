@@ -17,5 +17,3 @@ timeline after triage.
   in a host-wide FIFO budget and performs no I/O of its own. A call waiting
   for a slot observes its caller's AbortSignal, so cancellation during
   admission surfaces as an AbortError instead of leaking a slot.
-- The `./invariant` entry registers package-owned admission-accounting checks
-  with the host's `ctx.invariants` service; it performs no I/O on its own.

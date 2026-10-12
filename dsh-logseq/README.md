@@ -11,7 +11,7 @@ Harness CLI:
 
 | package | role | installed by users? |
 |---|---|---|
-| `@hy-sde-org/dsh-logseq-graph` | the service: host-plane `ctx.wikiGraph` backed by the installed `logseq` CLI (+ `invariant` companion) | yes |
+| `@hy-sde-org/dsh-logseq-graph` | the service: host-plane `ctx.wikiGraph` backed by the installed `logseq` CLI | yes |
 | `@hy-sde-org/dsh-tool-logseq` | the model-facing `logseq_*` tools (list/show/search/query/upsert/remove/graph/server) + `logseq:tools` prompt section | yes |
 
 This is the DeepSeek Harness `packages/logseq` family — the `logseq-graph`
@@ -40,7 +40,7 @@ directly.
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
 - DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
   the packages' `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
-  (`@deepseek-ai/dsh-invariants`; `@deepseek-ai/cordis` pins `~4.0.4`);
+  (`@deepseek-ai/cordis` pins `~4.0.4`);
 - the [Logseq](https://github.com/logseq/logseq) CLI — the `ctx.wikiGraph`
   service is backed by the installed `logseq` CLI, so the graph must be
   reachable from the terminal.

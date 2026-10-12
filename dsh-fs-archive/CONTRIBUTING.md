@@ -7,9 +7,8 @@ monorepo; keep it that way.
 
 - **No new runtime dependencies.** The archive engine is pure TypeScript over
   Node's standard library only (`node:crypto`, `node:fs`, `node:path`,
-  `node:util`, `node:zlib`). Its only peers are `@deepseek-ai/cordis` and
-  `@deepseek-ai/dsh-invariants`, used exclusively by the optional
-  `./invariant` companion. Do not add runtime deps.
+  `node:util`, `node:zlib`). Its only peer is `@deepseek-ai/cordis`.
+  Do not add runtime deps.
 - **Preserve the per-file upstream attribution headers**
   (`Ported from @oh-my-pi/...` — MIT, see `THIRD-PARTY-NOTICES.md`).
 - **Stay pinned to the fork.** This repo mirrors

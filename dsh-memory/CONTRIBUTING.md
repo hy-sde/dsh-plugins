@@ -6,8 +6,8 @@ monorepo; keep it that way.
 ## Ground rules
 
 - **No new runtime dependencies** for `@hy-sde-org/dsh-memory` beyond its
-  declared peers (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-home-paths`,
-  `@deepseek-ai/dsh-invariants`) and no new `@deepseek-ai` dependencies for
+  declared peers (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-home-paths`)
+  and no new `@deepseek-ai` dependencies for
   `@hy-sde-org/dsh-tool-memory` beyond its declared peers. Runtime Node
   builtins are fine (the host runs Node).
 - **The local backend must stay standalone.** Never depend on a remote memory

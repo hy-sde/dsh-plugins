@@ -67,7 +67,7 @@ and no long-lived server lives inside the session.
 - Node.js 22.19 or newer (the package's `engines` floor) with npm and pnpm on `PATH`;
 - a DeepSeek Harness installation including the standard `dsh` CLI — the package's peer
   baseline is `@deepseek-ai/cordis ~4.0.4` and
-  `@deepseek-ai/dsh-tools`/`@deepseek-ai/dsh-system-prompt`/`@deepseek-ai/dsh-invariants`
+  `@deepseek-ai/dsh-tools`/`@deepseek-ai/dsh-system-prompt`
   `^0.2.0-rc.2`;
 - the external [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp)
   CLI — not bundled. Install it (or point the row's `cliPath` config at a non-PATH

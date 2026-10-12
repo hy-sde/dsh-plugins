@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`ctx.wikiGraph` exposes the Logseq CLI's `db-worker-node` graph operations as structured JSON calls, independent of any agent tools: page and block trees, tags, properties, Datalog queries, upserts and removals, and the `logseq_server` lifecycle. The web GUI's wiki drawer serves its reads and writes through this service in the upstream harness, while the model-facing `logseq_*` tools (see `@hy-sde-org/dsh-tool-logseq`) call the same CLI directly. Choose it when a composition needs wiki-graph storage behind a host service with one logical change per call. The cost is one fresh CLI process per method call, and graph writes require a running db-worker-node server; the invariant companion fails fast at boot when the CLI binary is unreachable.
+`ctx.wikiGraph` exposes the Logseq CLI's `db-worker-node` graph operations as structured JSON calls, independent of any agent tools: page and block trees, tags, properties, Datalog queries, upserts and removals, and the `logseq_server` lifecycle. The web GUI's wiki drawer serves its reads and writes through this service in the upstream harness, while the model-facing `logseq_*` tools (see `@hy-sde-org/dsh-tool-logseq`) call the same CLI directly. Choose it when a composition needs wiki-graph storage behind a host service with one logical change per call. The cost is one fresh CLI process per method call, and graph writes require a running db-worker-node server.
 
 ## Table of Contents
 
@@ -28,8 +28,6 @@ One Cordis service `ctx.wikiGraph` (`LogseqGraphService`) with methods:
 - `upsert(args)`, `remove(args)` — one logical change per call, forwarded flag-for-flag
 - `server(action, { name })` — `list` / `start` / `stop` / `restart` / `cleanup`
 
-Every method spawns the `logseq` CLI once (`--graph <name>` when configured) with `--output json`, validates the envelope, and projects the raw rows into the wire view types (`WikiTagRef`, `WikiBlockNode`, `WikiPageRoot`, …). The `@hy-sde-org/dsh-logseq-graph/invariant` companion fails fast at boot when the CLI binary is unreachable.
-
 ## Model Experience
 
 None, as the host service registers no tool schema, prompt section, or result of its own; the wiki content it serves reaches the model only through `@hy-sde-org/dsh-tool-logseq` and the human's wiki drawer.
@@ -40,7 +38,7 @@ No prompt-shaping data comes from this package.
 
 ## Known Limitations and Deferred Work
 
-- - **CLI must be installed** — the service spawns `logseq`; there is no bundled binary (built from the logseq repo: `opam exec -- dune build @bundle`). The invariant companion gives an install hint and `cliPath` supports a non-PATH binary.
+- - **CLI must be installed** — the service spawns `logseq`; there is no bundled binary (built from the logseq repo: `opam exec -- dune build @bundle`). `cliPath` supports a non-PATH binary.
 - - **Per-call process spawn** — each method starts a fresh CLI process. Fine for interactive drawer use and one-shot agent edits; a high-frequency integration should batch via `upsert`.
 - - **Graph server required** — graph writes need a db-worker-node server; the service reuses a running one (including the desktop app's) or `logseq_server start` launches a headless one. Requests against a stopped server surface as CLI errors.
 - - **JSON shapes are read at runtime** — `list/search/query` fields follow the CLI's JSON contract and are projected defensively; a future CLI shape change degrades rows rather than crashing.

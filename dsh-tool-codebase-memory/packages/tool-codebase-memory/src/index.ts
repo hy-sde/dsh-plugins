@@ -22,7 +22,7 @@ export interface Config extends CodebaseMemoryToolConfig {}
 export { buildCodebaseMemoryPromptSection } from './prompt.ts'
 export { applyCodebaseMemoryTools, CodebaseMemoryCliError, renderPayload } from './codebase-memory.ts'
 export type { CodebaseMemoryToolConfig } from './codebase-memory.ts'
-export { checkCodebaseMemoryCli } from './invariant.ts'
+export { checkCodebaseMemoryCli } from './cli-check.ts'
 
 /** Cordis plugin name for loader diagnostics. */
 export const name = 'tool-codebase-memory'

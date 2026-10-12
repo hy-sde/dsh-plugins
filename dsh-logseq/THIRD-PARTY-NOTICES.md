@@ -11,15 +11,15 @@ attribution in its header; this notice aggregates the provenance.
 - **Derived modules**:
   - `@hy-sde-org/dsh-logseq-graph` — ported from
     `@deepseek-ai/dsh-logseq-graph` (host-plane `ctx.wikiGraph` service over
-    the Logseq CLI, with its `invariant` companion and CLI projection
+    the Logseq CLI and CLI projection
     helpers).
   - `@hy-sde-org/dsh-tool-logseq` — ported from
     `@deepseek-ai/dsh-tool-logseq` (model-facing `logseq_*` CLI tools, prompt
-    section, and `invariant`/`cli-check` companions).
+    section, and `cli-check` companions).
 
 No other third-party code is vendored or bundled in this repository. Runtime
-dependencies (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-invariants`,
-`@deepseek-ai/dsh-system-prompt`, `@deepseek-ai/dsh-tools`) are consumed from
+dependencies (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-system-prompt`,
+`@deepseek-ai/dsh-tools`) are consumed from
 the npm registry under their own licenses.
 
 License text (identical for all MIT-listed projects):

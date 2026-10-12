@@ -115,7 +115,6 @@ packages/zstd-frame/   @hy-sde-org/dsh-zstd-frame — the frame primitives
   src/index.ts                     public scan / compress / decompress API
   src/zstd-private-decoder.ts      private-handle multi-frame decoder
   src/zstd-public-decoder.ts       one-shot-API multi-frame decoder fallback
-  src/invariant.ts                 optional Cordis ./invariant companion
 ```
 
 ## License and attribution

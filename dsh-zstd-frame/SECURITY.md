@@ -17,5 +17,3 @@ timeline after triage.
   Decompression callers can bound output with the `maxOutput` parameter
   (`maxOutputLength`); the structural scan rejects corrupt frame layout
   without executing any payload code.
-- The `./invariant` entry only registers a no-op invariant with the host's
-  `ctx.invariants` service; it performs no I/O on its own.

@@ -46,10 +46,6 @@
       "types": "./dist/conventional/index.d.ts",
       "default": "./dist/conventional/index.js"
     },
-    "./invariant": {
-      "types": "./dist/invariant.d.ts",
-      "default": "./dist/invariant.js"
-    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -92,13 +88,11 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-subprocess": "^0.2.0-rc.2"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-atomic-write": "^0.2.0-rc.2",
-    "@deepseek-ai/dsh-invariants": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-subprocess": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-subprocess-local": "^0.2.0-rc.2",
     "@types/node": "^24.0.0",

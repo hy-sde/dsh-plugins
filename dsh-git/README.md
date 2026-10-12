@@ -45,7 +45,7 @@ that releases `commit_apply --push`.
 - Node.js 22.19 or newer with npm and pnpm on `PATH`;
 - DeepSeek Harness `0.2.0-rc.2` or newer including the standard `dsh` CLI —
   the package's `@deepseek-ai/*` peer range is `^0.2.0-rc.2`
-  (`@deepseek-ai/dsh-invariants`, `@deepseek-ai/dsh-subprocess`;
+  (`@deepseek-ai/dsh-subprocess`;
   `@deepseek-ai/cordis` pins `~4.0.4`);
 - `git` on `PATH` — the service is a stateless wrapper over the `git` CLI
   (diff capture/parsing, hunk staging, commit/push/log).

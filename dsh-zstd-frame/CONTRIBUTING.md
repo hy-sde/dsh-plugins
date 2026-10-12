@@ -6,9 +6,8 @@ monorepo; keep it that way.
 ## Ground rules
 
 - **No new runtime dependencies.** The frame primitives are pure TypeScript
-  over `node:zlib` (plus `node:buffer`, `node:util`). Their only peers are
-  `@deepseek-ai/cordis` and `@deepseek-ai/dsh-invariants`, used exclusively by
-  the optional `./invariant` companion. Do not add runtime deps.
+  over `node:zlib` (plus `node:buffer`, `node:util`). Their only peer is
+  `@deepseek-ai/cordis`.
 - **Stay pinned to the fork.** This repo mirrors `packages/util/zstd` in the
   [hy-sde deepseek-harness fork](https://github.com/hy-sde/deepseek-harness);
   when the fork evolves the frame layout or the private-decoder probe, bring

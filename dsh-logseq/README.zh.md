@@ -4,7 +4,7 @@
 
 | 包 | 职责 | 是否需要用户安装 |
 |---|---|---|
-| `@hy-sde-org/dsh-logseq-graph` | 服务：以已安装的 `logseq` CLI 为支撑的宿主平面 `ctx.wikiGraph`（含 `invariant` 伴随组件） | 是 |
+| `@hy-sde-org/dsh-logseq-graph` | 服务：以已安装的 `logseq` CLI 为支撑的宿主平面 `ctx.wikiGraph` | 是 |
 | `@hy-sde-org/dsh-tool-logseq` | 面向模型的 `logseq_*` 工具（list/show/search/query/upsert/remove/graph/server）+ `logseq:tools` 提示卡片 | 是 |
 
 这是 DeepSeek Harness 的 `packages/logseq` 家族——`logseq-graph` 宿主服务与
