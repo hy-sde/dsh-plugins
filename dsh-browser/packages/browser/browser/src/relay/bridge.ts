@@ -209,7 +209,7 @@ export class RelayBridge {
   listTargets(): Array<Record<string, string>> {
     const out: Array<Record<string, string>> = []
     for (const tab of this.#tabs.values()) {
-      if (!this.#eligible(tab)) continue
+      if (!this.#eligible(tab) || tab.discarded) continue
       out.push({ id: pageTargetId(tab.tabId), type: 'page', title: tab.title, url: tab.url })
     }
     return out
