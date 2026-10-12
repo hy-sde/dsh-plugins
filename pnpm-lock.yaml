@@ -1261,6 +1261,27 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@24.13.3)(jsdom@29.1.1)(lightningcss@1.33.0)(tsx@4.22.1)(yaml@2.9.0)
 
+  dsh-tool-tsfork/packages/tool-tsfork:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ~4.0.5-alpha.1
+        version: 4.0.5-alpha.1(@deepseek-ai/cordis-plugin-include@1.0.10-alpha.1)(@deepseek-ai/cordis-plugin-loader@1.0.6-alpha.1)
+      '@deepseek-ai/dsh-system-prompt':
+        specifier: ^0.2.1-alpha.2
+        version: 0.2.1-alpha.2(@deepseek-ai/cordis@4.0.5-alpha.1)(@deepseek-ai/dsh-llm@0.2.1-alpha.2(@deepseek-ai/cordis@4.0.5-alpha.1))(@deepseek-ai/dsh-scope@0.2.1-alpha.2(@deepseek-ai/cordis@4.0.5-alpha.1))
+      '@deepseek-ai/dsh-tools':
+        specifier: ^0.2.1-alpha.2
+        version: 0.2.1-alpha.2(779d50c05c1b267da637c41eaebe4618)
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@24.13.3)(jsdom@29.1.1)(lightningcss@1.33.0)(tsx@4.22.1)(yaml@2.9.0)
+
   dsh-vcs/packages/vcs:
     dependencies:
       '@deepseek-ai/cordis':
