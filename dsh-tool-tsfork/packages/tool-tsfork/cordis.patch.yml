@@ -1,0 +1,31 @@
+# @hy-sde-org/dsh-tool-tsfork — a self-contained model-facing tsfork device surface.
+#
+# Mounts as ONE plain agent-plane row (consumes the agent bundle's `tools` and
+# `systemPrompt` services; no service or realm of its own). Each call spawns the
+# parked Go-native TypeScript compiler once — no daemon, no shared state — so
+# concurrent agent lanes are isolated by construction, with GOMAXPROCS as the
+# only shared-box knob.
+#
+# The row id carries the `hy-sde-` prefix to avoid clashing with any shipped
+# row of the same name (a duplicate loader id fails the boot).
+#
+# Per-deployment config rides the row; the shipped defaults park the binary at
+# ~/.dsh/tsfork/tsc (see the package README for the build recipe). Override by
+# patching the row by id:
+#
+#   - id: hy-sde-tsfork
+#     config:
+#       binary: /opt/tsfork/tsc
+#       defaultProject: tsconfig.client.json
+#
+# The `tsfork:tools` prompt section is registered by the same plugin, so no
+# separate prompt row is needed.
+- insert:
+    - id: hy-sde-tsfork
+      name: '@hy-sde-org/dsh-tool-tsfork'
+      config:
+        binary: '~/.dsh/tsfork/tsc'
+        defaultProject: 'tsconfig.host.json'
+        defaultCwd: '/Users/hui/Documents/github/deepseek-harness'
+        timeoutMs: 900000
+        gomaxprocs: 4

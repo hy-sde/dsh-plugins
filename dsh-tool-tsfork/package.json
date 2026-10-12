@@ -1,0 +1,32 @@
+{
+  "name": "dsh-tool-tsfork",
+  "version": "0.2.1-alpha.2",
+  "private": true,
+  "description": "Standalone public package: @hy-sde-org/dsh-tool-tsfork (the tsfork Go-native TypeScript compiler device tools plugin for DeepSeek Harness).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter './packages/*' build",
+    "check": "pnpm -r --filter './packages/*' check",
+    "test": "pnpm -r --filter './packages/*' test",
+    "pack:all": "pnpm -r --filter './packages/*' pack"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5-alpha.1",
+    "@types/node": "^24.13.3",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "keywords": [
+    "deepseek",
+    "agent",
+    "harness",
+    "dsh-plugin",
+    "tsfork",
+    "typescript",
+    "tsgo",
+    "tool"
+  ]
+}
