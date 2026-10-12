@@ -1,7 +1,12 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
-## PREPARED for 0.2.1-alpha.2 (NOT published yet — version bump only, mirrors the 0.2.0-rc.2 flow)
+## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-alpha.2 on npm
+##   (2026-10-12, npm-parity wave via per-package release-public.sh --publish; tarball READMEs +
+##   ≤255-char descriptions verified 43/43 by tarball audit. Two retries: dsh-tool-memory (stale
+##   workspace dist lacked the interpolate:false section flag → test failed → pnpm build + republish)
+##   and dsh-tool-tsfork (LICENSE missing in the publish dir → added + republish). First publish:
+##   dsh-tool-tsfork. av-injected NODE_AUTH_TOKEN per package; ~/.npmrc token line re-commented after.)
 ## LAST PUBLISHED: all 42 @hy-sde-org/dsh-* workspace packages at 0.2.0-rc.2 on npm (verified npm view name@version 42/42):
 ##   - 2026-09-30: zstd-frame, session-intelligence, code-runtime-kernels
 ##   - 2026-10-03: git, graph-control, graph-stream, tool-graph, orchestration-policy, pi-durable, tool-pi-durable
@@ -32,6 +37,7 @@ dsh-dap                  0.2.1-alpha.2     # PUBLISHED 2026-10-03 (32-pkg wave, 
 dsh-hashline             0.2.1-alpha.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-tool-library-search  0.2.1-alpha.2     # new package name — first publish landed as `latest` (npmjs can lag a new-name packument for minutes)
 dsh-tool-subagent-report 0.2.1-alpha.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
+dsh-tool-tsfork          0.2.1-alpha.2     # PUBLISHED 2026-10-12 (npm-parity wave, first publish; tsfork_status/tsfork_check devices)
 dsh-vcs                  0.2.1-alpha.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-web-search-public    0.2.1-alpha.2     # PUBLISHED 2026-10-03 (32-pkg wave, release-public.sh)
 dsh-zstd-frame           0.2.1-alpha.2     # PUBLISHED 2026-09-30
