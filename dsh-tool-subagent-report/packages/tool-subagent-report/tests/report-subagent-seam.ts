@@ -1,10 +1,10 @@
 /**
  * Local test seam standing in for the fork-only subagent report channel.
  *
- * The published `@deepseek-ai/dsh-subagent@0.1.2-rc.1` predates the DeepSeek
+ * The published `@deepseek-ai/dsh-subagent@0.2.1-alpha.2` predates the DeepSeek
  * Harness fork's report channel (`registerContinuableSetup`, `reportFrom`,
- * the `subagent-report`/`subagent-settled` message sources, and the keyed
- * open-decisions ledger). Rather than weaken any assertion, this suite mounts
+ * the `subagent-report` message source, and the keyed open-decisions
+ * ledger). Rather than weaken any assertion, this suite mounts
  * a faithful local seam that implements exactly the fork contract declared in
  * `src/report-contract.ts` over the REAL published agent stack
  * (agent-loop, agents registry, sessions, tools, system prompt, LLM runtime),
@@ -66,11 +66,13 @@ export interface SeamContinuableRequest {
   readonly toolFilter?: { readonly allow?: string[]; readonly deny?: string[] }
 }
 
-/** The `startContinuable` spec shape the suite drives. */
-export interface SeamContinuableStartSpec {
+/** The `startActivation` spec shape the suite drives. */
+export interface SeamActivationStartSpec {
   readonly provider: string
   readonly label: string
   readonly request: SeamContinuableRequest
+  /** Accepted for API fidelity; resident seam children always report and settle to their parent. */
+  readonly delivery: 'parent' | 'caller'
   readonly signal: AbortSignal
 }
 
@@ -121,8 +123,8 @@ class SubagentReportSeam {
     return () => { void remove() }
   }
 
-  /** Establish one durable continuable child with real published materialization. */
-  async startContinuable(spec: SeamContinuableStartSpec): Promise<{ childId: SessionId; messageId: MessageId }> {
+  /** Establish one durable activation child with real published materialization. */
+  async startActivation(spec: SeamActivationStartSpec): Promise<{ childId: SessionId; messageId: MessageId }> {
     spec.signal.throwIfAborted()
     const parent = spec.request.parent
     this.assertAdmitting(parent)
@@ -204,7 +206,7 @@ class SubagentReportSeam {
   }
 
   /** Close admission below exact live roots and stop their strict descendants. */
-  async drainContinuableDescendants(parents: readonly Agent[]): Promise<void> {
+  async drainDescendants(parents: readonly Agent[]): Promise<void> {
     const roots = parents.filter(parent => this.ctx.agents.get(parent.id) === parent)
     for (const root of roots) {
       let members = this.closingScopes.get(root.id)

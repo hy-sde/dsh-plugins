@@ -16,7 +16,7 @@ import type { ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { parseFileDiffs } from '@hy-sde-org/dsh-git'
-import type { SubagentRun } from '@deepseek-ai/dsh-subagent'
+import type { SubagentActivation } from '@deepseek-ai/dsh-subagent'
 import { resolveCwd } from './commit.ts'
 import { openReads, type ReadSurface } from './reads.ts'
 import { headOf, indexTreeOf, recordReviewVerdict } from './push-gate.ts'
@@ -383,14 +383,18 @@ export function applyReviewTool(ctx: Context, config: ReviewToolConfig = {}): vo
         const controller = new AbortController()
         const forwardAbort = (): void => { controller.abort() }
         exec.signal.addEventListener('abort', forwardAbort, { once: true })
-        let run: SubagentRun
+        let run: SubagentActivation
         try {
-          run = await subagents.start(provider, {
+          run = await subagents.startActivation({
+            provider,
             label,
-            prompt: [{ type: 'text', text: prompt }] as ContentBlock[],
-            parent,
+            request: {
+              prompt: [{ type: 'text', text: prompt }] as ContentBlock[],
+              parent,
+              outputSchema: REVIEWER_SCHEMA,
+            },
             signal: controller.signal,
-            outputSchema: REVIEWER_SCHEMA,
+            delivery: 'caller',
           })
         } catch (error: unknown) {
           exec.signal.removeEventListener('abort', forwardAbort)
