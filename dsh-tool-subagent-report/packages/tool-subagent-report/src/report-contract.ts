@@ -1,7 +1,7 @@
 /**
  * The fork-only subagent report channel contract, declared locally so this
  * package typechecks and builds against the PUBLISHED
- * `@deepseek-ai/dsh-subagent` (0.1.2-rc.1). That published version predates
+ * `@deepseek-ai/dsh-subagent` (0.2.1-alpha.2). That published version predates
  * the DeepSeek Harness fork's report channel — `registerContinuableSetup`,
  * `reportFrom`, the `subagent-report` message source, and the keyed
  * open-decisions ledger are fork-side extensions — so the package declares
@@ -10,8 +10,8 @@
  * same channel) provides the implementation; this package only formats and
  * validates the report.
  *
- * Ported from `@deepseek-ai/dsh-subagent` types (`continuation.ts`,
- * `types.ts`) — MIT, see THIRD-PARTY-NOTICES.md.
+ * Ported from `@deepseek-ai/dsh-subagent` fork types (`types.ts`) — MIT, see
+ * THIRD-PARTY-NOTICES.md.
  *
  * @module @hy-sde-org/dsh-tool-subagent-report/report-contract
  */
