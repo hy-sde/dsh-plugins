@@ -1,3 +1,17 @@
+// extension/debugger-ownership.ts
+async function ownedDebuggerTabs(targets, probe) {
+  const owned = await Promise.all(targets.map(async (target) => {
+    if (!target.attached || target.tabId === undefined)
+      return;
+    try {
+      await probe(target.tabId);
+      return target.tabId;
+    } catch {
+      return;
+    }
+  }));
+  return owned.filter((tabId) => tabId !== undefined);
+}
 // extension/background.ts
 var DEFAULT_PORT = 9224;
 var PING_INTERVAL_MS = 20000;
@@ -106,11 +120,8 @@ async function buildHello() {
     if (snap)
       snapshots.push(snap);
   }
-  const attachedTabIds = [];
-  for (const target of targets) {
-    if (target.attached && target.tabId !== undefined)
-      attachedTabIds.push(target.tabId);
-  }
+  // `attached` is true for DevTools or another extension too; only our own attachment answers a command.
+  const attachedTabIds = await ownedDebuggerTabs(targets, (tabId) => chrome.debugger.sendCommand({ tabId }, "Target.getTargetInfo"));
   const versionMatch = /Chrome\/[\d.]+/.exec(navigator.userAgent);
   return {
     t: "hello",
