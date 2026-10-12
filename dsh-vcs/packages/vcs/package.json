@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-vcs",
   "version": "0.2.1-alpha.2",
-  "description": "Native vcs plumbing for DeepSeek Harness: the host ctx.vcs service (pi-vcs CLI resolution + probe, repo-info / rev-diff / staged-diff / worktree-diff / status / watch over the subprocess seam) wrapping the narrow native slice of the omp vcs surface; the git service stays the default path, as a standalone npm package.",
+  "description": "Native vcs plumbing for DeepSeek Harness: the host ctx.vcs service (pi-vcs CLI resolution + probe, repo-info / rev-diff / staged-diff / worktree-diff / status / watch over the subprocess seam); the git service stays the default path — no harness changes.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

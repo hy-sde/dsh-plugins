@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-av",
   "version": "0.2.1-alpha.2",
-  "description": "Read-only Automic Vault plumbing for DeepSeek Harness: the host ctx.av service (av CLI resolution + probe, scan/doctor/detectors/hardeners/list over the subprocess seam) backing the read-only vault tools in @hy-sde-org/dsh-tool-av \u2014 a standalone plugin with no upstream harness changes required.",
+  "description": "Read-only Automic Vault plumbing for DeepSeek Harness: the host ctx.av service (CLI resolution + probe, scan/doctor/detectors/hardeners/list over the subprocess seam) backing the vault tools in @hy-sde-org/dsh-tool-av — no harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

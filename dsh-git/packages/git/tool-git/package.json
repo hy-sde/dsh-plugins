@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-git",
   "version": "0.2.1-alpha.2",
-  "description": "Model-facing agentic git tools (commit analyze + commit_apply split execution with validation and a P2 review gate on push, review with P0-P3 verdicts, and worktree isolated per-task checkouts with durable leases) over the host ctx.git service \u2014 a standalone plugin for DeepSeek Harness with no upstream harness changes required.",
+  "description": "Model-facing agentic git tools (commit analyze + commit_apply split execution with a P2 review gate on push, review with P0–P3 verdicts, and per-task worktree checkouts with durable leases) over the host ctx.git service — no harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

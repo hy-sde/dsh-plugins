@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-av",
   "version": "0.2.1-alpha.2",
-  "description": "Model-facing Automic Vault tools (av_scan audit, av_doctor hardening check, av_catalog, av_list) over the host ctx.av service \u2014 read-only, never returns secret values \u2014 plus an av:tools system-prompt section for DeepSeek Harness, a standalone plugin with no upstream harness changes required.",
+  "description": "Model-facing Automic Vault tools (av_scan audit, av_doctor hardening check, av_catalog, av_list) over the host ctx.av service — read-only, never returns secret values — plus an av:tools system-prompt section; standalone, no harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

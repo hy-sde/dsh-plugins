@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-git",
   "version": "0.2.1-alpha.2",
-  "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff capture/parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree/conventional layers backing the commit, review, and worktree tools in @hy-sde-org/dsh-tool-git \u2014 a standalone plugin with no upstream harness changes required.",
+  "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree layers behind the commit/review/worktree tools in @hy-sde-org/dsh-tool-git.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
