@@ -35,6 +35,7 @@ dsh-tool-debug
 dsh-tool-edit
 dsh-tool-library-search
 dsh-tool-subagent-report
+dsh-tool-tsfork
 dsh-vcs
 dsh-web-search-public
 dsh-zstd-frame
