@@ -1,6 +1,12 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
+## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-alpha.4 on npm
+##   (2026-10-16, harness-parity wave: per-package release-public.sh --check + av-injected
+##   NODE_AUTH_TOKEN pnpm publish in ordered-packages order 17:58-18:08, zero retries;
+##   npm view verified 43/43 + check-npm-parity PASS 43/43. Port commit 1f84774: zod pinned 4.4.3
+##   via pnpm-workspace.yaml overrides, dsh-* peers ^0.2.1-alpha.4, dsh-tool-subagent-report
+##   migrated to the alpha.4 agentPreset seam.)
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-alpha.2 on npm
 ##   (2026-10-12, npm-parity wave via per-package release-public.sh --publish; tarball READMEs +
 ##   ≤255-char descriptions verified 43/43 by tarball audit. Two retries: dsh-tool-memory (stale
