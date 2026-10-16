@@ -63,7 +63,7 @@ interface Activation {
 export interface SeamContinuableRequest {
   readonly prompt: ContentBlock[]
   readonly parent: Agent
-  readonly toolFilter?: { readonly allow?: string[]; readonly deny?: string[] }
+  readonly agentPreset?: string
 }
 
 /** The `startActivation` spec shape the suite drives. */
@@ -134,9 +134,12 @@ class SubagentReportSeam {
       meta: { parentSession: parent.id, origin: 'subagent' },
       agentOptions: { provider: 'mock', model: 'mock' },
       setup: (agentCtx) => {
-        applyChildComposition(agentCtx, parent, {
-          ...(spec.request.toolFilter !== undefined ? { toolFilter: spec.request.toolFilter } : {}),
-        })
+        const presets = spec.request.agentPreset !== undefined ? agentCtx.get('agentPresets') : undefined
+        if (presets !== undefined) {
+          presets.composeFrom(agentCtx, parent.ctx)
+        } else {
+          applyChildComposition(agentCtx, parent, {})
+        }
         return this.setups.apply(agentCtx)
       },
     })

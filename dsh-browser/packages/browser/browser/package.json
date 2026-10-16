@@ -67,16 +67,16 @@
     }
   },
   "dependencies": {
-    "@deepseek-ai/cordis": "~4.0.5-alpha.1",
     "playwright-core": "^1.61.1",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "@deepseek-ai/cordis": "~4.0.5-alpha.2"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5-alpha.1",
+    "@deepseek-ai/cordis": "~4.0.5-alpha.2",
     "cloakbrowser": ">=0.5.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5-alpha.1",
+    "@deepseek-ai/cordis": "~4.0.5-alpha.2",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.5.0",
     "playwright-core": "^1.61.1",
