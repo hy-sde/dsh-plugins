@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-tool-subagent-report",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "The child-scoped report tool for continuable in-process subagents on DeepSeek Harness: installs `report` plus its usage guidance into every continuable child scope, so findings reach the parent before the child finishes.",
   "type": "module",
   "main": "./dist/index.js",

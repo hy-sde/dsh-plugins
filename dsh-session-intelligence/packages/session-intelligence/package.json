@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-session-intelligence",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "session_health for DeepSeek Harness — health intelligence (outcome classification, tool-health signals, prompt heuristics, context pressure, A–F grade) computed in-process from the session store, plus a standalone CLI over the same engine.",
   "type": "module",
   "main": "./dist/index.js",

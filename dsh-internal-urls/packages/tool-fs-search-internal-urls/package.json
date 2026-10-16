@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-tool-fs-search-internal-urls",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "Agent-scope shadow of the DeepSeek Harness glob/grep discovery tools that also searches conflict://, pr://, issue:// resources through ctx.internalUrls — the search half of the internal-URL routing surface for stock harness releases.",
   "type": "module",
   "main": "./dist/index.js",

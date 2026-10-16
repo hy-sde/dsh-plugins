@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-codebase-memory",
   "description": "14 model-facing codebase-memory tools — search_graph, query_graph, trace_path, snippets, architecture, search_code, detect_changes, ADRs, and more — one-shot queries against the codebase-memory daemon; the local alternative to a stdio MCP client row.",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "publishConfig": {
     "access": "public"
   },

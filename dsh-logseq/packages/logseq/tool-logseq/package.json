@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-logseq",
   "description": "Model-facing Logseq CLI tools (logseq_list/upsert/remove/query/show/search/graph/server) that drive a Logseq database graph from the terminal — headless-capable alternative to the desktop MCP bridge",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "publishConfig": {
     "access": "public"
   },

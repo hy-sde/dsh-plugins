@@ -1,7 +1,7 @@
 {
   "name": "@hy-sde-org/dsh-tool-tsfork",
   "description": "tsfork devices (tsfork_status, tsfork_check) over a parked Go-native TypeScript compiler (can1357/TypeScript perf fork, TS 7.1.0-dev): status/version probe and one-shot -b project-graph checks with parsed diagnostics, timing, and a GOMAXPROCS cap.",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "publishConfig": {
     "access": "public"
   },

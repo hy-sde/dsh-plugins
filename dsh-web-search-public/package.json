@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-web-search-public",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "Credential-free concurrent web search fan-out for DeepSeek Harness (Startpage, DuckDuckGo, Ecosia, Google, Mojeek, consensus-merged, soft/hard deadlines)",
   "type": "module",
   "main": "./dist/index.js",

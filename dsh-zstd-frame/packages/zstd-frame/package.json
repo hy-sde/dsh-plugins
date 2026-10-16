@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-zstd-frame",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "Zstandard frame primitives (scan / compress / decompress / multi-frame decoder) shared by the DeepSeek Harness session persistence backend and project memory bank, as a standalone npm package.",
   "type": "module",
   "main": "./dist/index.js",

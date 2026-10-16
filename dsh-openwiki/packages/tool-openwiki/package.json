@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-tool-openwiki",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "OpenWiki lifecycle tools (openwiki_begin/submit_plan/next_page/submit_page/finish) over the in-process engine @hy-sde-org/dsh-openwiki, plus an openwiki:tools prompt section wiring codebase-memory tools as structural discovery — no external CLI.",
   "type": "module",
   "main": "./dist/index.js",

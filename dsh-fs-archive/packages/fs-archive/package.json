@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-fs-archive",
-  "version": "0.2.1-alpha.2",
+  "version": "0.2.1-alpha.4",
   "description": "Pure-TS multi-format archive engine (zip/tar/tar.gz/rar/7z/iso/deb/rpm/cpio/cab/arj/asar + codecs), ported from @oh-my-pi/pi-utils (MIT), as a standalone npm package.",
   "type": "module",
   "main": "./dist/index.js",
