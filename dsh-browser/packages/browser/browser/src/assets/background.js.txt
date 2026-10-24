@@ -17,6 +17,8 @@ var DEFAULT_PORT = 9224;
 var PING_INTERVAL_MS = 20000;
 var RECONNECT_MIN_MS = 1000;
 var RECONNECT_MAX_MS = 1e4;
+var REMOVE_TAB_ATTEMPTS = 3;
+var REMOVE_TAB_RETRY_MS = 500;
 var ws = null;
 var reconnectDelay = RECONNECT_MIN_MS;
 var pingTimer = null;
@@ -50,6 +52,20 @@ function enqueueGroupOp(fn) {
   const result = groupOps.then(fn, fn);
   groupOps = result.catch(() => {});
   return result;
+}
+// Random id for the current browser session, in chrome.storage.local (kept
+// across extension reloads) and replaced on browser startup: Chrome reuses
+// tab ids after a restart, so the relay scopes targets to this session and
+// retires targets of an earlier one. Absent on the hello until set.
+async function ensureBrowserSession() {
+  const key = "relayBrowserSession";
+  const stored = await chrome.storage.local.get({ [key]: "" });
+  const existing = stored[key];
+  if (typeof existing === "string" && existing.length > 0)
+    return existing;
+  const created = crypto.randomUUID();
+  await chrome.storage.local.set({ [key]: created });
+  return created;
 }
 async function groupTabs(tabIds, title, color) {
   ompGroupTitle = title;
@@ -130,10 +146,13 @@ async function buildHello() {
     tabs: snapshots,
     attachedTabIds,
     // Keep in sync with DISCARDED_TABS_PROTOCOL_VERSION in the relay.
-    discardedTabsProtocol: 1
+    discardedTabsProtocol: 1,
+    // Scope the relay's target ids to this browser session (undefined only
+    // before the first storage write lands).
+    browserSession: await ensureBrowserSession()
   };
 }
-async function runRpc(msg) {
+async function runRpc(msg, originSocket) {
   switch (msg.op) {
     case "attach":
       await chrome.debugger.attach({ tabId: msg.tabId }, "1.3");
@@ -148,10 +167,28 @@ async function runRpc(msg) {
       const snap = snapshot(tab);
       if (!snap)
         throw new Error("created tab has no id");
+      // Cut-off: if the origin socket closed while the tab was being created,
+      // nobody will drive it — remove it fire-and-forget instead of leaking it.
+      if (ws !== originSocket || originSocket.readyState === WebSocket.CLOSED)
+        void chrome.tabs.remove(snap.tabId).catch(() => {});
       return { tab: snap };
     }
     case "removeTab":
-      await chrome.tabs.remove(msg.tabId);
+      // Retried: a service-worker restart mid-close can leave the tab alive
+      // for a moment; "No tab with id" means the close already happened.
+      for (let attempt = 0; attempt < REMOVE_TAB_ATTEMPTS; attempt++) {
+        try {
+          await chrome.tabs.remove(msg.tabId);
+          return {};
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (/No tab with id/i.test(message))
+            return {};
+          if (attempt === REMOVE_TAB_ATTEMPTS - 1)
+            throw err;
+          await new Promise((resolve) => setTimeout(resolve, REMOVE_TAB_RETRY_MS));
+        }
+      }
       return {};
     case "activateTab": {
       const tab = await chrome.tabs.get(msg.tabId);
@@ -166,7 +203,7 @@ async function runRpc(msg) {
       return {};
   }
 }
-function handleRelayMessage(raw) {
+function handleRelayMessage(socketRef, raw) {
   let msg;
   try {
     msg = JSON.parse(raw);
@@ -175,7 +212,7 @@ function handleRelayMessage(raw) {
   }
   if (msg.t === "pong")
     return;
-  runRpc(msg).then((result) => post({ t: "rpcResult", id: msg.id, ok: true, result })).catch((err) => {
+  runRpc(msg, socketRef).then((result) => post({ t: "rpcResult", id: msg.id, ok: true, result })).catch((err) => {
     post({ t: "rpcResult", id: msg.id, ok: false, error: err instanceof Error ? err.message : String(err) });
   });
 }
@@ -200,7 +237,7 @@ async function connect() {
   };
   socket.onmessage = (event) => {
     if (typeof event.data === "string")
-      handleRelayMessage(event.data);
+      handleRelayMessage(socket, event.data);
   };
   socket.onclose = () => {
     if (ws !== socket)
@@ -255,13 +292,23 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "omp-relay-keepalive")
     connect();
 });
-chrome.storage.onChanged.addListener((_changes, areaName) => {
+chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local")
+    return;
+  if (Object.keys(changes).every((key) => key === "relayBrowserSession"))
     return;
   ws?.close();
   connect();
 });
 chrome.action.onClicked.addListener(() => void chrome.runtime.openOptionsPage());
 chrome.runtime.onInstalled.addListener(() => void connect());
-chrome.runtime.onStartup.addListener(() => void connect());
+chrome.runtime.onStartup.addListener(() => {
+  // The browser just started, so tab ids from before may be reused: take a
+  // new session id and say hello again with it, replacing a hello already
+  // sent with the old one.
+  void chrome.storage.local.set({ relayBrowserSession: crypto.randomUUID() }).then(() => {
+    ws?.close();
+    connect();
+  });
+});
 connect();
