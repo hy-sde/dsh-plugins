@@ -4,22 +4,24 @@ import { readAsar, sniffAsar } from './asar.ts'
 import { readUInt32LE } from './bytes.ts'
 import { readCab, sniffCab } from './cab.ts'
 import { bzip2Decompress, isBzip2 } from './codecs/bzip2.ts'
-import { gzipDecompress, isGzip } from './codecs/gzip.ts'
+import { gzipDecompressStream, isGzip } from './codecs/gzip.ts'
 import { lzmaAloneDecompress } from './codecs/lzma.ts'
 import { isCompressZ, lzwDecompress } from './codecs/lzw.ts'
 import { isXz, xzDecompress } from './codecs/xz.ts'
-import { isZstd, zstdDecompress } from './codecs/zstd.ts'
+import { isZstd, zstdDecompressStream } from './codecs/zstd.ts'
 import { readCpio, sniffCpio } from './cpio.ts'
 import { readDeb, sniffDeb } from './deb.ts'
 import { readIso, sniffIso } from './iso.ts'
+import { formatBytes } from '../format.ts'
+import { ArchiveError } from './error.ts'
 import { assertInMemorySize } from './limits.ts'
 import { readLzh, sniffLzh } from './lzh.ts'
 import { readRar, sniffRar } from './rar.ts'
 import { readRpm, sniffRpm } from './rpm.ts'
 import { readSevenZip, sniffSevenZip } from './sevenzip.ts'
-import { readAllBytes } from './source.ts'
-import { readTar, readTarEntriesFromBuffer, sniffTar } from './tar.ts'
-import type { ArchiveFormat, ArchiveIndexEntry, FormatReader, MemberSource } from './types.ts'
+import { type ByteSource, readAllBytes } from './source.ts'
+import { readTar, readTarEntriesFromBuffer, readTarEntriesFromStream, sniffTar } from './tar.ts'
+import type { ArchiveFormat, ArchiveIndexEntry, FormatReader, FormatReadOptions, MemberSource } from './types.ts'
 import { readUnixAr, sniffUnixAr } from './unix-ar.ts'
 import { readZip, sniffZip } from './zip.ts'
 
@@ -109,28 +111,63 @@ class BufferMember implements MemberSource {
 function compressedReader(decompress: (bytes: Uint8Array, maxOutput: number) => Promise<Uint8Array>): FormatReader {
   return async (source, options) => {
     assertInMemorySize(source.size, options.limits)
-    const inner = await decompress(await readAllBytes(source), options.limits.maxInMemorySize)
-    assertInMemorySize(inner.byteLength, options.limits)
-    if (sniffTar(inner)) {
-      return readTarEntriesFromBuffer(inner, options)
+    return readDecompressed(await decompress(await readAllBytes(source), options.limits.maxInMemorySize), options)
+  }
+}
+
+/** Index decompressed bytes as tar when they are one, else as a single stem-named member. */
+async function readDecompressed(inner: Uint8Array, options: FormatReadOptions): Promise<ArchiveIndexEntry[]> {
+  assertInMemorySize(inner.byteLength, options.limits)
+  if (sniffTar(inner)) {
+    return readTarEntriesFromBuffer(inner, options)
+  }
+  const entry: ArchiveIndexEntry = {
+    path: stemMemberName(options.archivePath),
+    isDirectory: false,
+    size: inner.byteLength,
+    storage: { type: 'member', source: new BufferMember(inner) },
+  }
+  return [entry]
+}
+
+/**
+ * {@link compressedReader} for codecs that decompress as a stream. Output that
+ * fits `maxInMemorySize` is indexed the same way; a tar that inflates past it
+ * is indexed by a streaming header walk instead, its members decompressed
+ * again when read, so memory stays bounded by the limits either way. Each
+ * pass stops at `maxStreamSize`.
+ */
+function streamedReader(decompress: (source: ByteSource, maxOutput: number) => AsyncIterable<Uint8Array>): FormatReader {
+  return async (source, options) => {
+    const { maxInMemorySize, maxStreamSize } = options.limits
+    const chunks: Uint8Array[] = []
+    let size = 0
+    for await (const chunk of decompress(source, maxStreamSize)) {
+      chunks.push(chunk)
+      size += chunk.byteLength
+      if (size > maxInMemorySize) break
     }
-    const entry: ArchiveIndexEntry = {
-      path: stemMemberName(options.archivePath),
-      isDirectory: false,
-      size: inner.byteLength,
-      storage: { type: 'member', source: new BufferMember(inner) },
+    // Copy out what is needed, then drop the chunks so they are not held alongside it.
+    const kept = Buffer.concat(chunks, size <= maxInMemorySize ? size : Math.min(size, 512))
+    chunks.length = 0
+    if (size <= maxInMemorySize) return readDecompressed(kept, options)
+    // Past the limit only a tar has headers to walk; its first 512-byte block tells.
+    if (!sniffTar(kept)) {
+      throw new ArchiveError(
+        `Archive is too large to read in memory (decompressed > ${formatBytes(maxInMemorySize)} limit)`,
+      )
     }
-    return [entry]
+    return readTarEntriesFromStream(() => decompress(source, maxStreamSize), options)
   }
 }
 
 const READERS: Record<ArchiveFormat, FormatReader> = {
   zip: readZip,
   tar: readTar,
-  'tar.gz': compressedReader(gzipDecompress),
+  'tar.gz': streamedReader(gzipDecompressStream),
   'tar.bz2': compressedReader(bzip2Decompress),
   'tar.xz': compressedReader(xzDecompress),
-  'tar.zst': compressedReader(zstdDecompress),
+  'tar.zst': streamedReader(zstdDecompressStream),
   'tar.Z': compressedReader(lzwDecompress),
   asar: readAsar,
   rar: readRar,
@@ -143,10 +180,10 @@ const READERS: Record<ArchiveFormat, FormatReader> = {
   deb: readDeb,
   lzh: readLzh,
   arj: readArj,
-  gz: compressedReader(gzipDecompress),
+  gz: streamedReader(gzipDecompressStream),
   bz2: compressedReader(bzip2Decompress),
   xz: compressedReader(xzDecompress),
-  zst: compressedReader(zstdDecompress),
+  zst: streamedReader(zstdDecompressStream),
   Z: compressedReader(lzwDecompress),
   lzma: compressedReader(lzmaAloneDecompress),
 }

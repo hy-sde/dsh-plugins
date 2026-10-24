@@ -1,5 +1,8 @@
 import * as fs from 'node:fs/promises'
+import type { FileHandle } from 'node:fs/promises'
 import { statSync } from 'node:fs'
+import { Readable, type Transform } from 'node:stream'
+import { formatBytes } from '../format.ts'
 import { LRUCache } from '../lru.ts'
 import { ArchiveError } from './error.ts'
 
@@ -19,6 +22,97 @@ interface FileByteHandle {
   readRange(start: number, end: number): Promise<Uint8Array>
 }
 
+/** A shared descriptor: refcounted so eviction never closes a handle mid-read. */
+interface SharedFileHandle {
+  handle: FileHandle
+  refs: number
+  /** Set when evicted while reads are outstanding; closed by the last release. */
+  evicted: boolean
+}
+
+/**
+ * Open descriptors reused across ranged reads: streamed decompression issues
+ * one ranged read per chunk, and a whole-file re-read per range turns that
+ * into quadratic disk I/O. The cache bounds the process to a few open
+ * descriptors; identity is revalidated on borrow so a replaced file is never
+ * read through a stale handle (node:fs replacement for Bun.file slices).
+ */
+const FILE_HANDLES = new LRUCache<string, Promise<SharedFileHandle>>({
+  max: 8,
+  dispose: (promise) => {
+    void promise.then(
+      (shared) => {
+        shared.evicted = true
+        if (shared.refs === 0) void shared.handle.close().catch(() => {})
+      },
+      () => {},
+    )
+  },
+})
+
+/** Borrow (opening if needed) the descriptor for `filePath`; call `release()` exactly once. */
+async function borrowFileHandle(filePath: string): Promise<{ handle: FileHandle; release: () => void }> {
+  let pending = FILE_HANDLES.get(filePath)
+  if (!pending) {
+    pending = fs.open(filePath, 'r').then(handle => ({ handle, refs: 0, evicted: false }))
+    FILE_HANDLES.set(filePath, pending)
+    pending.catch(() => {
+      if (FILE_HANDLES.peek(filePath) === pending) FILE_HANDLES.delete(filePath)
+    })
+  }
+  const shared = await pending
+  shared.refs++
+  let released = false
+  return {
+    handle: shared.handle,
+    release() {
+      if (released) return
+      released = true
+      shared.refs--
+      if (shared.evicted && shared.refs === 0) void shared.handle.close().catch(() => {})
+    },
+  }
+}
+
+/** Read exactly `length` bytes at `start`; a short read means truncation. */
+async function readPositional(handle: FileHandle, start: number, length: number): Promise<Uint8Array> {
+  const buffer = new Uint8Array(length)
+  const { bytesRead } = await handle.read(buffer, 0, length, start)
+  if (bytesRead < length) {
+    throw new ArchiveError('Invalid archive: truncated data')
+  }
+  return buffer
+}
+
+/** Ranged read through a reused descriptor, revalidated against the path's identity. */
+async function readRangeValidated(filePath: string, start: number, end: number, attempt: number): Promise<Uint8Array> {
+  const length = end - start
+  const leased = await borrowFileHandle(filePath)
+  try {
+    // Revalidate the descriptor against the path so a replaced file is not
+    // read through a stale handle.
+    const [handleStat, pathStat] = await Promise.all([
+      leased.handle.stat(),
+      fs.stat(filePath).catch(() => null),
+    ])
+    if (!pathStat || handleStat.ino !== pathStat.ino || handleStat.dev !== pathStat.dev || handleStat.size !== pathStat.size) {
+      if (FILE_HANDLES.peek(filePath)) FILE_HANDLES.delete(filePath)
+      if (!pathStat) {
+        // Removed while open: fail the way a full re-read would.
+        await fs.access(filePath)
+        throw new ArchiveError('Invalid archive: truncated data')
+      }
+      if (attempt >= 2) {
+        throw new ArchiveError('Invalid archive: truncated data')
+      }
+      return await readRangeValidated(filePath, start, end, attempt + 1)
+    }
+    return await readPositional(leased.handle, start, length)
+  } finally {
+    leased.release()
+  }
+}
+
 /** Open a file handle kept for lazy ranged reads (node:fs replacement for Bun.file). */
 function openFileHandle(filePath: string): FileByteHandle {
   return {
@@ -32,11 +126,7 @@ function openFileHandle(filePath: string): FileByteHandle {
       }
     },
     async readRange(start, end) {
-      const data = await fs.readFile(filePath)
-      if (end > data.byteLength) {
-        throw new ArchiveError('Invalid archive: truncated data')
-      }
-      return data.subarray(start, end)
+      return readRangeValidated(filePath, start, end, 0)
     },
   }
 }
@@ -92,6 +182,40 @@ export function fileByteSource(filePath: string): ByteSource {
 /** Materialize an entire {@link ByteSource}; use only under a limits check. */
 export async function readAllBytes(source: ByteSource): Promise<Uint8Array> {
   return source.read(0, source.size)
+}
+
+/** Chunk size for streamed decompression, on both the compressed and the decompressed side. */
+export const STREAM_CHUNK_SIZE = 1024 * 1024
+
+async function* readChunks(source: ByteSource): AsyncGenerator<Uint8Array> {
+  for (let start = 0; start < source.size; start += STREAM_CHUNK_SIZE) {
+    yield await source.read(start, Math.min(source.size, start + STREAM_CHUNK_SIZE))
+  }
+}
+
+/**
+ * Decompress a {@link ByteSource} through `decoder` chunk by chunk, so neither
+ * the compressed nor the decompressed stream is ever held whole. Output past
+ * `maxOutput` bytes fails, so a decompression bomb cannot run without bound.
+ */
+export async function* decodeByteSource(source: ByteSource, decoder: Transform, maxOutput: number): AsyncGenerator<Uint8Array> {
+  const input = Readable.from(readChunks(source))
+  input.once('error', error => decoder.destroy(error))
+  let output = 0
+  try {
+    for await (const chunk of input.pipe(decoder)) {
+      output += chunk.byteLength
+      if (output > maxOutput) {
+        throw new ArchiveError(`Archive decompresses past the ${formatBytes(maxOutput)} stream limit`)
+      }
+      yield chunk
+    }
+  } catch (error) {
+    if (error instanceof ArchiveError) throw error
+    throw new ArchiveError(error instanceof Error ? error.message : String(error))
+  } finally {
+    input.destroy()
+  }
 }
 
 /** Options for {@link httpByteSource}. */
