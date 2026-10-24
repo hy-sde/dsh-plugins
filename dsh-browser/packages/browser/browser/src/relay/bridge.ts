@@ -179,6 +179,16 @@ export class RelayBridge {
   #rpcSeq = 0
   #ext: RelaySocket | null = null
   #extInfo: { userAgent: string; browserVersion: string; discardedTabsProtocol?: number } | null = null
+  /**
+   * Browser session named by the last hello, or undefined when the extension
+   * predates the field. A hello from a different session (including one that
+   * stops naming one) retires every known target: Chrome reuses tab ids
+   * across restarts, so a stale target id could otherwise resolve onto a new
+   * tab.
+   */
+  #extBrowserSession: string | undefined = undefined
+  /** True after the first hello; retirement compares scopes only between hellos. */
+  #helloSeen = false
   #pendingRpc = new Map<
     number,
     { resolve: (value: unknown) => void; reject: (err: Error) => void; timer: NodeJS.Timeout }
@@ -319,6 +329,20 @@ export class RelayBridge {
   }
 
   #onHello(msg: Extract<ExtToRelayMessage, { t: 'hello' }>): void {
+    // A hello from a different browser session means Chrome restarted (or the
+    // extension first reported a session): every recorded tab id belongs to
+    // the dead browser and can name a different tab now. Retire them before
+    // the snapshot runs, so nothing keeps driving or closing by an old id.
+    // Extensions without a session degrade safely (no retirement).
+    if (this.#helloSeen && msg.browserSession !== this.#extBrowserSession) {
+      this.#log('extension browser session changed; retiring targets', {
+        from: this.#extBrowserSession,
+        to: msg.browserSession,
+      })
+      for (const tabId of [...this.#tabs.keys()]) this.#onTabRemoved(tabId)
+    }
+    this.#helloSeen = true
+    this.#extBrowserSession = msg.browserSession
     this.#extInfo = {
       userAgent: msg.userAgent,
       browserVersion: msg.browserVersion,
@@ -665,8 +689,20 @@ export class RelayBridge {
           this.#replyError(conn, msg, `No target with id ${String(msg.params?.targetId)}`)
           return
         }
-        await this.#rpc({ op: 'removeTab', tabId: parsed.tabId })
-        this.#reply(conn, msg, { success: true })
+        try {
+          await this.#rpc({ op: 'removeTab', tabId: parsed.tabId })
+          this.#reply(conn, msg, { success: true })
+        } catch (err) {
+          // "No tab with id" — the tab was already closed, which is the
+          // outcome the close asked for, so report success like the
+          // extension's own semantics; any other failure reports an error.
+          const message = err instanceof Error ? err.message : String(err)
+          if (/No tab with id/i.test(message)) {
+            this.#reply(conn, msg, { success: true })
+          } else {
+            this.#replyError(conn, msg, `Failed to close tab ${parsed.tabId}: ${message}`)
+          }
+        }
         return
       }
       case 'Target.activateTarget': {

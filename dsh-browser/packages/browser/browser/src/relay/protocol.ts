@@ -73,6 +73,12 @@ export type ExtToRelayMessage =
     attachedTabIds: number[]
     /** Discarded-tab capability marker; absent on extensions predating it. */
     discardedTabsProtocol?: number
+    /**
+     * Random id for the current browser session: replaced when the browser
+     * starts (Chrome reuses tab ids across restarts). Absent on extensions
+     * predating it, so the relay degrades to session-less scoping.
+     */
+    browserSession?: string
   }
   | { t: 'cdpEvent'; tabId: number; sessionId?: string; method: string; params?: Record<string, unknown> }
   | { t: 'detached'; tabId: number; reason: string }
