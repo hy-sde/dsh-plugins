@@ -1,16 +1,21 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
+## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-rc.3 on npm
+##   (2026-10-24, harness rc.3-parity wave: members 0.2.1-alpha.4 → 0.2.1-rc.3, @deepseek-ai/dsh-*
+##   peers → ^0.2.1-rc.3, vendor pins cordis ~4.0.5 / schemastery ~3.18.5, pnpm-workspace.yaml
+##   minimumReleaseAgeExclude entries || 0.2.1-rc.3. Lane: sync-mirrors push 27/27 fast-forward →
+##   serial per-package release-public.sh --check 43/43 → av-injected NODE_AUTH_TOKEN pnpm publish
+##   in ordered-packages order 21:12-21:18 PDT (npm ingest 04:12:40-04:17:25 UTC), zero real
+##   retries (one false alarm: dsh-vcs 404s were stale CDN packument/tarball cache — npm
+##   publish-over E403 confirmed rc.3 already present).
+##   npm view name@0.2.1-rc.3 verified 43/43.)
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-alpha.4 on npm
 ##   (2026-10-16, harness-parity wave: per-package release-public.sh --check + av-injected
 ##   NODE_AUTH_TOKEN pnpm publish in ordered-packages order 17:58-18:08, zero retries;
 ##   npm view verified 43/43 + check-npm-parity PASS 43/43. Port commit 1f84774: zod pinned 4.4.3
 ##   via pnpm-workspace.yaml overrides, dsh-* peers ^0.2.1-alpha.4, dsh-tool-subagent-report
 ##   migrated to the alpha.4 agentPreset seam.)
-## STAGED (NOT yet published): all 43 members bumped 0.2.1-alpha.4 → 0.2.1-rc.3 (harness
-##   rc.3 parity wave, 2026-10-19; @deepseek-ai/dsh-* peers → ^0.2.1-rc.3). Publish flow when
-##   requested: per-package release-public.sh --check, then av-injected NODE_AUTH_TOKEN
-##   pnpm publish in ordered-packages order (zstd-frame → session-intelligence → code-runtime-kernels).
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-alpha.2 on npm
 ##   (2026-10-12, npm-parity wave via per-package release-public.sh --publish; tarball READMEs +
 ##   ≤255-char descriptions verified 43/43 by tarball audit. Two retries: dsh-tool-memory (stale
