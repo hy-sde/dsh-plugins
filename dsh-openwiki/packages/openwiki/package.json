@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-openwiki",
-  "version": "0.2.1-alpha.4",
+  "version": "0.2.1-rc.3",
   "description": "The OpenWiki 0.4.3 deterministic engine as an in-process DeepSeek Harness library: resumable page-job lifecycle over durable state, Grounded Claims + evidence resolver, OKF front matter validation/repair, Mermaid + wiki-link checks behind a WikiFs seam.",
   "type": "module",
   "main": "./dist/index.js",
