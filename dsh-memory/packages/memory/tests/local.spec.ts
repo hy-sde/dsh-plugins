@@ -346,6 +346,12 @@ describe('addressable entry reads (readEntry/listEntries)', () => {
     const fs = await import('node:fs/promises')
     await fs.mkdir(projectRootOf(root, CWD), { recursive: true })
     await fs.writeFile(join(projectRootOf(root, CWD), SUMMARY_FILE), '# Summary\n\n- decisions: use vitest')
+    // listEntries orders by updatedAt (ms). Under suite load both saves can land
+    // in the SAME millisecond, and the stable sort then keeps append order, so
+    // `first` would win ids[0]. Force the clock forward (setTimeout never fires
+    // early) so `second` is strictly newer and the newest-first assertion is
+    // deterministic.
+    await new Promise(resolve => setTimeout(resolve, 2))
     const second = await backend.save({ cwd: CWD }, { content: 'second entry' })
 
     const entries = await backend.listEntries({ cwd: CWD }, 10)
