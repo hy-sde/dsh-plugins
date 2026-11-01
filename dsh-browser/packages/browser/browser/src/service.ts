@@ -76,6 +76,22 @@ interface TabEntry {
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+/**
+ * Bounded settle before the one rerun of an observation read that lost its
+ * document to a navigation: enough for a typical navigation to finish
+ * parsing, small enough that a navigation which never commits holds the call
+ * only briefly (oh-my-pi 01326d9aa2 caps the equivalent wait at 5 s).
+ */
+const NAVIGATION_SETTLE_TIMEOUT_MS = 5_000
+
+/**
+ * Error signatures of a page read whose execution context a navigation took:
+ * Playwright reports the document destroyed mid-call, and the relay forwards
+ * chrome.debugger's refusal for an already-gone document (oh-my-pi
+ * 01326d9aa2). Conservative by design — only these signatures rerun.
+ */
+const NAVIGATION_CONTEXT_LOSS_RE = /Execution context was destroyed|Cannot find context with specified id/
+
 /** One browser connection per (cwd + kind), one tab per name. */
 export class BrowserService extends Service {
   private readonly browserPath: string | undefined
@@ -480,9 +496,19 @@ export class BrowserService extends Service {
     return this.observePage(tab.page)
   }
 
-  /** Observe a page: title, url, size, and the ARIA snapshot. */
+  /**
+   * Observe a page: title, url, size, and the ARIA snapshot. The reads
+   * survive one mid-read navigation: when the read's document is replaced (a
+   * click that followed a link or submitted a form), the read reruns once on
+   * the settled new document.
+   */
   private async observePage(page: PlaywrightPage): Promise<PageObservation> {
-    const [title, aria] = await Promise.all([page.title().catch(() => ''), captureAriaSnapshot(page, null, {})])
+    const [title, aria] = await retryOnceOnNavigationContextLoss(
+      () => Promise.all([page.title().catch(() => ''), captureAriaSnapshot(page, null, {})]),
+      // domcontentloaded: the new document is parsed (its context exists); the
+      // snapshot needs no subresources, so don't wait out the full load.
+      () => page.waitForLoadState('domcontentloaded', { timeout: NAVIGATION_SETTLE_TIMEOUT_MS }).catch(() => undefined),
+    )
     const url = page.url()
     const viewport = page.viewportSize()
     return {
@@ -530,6 +556,50 @@ export function mayForgetClosedBrowser(
 ): boolean {
   if (pid === undefined) return true
   return !isAlive(pid)
+}
+
+/**
+ * Whether a failed page read lost its execution context because a navigation
+ * replaced or removed the document it targeted: Playwright reports the
+ * context destroyed mid-call, and the relay forwards chrome.debugger's
+ * refusal for an already-gone document (oh-my-pi 01326d9aa2).
+ * @param error - the read's rejection reason.
+ * @returns true when the error matches a navigation context-loss signature.
+ */
+export function isNavigationContextLossError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return NAVIGATION_CONTEXT_LOSS_RE.test(message)
+}
+
+/**
+ * Run one page read, rerunning it ONCE when a navigation destroyed the read's
+ * execution context mid-call: wait for the new document to finish parsing
+ * (bounded by {@link NAVIGATION_SETTLE_TIMEOUT_MS}), then read the new
+ * document. Only the context-loss signatures rerun
+ * ({@link isNavigationContextLossError}); any other error propagates
+ * unchanged, and a failed rerun surfaces the original error. Never wrap user
+ * code (`run`): a rerun would execute its side effects twice.
+ * @param read - the page read to protect.
+ * @param settle - bounded wait for the new document; must not reject.
+ * @returns the read's value, from the settled document after a rerun.
+ */
+export async function retryOnceOnNavigationContextLoss<T>(
+  read: () => Promise<T>,
+  settle: () => Promise<unknown>,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (!isNavigationContextLossError(error)) throw error
+    try {
+      await settle()
+      return await read()
+    } catch {
+      // The rerun is best-effort repair of the interrupted read; its own
+      // failure must not mask the error that triggered it.
+      throw error
+    }
+  }
 }
 
 export { captureAriaSnapshot, resolveAriaRefElement } from './aria.ts'
