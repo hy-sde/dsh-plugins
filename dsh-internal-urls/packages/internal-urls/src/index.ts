@@ -11,8 +11,8 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { SandboxExecutionPolicy } from '@deepseek-ai/dsh-sandbox'
-import type {} from '@deepseek-ai/dsh-fs'
-import { ConflictHistory, ConflictProtocolHandler } from './conflict.ts'
+import { FsError } from '@deepseek-ai/dsh-fs'
+import { CONFLICT_BINARY_SAMPLE_BYTES, ConflictHistory, ConflictProtocolHandler, trimToCodepointBoundary } from './conflict.ts'
 import type { ConflictFileBridge } from './conflict.ts'
 import { defaultRepoFromCwd } from './gh.ts'
 import { IssueProtocolHandler, PrProtocolHandler, gitHubCliOf } from './issue-pr.ts'
@@ -113,6 +113,36 @@ function conflictFileBridgeOf(ctx: Context): ConflictFileBridge {
     async readFile(absolutePath: string, signal?: AbortSignal): Promise<string> {
       const target = await ctx.fs.resolve(absolutePath, signal !== undefined ? { signal } : undefined)
       return ctx.fs.readText(target, signal)
+    },
+    async readFileCapped(
+      absolutePath: string,
+      maxLength: number,
+      signal?: AbortSignal,
+    ): Promise<{ text: string; truncatedAtLine?: number }> {
+      const target = await ctx.fs.resolve(absolutePath, signal !== undefined ? { signal } : undefined)
+      const info = await ctx.fs.stat(target, signal)
+      if (info === undefined) throw new FsError(`cannot read "${absolutePath}": not found`, 'FS_NOT_FOUND')
+      if (info.type !== 'file') throw new FsError(`cannot read "${absolutePath}": not a regular file`, 'FS_NOT_REGULAR_FILE')
+      if (info.size === undefined || info.size <= maxLength) {
+        // Under the cap readText keeps fs-local parity: binary and invalid
+        // UTF-8 fail FS_NOT_TEXT exactly like a plain read.
+        return { text: await ctx.fs.readText(target, signal) }
+      }
+      // Mirror the capped :conflicts scan: byte range, binary sniff, strict
+      // decode over the last complete codepoint boundary. Errors match the
+      // plain-read codes so reconciliation's missing-file check and the
+      // tool result surface behave identically.
+      const bytes = await ctx.fs.readByteRange(target, { offset: 0, length: maxLength }, signal)
+      if (bytes.subarray(0, CONFLICT_BINARY_SAMPLE_BYTES).includes(0)) {
+        throw new FsError(`cannot read "${absolutePath}": binary file`, 'FS_NOT_TEXT')
+      }
+      let text: string
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(trimToCodepointBoundary(bytes))
+      } catch {
+        throw new FsError(`cannot read "${absolutePath}": invalid UTF-8 text`, 'FS_NOT_TEXT')
+      }
+      return { text, truncatedAtLine: text.split('\n').length }
     },
     async writeFile(absolutePath: string, content: string, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void> {
       const target = await ctx.fs.resolve(absolutePath, signal !== undefined ? { signal } : undefined)

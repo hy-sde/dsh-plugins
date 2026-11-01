@@ -52,8 +52,9 @@ function resolveSource(input: ArchiveSource): ResolvedArchiveSource {
 
 /**
  * Open an archive for browsing and member reads. File- and source-backed
- * containers with random-access layouts (ZIP, ASAR, RAR, 7z, ISO, CAB) index
- * lazily; stream containers (tar family, cpio, ar) buffer once under limits.
+ * containers with random-access layouts (TAR, ZIP, ASAR, RAR, 7z, ISO, CAB)
+ * index lazily; stream containers (compressed tar, cpio, ar) buffer once
+ * under limits.
  */
 export async function openArchive(input: ArchiveSource, options: OpenArchiveOptions = {}): Promise<ArchiveReader> {
   const { source, format, archivePath } = resolveSource(input)

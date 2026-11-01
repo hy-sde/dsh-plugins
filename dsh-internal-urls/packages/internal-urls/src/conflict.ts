@@ -15,11 +15,60 @@
  */
 
 import type { InternalResource, ParsedInternalUrl, ProtocolHandler, ResolveContext, WriteContext } from './types.ts'
+import { FsError } from '@deepseek-ai/dsh-fs'
 
 const OURS_PREFIX = '<<<<<<<'
 const BASE_PREFIX = '|||||||'
 const SEPARATOR = '======='
 const THEIRS_PREFIX = '>>>>>>>'
+
+/**
+ * Byte cap for whole-file conflict scans — the `<path>:conflicts` summary read
+ * and the capped reconciliation reads. Matches the read pipeline's stream
+ * threshold: past the cap, blocks are not counted or registered, and
+ * reconciliation leaves already-registered ones alone.
+ */
+export const CONFLICT_SCAN_MAX_BYTES = 10 * 1024 * 1024
+
+/**
+ * Binary-sample window for capped conflict reads, matching fs-local's
+ * readText binary sniff (fsio.ts BINARY_SAMPLE_BYTES = 8192).
+ */
+export const CONFLICT_BINARY_SAMPLE_BYTES = 8192
+
+/**
+ * Trim a byte prefix back to the last complete UTF-8 codepoint boundary: a
+ * byte-capped read can cut a multi-byte sequence mid-way, and the strict
+ * decoder (fatal: true) would reject the incomplete tail as invalid UTF-8
+ * even though the underlying file is valid.
+ */
+export function trimToCodepointBoundary(bytes: Uint8Array): Uint8Array {
+  let end = bytes.length
+  let back = 0
+  // Walk back over up to 3 continuation bytes (10xxxxxx) to the last lead byte.
+  while (back < 4 && end > 0 && ((bytes[end - 1] ?? 0) & 0xc0) === 0x80) {
+    end -= 1
+    back += 1
+  }
+  if (back === 0) {
+    // The cap can also land immediately after a lead byte with no
+    // continuation bytes in the prefix ('616263E4' from 'abc中'): the
+    // incomplete sequence must be dropped too. Bytes outside the valid
+    // lead range stay so the fatal decoder reports them.
+    const lead = bytes[end - 1] ?? 0
+    if (lead >= 0xc2 && lead <= 0xf4) return bytes.subarray(0, end - 1)
+    return bytes
+  }
+  const lead = bytes[end - 1] ?? 0
+  // Expected sequence length from the lead byte; a continuation byte here
+  // (4+ continuations, already invalid) decodes expected 1 and stays put so
+  // the fatal decoder reports it.
+  const expected = lead >= 0xf0 ? 4 : lead >= 0xe0 ? 3 : lead >= 0xc0 ? 2 : 1
+  // Complete when the walked-back continuations fill the sequence (back
+  // counts continuation bytes; the lead adds one), over-trim otherwise.
+  if (back + 1 < expected) return bytes.subarray(0, end - 1)
+  return bytes
+}
 
 /** One completed conflict block with its marker line numbers and side bodies. */
 export interface ConflictBlock {
@@ -153,7 +202,9 @@ export interface ConflictEntry extends ConflictBlock {
  * Per-session log of conflict regions surfaced by `read`/`:conflicts`. The
  * history is append-only by content identity: re-reading a still-present block
  * reuses its id, so retries never depend on re-reading even after other blocks
- * in the file resolve.
+ * in the file resolve. {@link ConflictHistory.reconcilePath} re-checks ids
+ * against the live file: unchanged blocks follow line shifts, changed or
+ * vanished ones are retired.
  */
 export class ConflictHistory {
   private nextId = 1
@@ -162,6 +213,13 @@ export class ConflictHistory {
   register(input: Omit<ConflictEntry, 'id'>): ConflictEntry {
     for (const existing of this.#entries.values()) {
       if (existing.absolutePath === input.absolutePath && existing.startLine === input.startLine) {
+        // An id is reused only for the same block at the same position: a
+        // changed block must never inherit the old id, or a write aimed at
+        // stale content would splice the wrong region.
+        if (!conflictRegionsEqual(existing, input)) {
+          this.#entries.delete(existing.id)
+          continue
+        }
         const merged: ConflictEntry = { ...input, id: existing.id }
         this.#entries.set(existing.id, merged)
         return merged
@@ -193,7 +251,69 @@ export class ConflictHistory {
       if (entry.absolutePath === absolutePath) this.#entries.delete(id)
     }
   }
+
+  /**
+   * Re-check this path's entries against a fresh scan of the file: unchanged
+   * blocks follow line shifts (keeping their ids), changed or vanished ones
+   * are retired, and a different block at a recorded position gets a fresh id
+   * on the next `register`. Blocks at or past a capped scan's
+   * `truncatedAtLine` are left untouched — the scan cannot disprove them.
+   */
+  reconcilePath(absolutePath: string, scan: ConflictFileScan): void {
+    const entries = this.entries().filter(entry => entry.absolutePath === absolutePath)
+    const available = new Set(scan.blocks)
+    const matched = new Map<ConflictEntry, ConflictBlock>()
+    // Unchanged blocks at their recorded position keep their ids.
+    for (const entry of entries) {
+      for (const block of available) {
+        if (block.startLine !== entry.startLine || !conflictRegionsEqual(entry, block)) continue
+        matched.set(entry, block)
+        available.delete(block)
+        break
+      }
+    }
+    // Unchanged blocks that shifted follow the nearest equal block.
+    for (const entry of entries) {
+      if (matched.has(entry)) continue
+      let best: ConflictBlock | undefined
+      let bestDistance = Number.POSITIVE_INFINITY
+      for (const block of available) {
+        if (!conflictRegionsEqual(entry, block)) continue
+        const distance = Math.abs(block.startLine - entry.startLine)
+        if (distance >= bestDistance) continue
+        best = block
+        bestDistance = distance
+      }
+      if (best !== undefined) {
+        matched.set(entry, best)
+        available.delete(best)
+      }
+    }
+    for (const entry of entries) {
+      const block = matched.get(entry)
+      if (block === undefined) {
+        if (scan.truncatedAtLine !== undefined && entry.endLine >= scan.truncatedAtLine) continue
+        // A windowed read records wide lines cut to the read pipeline's
+        // column cap with a truncation suffix; such a recorded region can
+        // never equal the live text (findRegisteredBlocks drops over-length
+        // lines), so retiring it would make a still-live wide-line conflict
+        // unaddressable — every re-read would register and then retire it.
+        // Leave it registered: the scan cannot disprove a cut region.
+        if (buildRecordedRegion(entry).some(line => WIDE_LINE_CUT_RE.test(line))) continue
+        this.#entries.delete(entry.id)
+        continue
+      }
+      this.#entries.set(entry.id, { ...entry, ...block })
+    }
+  }
 }
+
+/**
+ * A read-pipeline column-cut line suffix (tool-fs read-render.ts truncateLine):
+ * windowed reads record wide conflict lines cut to the column cap plus this
+ * marker, and such a recorded region can never match the live text.
+ */
+const WIDE_LINE_CUT_RE = /\.\.\. \(line truncated to \d+ chars\)$/
 
 /** A side of a conflict block addressable as `conflict://N/<scope>`. */
 export type ConflictScope = 'ours' | 'theirs' | 'base'
@@ -361,6 +481,87 @@ function buildRecordedRegion(entry: ConflictBlock): string[] {
   out.push(...entry.theirsLines)
   out.push(`${THEIRS_PREFIX}${entry.theirsLabel ? ` ${entry.theirsLabel}` : ''}`)
   return out
+}
+
+/** Result of scanning a file for conflict blocks, with the scan cap when hit. */
+export interface ConflictFileScan {
+  blocks: ConflictBlock[]
+  /**
+   * 1-indexed line at which a byte-capped scan stopped; blocks at or past
+   * this line are neither confirmed nor retired by reconciliation.
+   */
+  truncatedAtLine?: number
+}
+
+/** Region equality: identical recorded marker blocks (labels and side bodies). */
+export function conflictRegionsEqual(a: ConflictBlock, b: ConflictBlock): boolean {
+  const regionA = buildRecordedRegion(a)
+  const regionB = buildRecordedRegion(b)
+  if (regionA.length !== regionB.length) return false
+  return regionA.every((line, index) => line === regionB[index])
+}
+
+/**
+ * Find the registered blocks in a file's text, bounded by the widest
+ * registered block: a line longer than any recorded line (plus a trailing
+ * `\r`) cannot belong to one, and the walk stops once every entry is
+ * confirmed at its recorded start line. Upstream streams the file; the fork
+ * reads the whole text through the bridge, and these bounds keep a
+ * pathological file to one linear pass.
+ */
+function findRegisteredBlocks(text: string, entries: readonly ConflictEntry[]): ConflictBlock[] {
+  const regions = new Set<string>()
+  const unconfirmed = new Map<number, string>()
+  let maxLines = 0
+  let maxLineLength = 0
+  for (const entry of entries) {
+    const region = buildRecordedRegion(entry)
+    const key = region.join('\n')
+    regions.add(key)
+    unconfirmed.set(entry.startLine, key)
+    maxLines = Math.max(maxLines, region.length)
+    for (const line of region) maxLineLength = Math.max(maxLineLength, line.length)
+  }
+  // Recorded lines are LF-normalized; file lines may carry a trailing `\r`.
+  maxLineLength += 1
+
+  const found: ConflictBlock[] = []
+  let candidate: string[] = []
+  let candidateStart = 0
+  /** One line (`null` when over the length bound); true once all are confirmed. */
+  const feed = (raw: string | null, lineNumber: number): boolean => {
+    const line = raw === null ? null : stripTrailingCr(raw)
+    if (line !== null && matchMarker(line, OURS_PREFIX) !== null) {
+      candidate = [line]
+      candidateStart = lineNumber
+      return false
+    }
+    if (candidate.length === 0) return false
+    if (line === null || candidate.length === maxLines) {
+      candidate = []
+      return false
+    }
+    candidate.push(line)
+    if (matchMarker(line, THEIRS_PREFIX) === null) return false
+    const block = scanConflictLines(candidate, candidateStart)[0]
+    candidate = []
+    if (block === undefined) return false
+    const key = buildRecordedRegion(block).join('\n')
+    if (!regions.has(key)) return false
+    found.push(block)
+    if (unconfirmed.get(block.startLine) === key) unconfirmed.delete(block.startLine)
+    return unconfirmed.size === 0
+  }
+  // Match discovery's decoder: a leading BOM never reaches the marker scan.
+  const body = text.startsWith('\uFEFF') ? text.slice(1) : text
+  const lines = body.split('\n')
+  for (let index = 0; index < lines.length; index++) {
+    // A trailing newline leaves a phantom empty element the stream never yields.
+    if (index === lines.length - 1 && lines[index] === '') break
+    const line = lines[index] ?? ''
+    if (feed(line.length > maxLineLength ? null : line, index + 1)) break
+  }
+  return found
 }
 
 function locateRegion(
@@ -541,15 +742,21 @@ export function formatConflictWarning(entries: readonly ConflictEntry[]): string
   return out.join('\n')
 }
 
+/** Note appended when the conflict scan stopped at its byte cap at `line`. */
+export function formatScanCapNote(displayPath: string, line: number): string {
+  return `- note: the conflict scan stopped at the byte cap at line ${line}; blocks from there on are not counted or registered here — read \`${displayPath}\` again with offset ${line} to show and register them.`
+}
+
 /**
  * Render a one-line-per-block index of every registered conflict. Used by the
  * `<path>:conflicts` read selector to give the agent a cheap overview of a
  * heavily-conflicted file without dumping every body.
  */
-export function formatConflictSummary(entries: readonly ConflictEntry[], displayPath: string): string {
+export function formatConflictSummary(entries: readonly ConflictEntry[], displayPath: string, truncatedAtLine?: number): string {
   const lines: string[] = []
   const total = entries.length
   lines.push(`⚠ ${total} unresolved ${total === 1 ? 'conflict' : 'conflicts'} in ${displayPath || '<file>'}`)
+  if (truncatedAtLine !== undefined) lines.push(formatScanCapNote(displayPath, truncatedAtLine))
   const oursLabel = pickLabel(entries, e => e.oursLabel)
   const theirsLabel = pickLabel(entries, e => e.theirsLabel)
   const baseLabel = pickLabel(entries, e => (e.baseLines !== undefined ? e.baseLabel : undefined))
@@ -581,8 +788,58 @@ export function formatConflictSummary(entries: readonly ConflictEntry[], display
 export interface ConflictFileBridge {
   /** Read the whole current file text at `absolutePath`. */
   readFile(absolutePath: string, signal?: AbortSignal): Promise<string>
+  /**
+   * Read at most `maxLength` bytes of `absolutePath`, stopping at the last
+   * complete codepoint boundary. `truncatedAtLine` is the 1-indexed line the
+   * prefix ends on (the line count of the decoded text), so reconciliation can
+   * preserve blocks it could not see. When absent, reconciliation falls back
+   * to a whole-file `readFile`.
+   */
+  readFileCapped?(absolutePath: string, maxLength: number, signal?: AbortSignal): Promise<{ text: string; truncatedAtLine?: number }>
   /** Replace `absolutePath` with `content` (unconditional atomic write). */
   writeFile(absolutePath: string, content: string, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
+}
+
+/**
+ * Re-check registered ids against the live files — all of them, or only
+ * `absolutePath` when given: unchanged blocks keep their ids across line
+ * shifts, changed or vanished blocks are retired, and a missing file retires
+ * every id it registered.
+ */
+export async function reconcileRegisteredConflicts(
+  history: ConflictHistory,
+  bridge: ConflictFileBridge,
+  absolutePath?: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const byPath = new Map<string, ConflictEntry[]>()
+  for (const entry of history.entries()) {
+    if (absolutePath !== undefined && entry.absolutePath !== absolutePath) continue
+    const group = byPath.get(entry.absolutePath)
+    if (group === undefined) byPath.set(entry.absolutePath, [entry])
+    else group.push(entry)
+  }
+  for (const [file, entries] of byPath) {
+    try {
+      // Prefer the capped read: conflict:// accesses re-check on every use,
+      // and a whole-file read of a large registered file would pay full
+      // bytes+decode each time. Past-cap blocks are preserved by
+      // reconcilePath via truncatedAtLine.
+      const scan = bridge.readFileCapped === undefined
+        ? { text: await bridge.readFile(file, signal) }
+        : await bridge.readFileCapped(file, CONFLICT_SCAN_MAX_BYTES, signal)
+      const blocks = findRegisteredBlocks(scan.text, entries)
+      history.reconcilePath(file, scan.truncatedAtLine === undefined ? { blocks } : { blocks, truncatedAtLine: scan.truncatedAtLine })
+    } catch (error) {
+      if (!isMissingFileError(error)) throw error
+      history.invalidatePath(file)
+    }
+  }
+}
+
+/** Missing-file classification for reconciliation: the ENOENT/ENOTDIR analogs. */
+function isMissingFileError(error: unknown): boolean {
+  return error instanceof FsError && (error.code === 'FS_NOT_FOUND' || error.code === 'FS_NOT_DIRECTORY')
 }
 
 /** Context in which the handler mutates files; carries the session key. */
@@ -615,7 +872,7 @@ export class ConflictProtocolHandler implements ProtocolHandler {
     bridge: ConflictFileBridge
   }) {}
 
-  resolve(url: ParsedInternalUrl, context?: ResolveContext): Promise<InternalResource> {
+  async resolve(url: ParsedInternalUrl, context?: ResolveContext): Promise<InternalResource> {
     const raw = url.rawHref
     const parsed = parseConflictUri(raw)
     if (parsed === null) {
@@ -623,38 +880,55 @@ export class ConflictProtocolHandler implements ProtocolHandler {
     }
     const history = this.deps.historyFor(context?.sessionKey)
     if (parsed.id === '*') {
+      // The wildcard summary claims live state: retire stale ids first.
+      await reconcileRegisteredConflicts(history, this.deps.bridge, undefined, context?.signal)
       const entries = history.entries()
       const content = entries.length === 0
         ? 'No conflicts registered in this session yet. Read the conflicted file first to register its conflicts.'
         : formatConflictSummary(entries, 'all files')
-      return Promise.resolve({
+      return {
         url: url.href,
         content,
         contentType: 'text/plain',
         size: Buffer.byteLength(content, 'utf-8'),
         notes: entries.length === 0 ? [] : [`${entries.length} registered conflict${entries.length === 1 ? '' : 's'}`],
-      })
+      }
     }
-    const entry = history.get(parsed.id)
-    if (entry === undefined) {
-      const available = history.entries()
-      const hint = available.length > 0
-        ? ` Registered ids: ${available.map(e => e.id).join(', ')}.`
-        : ' No conflicts are registered in this session yet — read the conflicted file first.'
-      throw new Error(`Conflict #${parsed.id} is not registered in this session.${hint}`)
-    }
+    const entry = await this.requireEntry(history, parsed.id, context?.signal)
     const { lines } = renderConflictRegion(entry, parsed.scope)
     const content = lines.join('\n')
     const scopeNote = parsed.scope !== undefined
       ? `Showing ${parsed.scope} side of conflict #${parsed.id} in ${entry.displayPath}`
       : `Conflict #${parsed.id} in ${entry.displayPath} (file lines ${entry.startLine}-${entry.endLine})`
-    return Promise.resolve({
+    return {
       url: url.href,
       content,
       contentType: 'text/plain',
       size: Buffer.byteLength(content, 'utf-8'),
       notes: [scopeNote, 'Resolve with `write({ path: "conflict://' + String(parsed.id) + '", content })`. Writes replace ONLY the marker block.'],
-    })
+    }
+  }
+
+  /**
+   * Look up a registered id after re-checking its file: unchanged blocks keep
+   * their ids across line shifts, while resolved, stale, or never-shown ids
+   * error. Only the addressed block's file is re-checked — other files keep
+   * their ids until they are addressed in turn.
+   */
+  private async requireEntry(history: ConflictHistory, id: number, signal?: AbortSignal): Promise<ConflictEntry> {
+    const registered = history.get(id)
+    if (registered !== undefined) {
+      await reconcileRegisteredConflicts(history, this.deps.bridge, registered.absolutePath, signal)
+    }
+    const entry = history.get(id)
+    if (entry === undefined) {
+      const available = history.entries()
+      const hint = available.length > 0
+        ? ` Registered ids: ${available.map(e => e.id).join(', ')}.`
+        : ' No conflicts are registered in this session yet — read the conflicted file first.'
+      throw new Error(`Conflict #${id} is not registered in this session — it may have been resolved, become stale, or no \`read\` has shown its block yet.${hint}`)
+    }
+    return entry
   }
 
   async write(url: ParsedInternalUrl, content: string, context?: WriteContext): Promise<void> {
@@ -676,19 +950,15 @@ export class ConflictProtocolHandler implements ProtocolHandler {
       await this.writeBulk(history, content, cw)
       return
     }
-    const entry = history.get(parsed.id)
-    if (entry === undefined) {
-      const available = history.entries()
-      const hint = available.length > 0
-        ? ` Registered ids: ${available.map(e => e.id).join(', ')}.`
-        : ' No conflicts are registered in this session yet — read the conflicted file first.'
-      throw new Error(`Conflict #${parsed.id} is not registered in this session.${hint}`)
-    }
+    const entry = await this.requireEntry(history, parsed.id, cw.signal)
     await this.resolveEntry(entry, expandContentTokens(content, entry), cw)
   }
 
   /** Apply the same (token-expanded) content to every registered block. */
   private async writeBulk(history: ConflictHistory, content: string, cw: HandlerWriteContext): Promise<void> {
+    // Re-check every registered file first: stale ids are retired before the
+    // bulk body is parsed, and shifted blocks keep their ids.
+    await reconcileRegisteredConflicts(history, this.deps.bridge, undefined, cw.signal)
     const entries = history.entries()
     if (entries.length === 0) {
       throw new Error('conflict://* has nothing to resolve: no conflicts are registered in this session yet. Read the conflicted file first.')
@@ -708,7 +978,10 @@ export class ConflictProtocolHandler implements ProtocolHandler {
       if (history.get(id) !== undefined) perId.set(id, match[2] ?? '')
     }
     const shared = sharedLines.join('\n')
-    for (const entry of entries) {
+    for (const original of entries) {
+      // Earlier splices re-check the file and may refresh later entries.
+      const entry = history.get(original.id)
+      if (entry === undefined) continue
       if (perId.has(entry.id)) {
         await this.resolveEntry(entry, expandContentTokens(perId.get(entry.id) ?? '', entry), cw)
       } else if (shared !== '') {
@@ -720,8 +993,18 @@ export class ConflictProtocolHandler implements ProtocolHandler {
   private async resolveEntry(entry: ConflictEntry, replacementBody: string, cw: HandlerWriteContext): Promise<void> {
     const signal = cw.signal
     const original = await this.deps.bridge.readFile(entry.absolutePath, signal)
-    const splat = spliceConflict(original, entry, replacementBody)
-    await this.deps.bridge.writeFile(entry.absolutePath, splat.text, signal, cw.sandboxPolicy)
-    this.deps.historyFor(cw.sessionKey).invalidate(entry.id)
+    // Match BOM-blind like the recorded entry and the reconcile scan, but
+    // write the byte back: the :conflicts summary strips the BOM before
+    // scanning, so a line-1 block of a BOM-prefixed file registers without
+    // it — spliceConflict over the raw text would never match and every
+    // resolve would loop on "re-read it to re-register conflicts".
+    const hadBom = original.startsWith('\uFEFF')
+    const splat = spliceConflict(hadBom ? original.slice(1) : original, entry, replacementBody)
+    await this.deps.bridge.writeFile(entry.absolutePath, hadBom ? `\uFEFF${splat.text}` : splat.text, signal, cw.sandboxPolicy)
+    const history = this.deps.historyFor(cw.sessionKey)
+    history.invalidate(entry.id)
+    // Re-align the remaining ids with the spliced text: blocks below the
+    // resolved one shift up and keep their ids.
+    history.reconcilePath(entry.absolutePath, { blocks: scanConflictsInContent(splat.text) })
   }
 }
