@@ -13,11 +13,15 @@ import type { FsTarget } from '@deepseek-ai/dsh-fs'
 import { FsError } from '@deepseek-ai/dsh-fs'
 import type { InternalUrlsService } from '@hy-sde-org/dsh-internal-urls'
 import {
+  CONFLICT_BINARY_SAMPLE_BYTES,
+  CONFLICT_SCAN_MAX_BYTES,
   ConflictHistory,
   formatConflictSummary,
   formatConflictWarning,
+  formatScanCapNote,
   scanConflictsInContent,
   scanConflictLines,
+  trimToCodepointBoundary,
 } from '@hy-sde-org/dsh-internal-urls/conflict'
 import type { ToolExecution } from '@deepseek-ai/dsh-tools'
 import { buildWindow } from './read-render.ts'
@@ -111,18 +115,50 @@ async function readConflictSummary(
   const info = await ctx.fs.stat(target, exec.signal)
   if (info === undefined) throw new FsError(`cannot read "${base}": not found`, 'FS_NOT_FOUND')
   if (info.type !== 'file') throw new FsError(`cannot read "${base}": not a regular file`, 'FS_NOT_REGULAR_FILE')
-  const content = await ctx.fs.readText(target, exec.signal)
-  const blocks = scanConflictsInContent(content)
+  // Bounded scan: a byte cap keeps pathological files cheap, and blocks past
+  // the cap are neither listed nor retired here (reconcilePath preserves them).
+  const truncated = info.size !== undefined && info.size > CONFLICT_SCAN_MAX_BYTES
+  let text: string
+  let truncatedAtLine: number | undefined
+  if (truncated) {
+    const bytes = await ctx.fs.readByteRange(target, { offset: 0, length: CONFLICT_SCAN_MAX_BYTES }, exec.signal)
+    // The raw byte path has no readText binary check: mirror fs-local's sniff
+    // so a binary file still fails with FS_NOT_TEXT instead of decoding to
+    // mojibake and reporting a misleading "no unresolved conflicts" success.
+    if (bytes.subarray(0, CONFLICT_BINARY_SAMPLE_BYTES).includes(0)) {
+      throw new FsError(`cannot read "${base}": binary file`, 'FS_NOT_TEXT')
+    }
+    // Decode strictly like readText below the cap: invalid UTF-8 is an error
+    // (FS_NOT_TEXT), not silently-replaced mojibake (fsio.ts notTextError).
+    // A byte cap can split a multi-byte sequence at the prefix end; trim back
+    // to the last complete codepoint boundary first, or a valid file whose cap
+    // byte falls inside a sequence is spuriously rejected (fs-local's
+    // streaming decoder carries partial sequences across chunks).
+    try {
+      text = new TextDecoder('utf-8', { fatal: true }).decode(trimToCodepointBoundary(bytes))
+    } catch {
+      throw new FsError(`cannot read "${base}": invalid UTF-8 text`, 'FS_NOT_TEXT')
+    }
+    truncatedAtLine = text.split('\n').length
+  } else {
+    // Keep readText (not raw bytes) so a binary file still fails with FS_NOT_TEXT.
+    text = await ctx.fs.readText(target, exec.signal)
+  }
+  if (text.startsWith('﻿')) text = text.slice(1)
+  const blocks = scanConflictsInContent(text)
   const history = iu.conflicts(sessionKeyOf(exec))
   const absolutePath = ctx.fs.processPath(target)
+  history.reconcilePath(absolutePath, truncatedAtLine !== undefined ? { blocks, truncatedAtLine } : { blocks })
   const entries = blocks.map(block => history.register({
     ...block,
     absolutePath,
     displayPath: base,
   }))
   const summary = entries.length === 0
-    ? `No unresolved conflicts in ${base}.`
-    : formatConflictSummary(entries, base)
+    ? truncatedAtLine !== undefined
+      ? `No unresolved conflicts before line ${truncatedAtLine} of ${base}.\n${formatScanCapNote(base, truncatedAtLine)}`
+      : 'No unresolved conflicts in ' + base + '.'
+    : formatConflictSummary(entries, base, truncatedAtLine)
   const window = await buildWindow(
     [summary],
     { offset: request.offset, limit: request.limit, maxLineLength: caps.maxLineLength, maxBytes: caps.maxBytes },
