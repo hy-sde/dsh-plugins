@@ -1,12 +1,15 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
-## BUMPED (not yet published): all 43 @hy-sde-org/dsh-* workspace packages to 0.2.1-rc.5
+## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-rc.5 on npm
 ##   (2026-11-01, harness rc.5-parity wave: members 0.2.1-rc.3/.1 → 0.2.1-rc.5, @deepseek-ai/dsh-*
 ##   peers → ^0.2.1-rc.5, pnpm-workspace.yaml minimumReleaseAgeExclude || 0.2.1-rc.5. Vendor pins
 ##   unchanged: cordis ~4.0.5 / include ~1.0.10 / loader ~1.0.6 / zod 4.4.3 override — all still
-##   current at harness rc.5. Publish lane pending: sync-mirrors → per-package release-public.sh
-##   --check → av-injected NODE_AUTH_TOKEN pnpm publish in ordered-packages order.)
+##   current at harness rc.5. Lane: main pushed 43ff63f → sync-mirrors 27/27 fast-forward →
+##   av-injected (+NODE_AUTH_TOKEN) per-package release-public.sh --publish in ordered-packages
+##   order, 43/43 exit 0, zero retries. npm view name@0.2.1-rc.5 verified 39/43 immediately
+##   after (4 stale-CDN 404s: tool-graph, memory-extraction, tool-memory, graph-host — all
+##   confirmed present via publish-over E403). ~/.npmrc token line re-commented after.)
 
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-rc.3 on npm
 ##   (2026-10-24, harness rc.3-parity wave: members 0.2.1-alpha.4 → 0.2.1-rc.3, @deepseek-ai/dsh-*
