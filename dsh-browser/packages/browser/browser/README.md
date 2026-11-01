@@ -10,7 +10,7 @@ Registers one host service on the composition (`ctx.browser`). The surface:
 - **Tabs** — `open` navigates a named tab (one tab per name, one browser connection per cwd+kind); `run` evaluates JS in a tab; `observe` returns title/url/size + an ARIA snapshot with `[ref=eN]` ids; `click`/`type` address elements by ARIA ref or CSS selector; `screenshot` writes a PNG; `close` closes tabs and, with `kill`, spawned browsers.
 - **Stealth** — the 14 omp-puppeteer init scripts run in every launched page (`src/stealth-scripts.ts`, generated), the machine-tell launch flags are suppressed, and a spoofed user-agent + client-hints override is applied on the browser CDP session.
 
-The ARIA snapshot is produced by the bundled Playwright ARIA-snapshot sources (Apache-2.0, Microsoft) vendored as `src/aria-bundle.ts` — the same generated bundle omp uses — so every snapshot carries actionable `[ref=eN]` ids that stay valid until the next snapshot.
+The ARIA snapshot is produced by the bundled Playwright ARIA-snapshot sources (Apache-2.0, Microsoft) vendored as `src/aria-bundle.ts` — the same generated bundle omp uses — so every snapshot carries actionable `[ref=eN]` ids that stay valid until the next snapshot. Observation reads (`open`/`observe`/`click`/`type`) survive one mid-read navigation: when the read's document is replaced mid-call, the read reruns once on the settled new document (user code in `run` never reruns).
 
 ## Backends
 

@@ -13,7 +13,7 @@ import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { BrowserService, mayForgetClosedBrowser, type BrowserKind } from '../src/service.ts'
+import { BrowserService, isNavigationContextLossError, mayForgetClosedBrowser, retryOnceOnNavigationContextLoss, type BrowserKind } from '../src/service.ts'
 import { cloakBrowserPid } from '../src/cloak.ts'
 import { forgetOwnedBrowser, recordOwnedBrowser, resetOrphanRegistryForTest } from '../src/orphan-registry.ts'
 
@@ -199,5 +199,53 @@ describe('confirmed-close registry discipline (pure)', () => {
       resetOrphanRegistryForTest()
       rmSync(registryDir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('observation reads surviving a mid-read navigation (pure)', () => {
+  it('reruns the read once on the settled document and returns its value', async () => {
+    let reads = 0
+    let settles = 0
+    const value = await retryOnceOnNavigationContextLoss(
+      async () => {
+        reads++
+        if (reads === 1) throw new Error('Execution context was destroyed, most likely because of a navigation.')
+        return 'new document'
+      },
+      () => {
+        settles++
+        return Promise.resolve()
+      },
+    )
+    expect(value).toBe('new document')
+    expect(reads).toBe(2)
+    expect(settles).toBe(1)
+  })
+
+  it('matches only the navigation context-loss signatures', () => {
+    expect(isNavigationContextLossError(new Error('Protocol error (Runtime.callFunctionOn): Execution context was destroyed.'))).toBe(true)
+    expect(isNavigationContextLossError(new Error('Protocol error (Runtime.callFunctionOn): Cannot find context with specified id'))).toBe(true)
+    expect(isNavigationContextLossError(new Error('Target closed'))).toBe(false)
+    expect(isNavigationContextLossError('Execution context was destroyed')).toBe(true)
+  })
+
+  it('propagates a non-matching error without settling', async () => {
+    let settles = 0
+    await expect(retryOnceOnNavigationContextLoss(
+      async () => { throw new Error('Target page, context or browser has been closed') },
+      () => { settles++; return Promise.resolve() },
+    )).rejects.toThrow('Target page, context or browser has been closed')
+    expect(settles).toBe(0)
+  })
+
+  it('surfaces the original error when the rerun also fails', async () => {
+    let reads = 0
+    const read = async (): Promise<string> => {
+      reads++
+      if (reads === 1) throw new Error('Execution context was destroyed.')
+      throw new Error('rerun failed differently')
+    }
+    await expect(retryOnceOnNavigationContextLoss(read, () => Promise.resolve())).rejects.toThrow('Execution context was destroyed.')
+    expect(reads).toBe(2)
   })
 })
