@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { FsError } from '@deepseek-ai/dsh-fs'
 import { parseInternalUrl } from '../src/parse.ts'
 import { InternalUrlRouter } from '../src/router.ts'
 import {
@@ -13,12 +14,14 @@ import {
   formatConflictSummary,
   formatConflictWarning,
   parseConflictUri,
+  reconcileRegisteredConflicts,
   renderConflictRegion,
   scanConflictsInContent,
   scanConflictLines,
   spliceConflict,
+  trimToCodepointBoundary,
 } from '../src/conflict.ts'
-import type { ConflictFileBridge, ConflictEntry } from '../src/conflict.ts'
+import type { ConflictBlock, ConflictFileBridge, ConflictEntry } from '../src/conflict.ts'
 
 const TWO_WAY = [
   '<<<<<<< HEAD',
@@ -78,17 +81,238 @@ describe('scanConflictLines', () => {
 })
 
 describe('ConflictHistory', () => {
-  it('reuses ids for the same path+start line and assigns sequential ids otherwise', () => {
+  it('reuses ids for identical content at the same position and assigns sequential ids otherwise', () => {
     const history = new ConflictHistory()
     const abs = '/ws/a.ts'
-    const e1 = history.register({ startLine: 1, separatorLine: 3, endLine: 5, oursLines: [], theirsLines: [], absolutePath: abs, displayPath: 'a.ts' })
-    const e1again = history.register({ startLine: 1, separatorLine: 3, endLine: 5, oursLines: ['x'], theirsLines: [], absolutePath: abs, displayPath: 'a.ts' })
+    const e1 = history.register({ startLine: 1, separatorLine: 3, endLine: 5, oursLines: ['x'], theirsLines: [], absolutePath: abs, displayPath: 'a.ts' })
+    const e1again = history.register({ startLine: 1, separatorLine: 3, endLine: 5, oursLines: ['x'], theirsLines: [], absolutePath: abs, displayPath: 'renamed.ts' })
+    // The same block re-surfaced: the id is reused and the display path refreshes.
     expect(e1again.id).toBe(e1.id)
-    const e2 = history.register({ startLine: 9, separatorLine: 11, endLine: 13, oursLines: [], theirsLines: [], absolutePath: abs, displayPath: 'a.ts' })
-    expect(e2.id).toBe(e1.id + 1)
-    history.invalidate(e1.id)
+    expect(history.get(e1.id)?.displayPath).toBe('renamed.ts')
+    // A different block at the same position gets its own id; the old one retires.
+    const e1changed = history.register({ startLine: 1, separatorLine: 3, endLine: 5, oursLines: ['y'], theirsLines: [], absolutePath: abs, displayPath: 'renamed.ts' })
+    expect(e1changed.id).not.toBe(e1.id)
     expect(history.get(e1.id)).toBeUndefined()
+    const e2 = history.register({ startLine: 9, separatorLine: 11, endLine: 13, oursLines: ['x'], theirsLines: [], absolutePath: abs, displayPath: 'renamed.ts' })
+    expect(e2.id).toBe(e1changed.id + 1)
+    history.invalidate(e1changed.id)
+    expect(history.get(e1changed.id)).toBeUndefined()
     expect(history.get(e2.id)).toBeDefined()
+  })
+})
+
+describe('ConflictHistory.reconcilePath', () => {
+  function makeBlock(startLine: number, overrides: Partial<ConflictBlock> = {}): ConflictBlock {
+    const block = scanConflictsInContent(TWO_WAY.join('\n'))[0]!
+    return { ...block, ...overrides, startLine, separatorLine: startLine + 2, endLine: startLine + 4 }
+  }
+
+  it('keeps ids for unchanged blocks, refreshing shifted coordinates', () => {
+    const history = new ConflictHistory()
+    const abs = '/ws/a.ts'
+    const entry = history.register({ ...makeBlock(3), absolutePath: abs, displayPath: 'a.ts' })
+    history.reconcilePath(abs, { blocks: [makeBlock(5)] })
+    const refreshed = history.get(entry.id)
+    expect(refreshed?.startLine).toBe(5)
+    expect(refreshed?.endLine).toBe(9)
+  })
+
+  it('retires changed and vanished blocks', () => {
+    const history = new ConflictHistory()
+    const abs = '/ws/a.ts'
+    const kept = history.register({ ...makeBlock(3), absolutePath: abs, displayPath: 'a.ts' })
+    const changed = history.register({ ...makeBlock(10), oursLines: ['rewritten'], absolutePath: abs, displayPath: 'a.ts' })
+    history.reconcilePath(abs, { blocks: [makeBlock(3)] })
+    expect(history.get(kept.id)).toBeDefined()
+    expect(history.get(changed.id)).toBeUndefined()
+  })
+
+  it('keeps blocks whose recorded region the read column-cut', () => {
+    const history = new ConflictHistory()
+    const abs = '/ws/wide.ts'
+    // A windowed read registered this block with its wide line cut to the
+    // column cap plus the read pipeline's truncation suffix.
+    const entry = history.register({
+      ...makeBlock(3),
+      oursLines: [`${'x'.repeat(240)}... (line truncated to 240 chars)`],
+      absolutePath: abs,
+      displayPath: 'wide.ts',
+    })
+    // A live scan can never match a cut region (wide lines are dropped), so
+    // without the exemption reconciliation would retire the still-live block.
+    history.reconcilePath(abs, { blocks: [] })
+    expect(history.get(entry.id)).toBeDefined()
+  })
+
+  it('keeps blocks at or past a capped scan boundary', () => {
+    const history = new ConflictHistory()
+    const abs = '/ws/a.ts'
+    const entry = history.register({ ...makeBlock(20), absolutePath: abs, displayPath: 'a.ts' })
+    // A capped scan saw none of the block; it cannot disprove it.
+    history.reconcilePath(abs, { blocks: [], truncatedAtLine: 10 })
+    expect(history.get(entry.id)).toBeDefined()
+  })
+})
+
+describe('reconcileRegisteredConflicts', () => {
+  class FsBridge {
+    files = new Map<string, string>()
+    async readFile(path: string): Promise<string> {
+      const content = this.files.get(path)
+      if (content === undefined) throw new FsError(`not found: ${path}`, 'FS_NOT_FOUND')
+      return content
+    }
+    async writeFile(path: string, content: string): Promise<void> {
+      this.files.set(path, content)
+    }
+  }
+
+  function registerScanned(history: ConflictHistory, bridge: FsBridge, path: string): ConflictEntry[] {
+    const blocks = scanConflictsInContent(bridge.files.get(path) ?? '')
+    return blocks.map(block => history.register({ ...block, absolutePath: path, displayPath: 'a.ts' }))
+  }
+
+  it('keeps ids across line shifts and retires changed blocks', async () => {
+    const bridge = new FsBridge()
+    const path = '/ws/a.ts'
+    bridge.files.set(path, makeFile([TWO_WAY, THREE_WAY]))
+    const history = new ConflictHistory()
+    const entries = registerScanned(history, bridge, path)
+    // External edit: first block resolved, second shifted up.
+    bridge.files.set(path, makeFile([], ['export {}']).replace('export {}\nexport {}', 'const a = 9\n') + THREE_WAY.join('\n') + '\nexport {}')
+    await reconcileRegisteredConflicts(history, bridge)
+    expect(history.get(entries[0]!.id)).toBeUndefined()
+    const shifted = history.get(entries[1]!.id)
+    expect(shifted?.separatorLine).toBe(entries[1]!.separatorLine - 5) // block 1 (5 lines) replaced by 1 line + context rewrite
+  })
+
+  it('retires every id of a deleted file', async () => {
+    const bridge = new FsBridge()
+    const path = '/ws/a.ts'
+    bridge.files.set(path, makeFile([TWO_WAY]))
+    const history = new ConflictHistory()
+    registerScanned(history, bridge, path)
+    bridge.files.delete(path)
+    await reconcileRegisteredConflicts(history, bridge)
+    expect(history.entries()).toHaveLength(0)
+  })
+
+  it('reconciles a BOM-prefixed CRLF file', async () => {
+    const bridge = new FsBridge()
+    const path = '/ws/a.ts'
+    bridge.files.set(path, makeFile([TWO_WAY]))
+    const history = new ConflictHistory()
+    const entries = registerScanned(history, bridge, path)
+    bridge.files.set(path, '\uFEFF// header\r\nexport {}\r\n' + TWO_WAY.join('\r\n') + '\r\nexport {}\r\n')
+    await reconcileRegisteredConflicts(history, bridge)
+    const refreshed = history.get(entries[0]!.id)
+    expect(refreshed?.startLine).toBe(3) // BOM stripped, header line above
+  })
+})
+
+describe('reconcileRegisteredConflicts with a capped bridge', () => {
+  /** Bridge honoring the optional capped read and counting both paths. */
+  class CappedBridge {
+    files = new Map<string, string>()
+    cappedCalls = 0
+    fullCalls = 0
+    async readFile(path: string): Promise<string> {
+      this.fullCalls += 1
+      const content = this.files.get(path)
+      if (content === undefined) throw new FsError(`not found: ${path}`, 'FS_NOT_FOUND')
+      return content
+    }
+    async readFileCapped(path: string, maxLength: number): Promise<{ text: string; truncatedAtLine?: number }> {
+      this.cappedCalls += 1
+      const full = await this.readFile(path)
+      this.fullCalls -= 1 // the inner full read is this capped read's fetch
+      if (full.length <= maxLength) return { text: full }
+      const text = full.slice(0, maxLength)
+      return { text, truncatedAtLine: text.split('\n').length }
+    }
+    async writeFile(path: string, content: string): Promise<void> {
+      this.files.set(path, content)
+    }
+  }
+
+  /** Scan `path`'s current content and register every block under it. */
+  function registerBlocks(history: ConflictHistory, files: Map<string, string>, path: string): ConflictEntry[] {
+    const blocks = scanConflictsInContent(files.get(path) ?? '')
+    return blocks.map(block => history.register({ ...block, absolutePath: path, displayPath: path }))
+  }
+
+  it('prefers the capped read and preserves blocks past the cap', async () => {
+    const bridge = new CappedBridge()
+    const path = '/ws/a.ts'
+    // Filler pushes the file past CONFLICT_SCAN_MAX_BYTES (10 MiB): the capped
+    // read truncates mid-filler, so the block sits past truncatedAtLine and
+    // reconciliation must leave it registered.
+    const filler = Array.from({ length: 10_241 }, () => `${'x'.repeat(1023)}\n`).join('')
+    bridge.files.set(path, filler + TWO_WAY.join('\n') + '\n')
+    const history = new ConflictHistory()
+    const entries = registerBlocks(history, bridge.files, path)
+    await reconcileRegisteredConflicts(history, bridge)
+    expect(bridge.cappedCalls).toBe(1)
+    expect(bridge.fullCalls).toBe(0)
+    expect(history.get(entries[0]!.id)).not.toBeUndefined()
+  })
+
+  it('still reconciles pre-cap blocks through the capped read', async () => {
+    const bridge = new CappedBridge()
+    const path = '/ws/a.ts'
+    bridge.files.set(path, makeFile([TWO_WAY]))
+    const history = new ConflictHistory()
+    const entries = registerBlocks(history, bridge.files, path)
+    bridge.files.set(path, '// header\n' + TWO_WAY.join('\n') + '\n')
+    await reconcileRegisteredConflicts(history, bridge)
+    const refreshed = history.get(entries[0]!.id)
+    expect(refreshed?.startLine).toBe(2)
+  })
+
+  it('retires every id when the capped read reports the file missing', async () => {
+    const bridge = new CappedBridge()
+    const path = '/ws/a.ts'
+    bridge.files.set(path, makeFile([TWO_WAY]))
+    const history = new ConflictHistory()
+    const entries = registerBlocks(history, bridge.files, path)
+    bridge.files.delete(path)
+    await reconcileRegisteredConflicts(history, bridge)
+    expect(history.get(entries[0]!.id)).toBeUndefined()
+  })
+})
+
+describe('trimToCodepointBoundary', () => {
+  const decode = (bytes: Uint8Array): string => new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+
+  it('drops a bare lead byte cut at the cap', () => {
+    // oh-my-pi reviewer proof: the prefix ends right after the lead byte of
+    // '中' (E4 B8 AD), with no continuation bytes in the prefix.
+    const trimmed = trimToCodepointBoundary(new Uint8Array([0x61, 0x62, 0x63, 0xe4]))
+    expect(decode(trimmed)).toBe('abc')
+  })
+
+  it('keeps a complete trailing multi-byte character', () => {
+    // The sibling proof: back-walking alone over-trimmed this valid tail.
+    const bytes = new Uint8Array([0x61, 0x62, 0x63, 0xe4, 0xb8, 0xad])
+    expect(decode(trimToCodepointBoundary(bytes))).toBe('abc中')
+  })
+
+  it('drops a sequence cut mid-continuation', () => {
+    const trimmed = trimToCodepointBoundary(new Uint8Array([0x61, 0x62, 0x63, 0xe4, 0xb8]))
+    expect(decode(trimmed)).toBe('abc')
+  })
+
+  it('keeps pure ASCII and complete 4-byte tails untouched', () => {
+    expect(decode(trimToCodepointBoundary(new Uint8Array([0x61, 0x62, 0x63])))).toBe('abc')
+    const emoji = new Uint8Array([0x61, 0xf0, 0x9f, 0x98, 0x80])
+    expect(decode(trimToCodepointBoundary(emoji))).toBe('a\u{1F600}')
+    expect(trimToCodepointBoundary(new Uint8Array()).length).toBe(0)
+  })
+
+  it('leaves invalid lead bytes for the fatal decoder to report', () => {
+    // 0xFF is invalid UTF-8 anywhere; trimming it would mask a real error.
+    const bytes = new Uint8Array([0x61, 0xff])
+    expect(trimToCodepointBoundary(bytes)).toBe(bytes)
   })
 })
 
@@ -332,6 +556,42 @@ describe('ConflictProtocolHandler', () => {
     const bridge = new FakeBridge()
     const handler = new ConflictProtocolHandler({ historyFor: () => new ConflictHistory(), bridge })
     await expect(handler.write(parseInternalUrl('conflict://*'), '@ours', { sessionKey: 's' })).rejects.toThrow(/nothing to resolve/)
+  })
+
+  it('read retires a stale id when the file changed underneath it', async () => {
+    const { bridge, path, history, read } = setup([TWO_WAY, THREE_WAY])
+    bridge.files.set(path, 'const done = true\n')
+    await expect(read('conflict://1')).rejects.toThrow(/not registered/)
+    expect(history.entries()).toHaveLength(0)
+  })
+
+  it('read keeps the id of an unchanged block that shifted', async () => {
+    const { bridge, path, entries, read } = setup([TWO_WAY])
+    const id = entries[0]!.id
+    bridge.files.set(path, '// new header\n' + makeFile([TWO_WAY]))
+    const region = await read(`conflict://${id}`)
+    expect(region.content).toContain('<<<<<<< HEAD')
+  })
+
+  it('bulk write skips blocks retired by reconciliation', async () => {
+    const { bridge, path, write } = setup([TWO_WAY, THREE_WAY])
+    // An external resolution removes the first block; the second shifts up.
+    bridge.files.set(path, makeFile([TWO_WAY, THREE_WAY]).replace(TWO_WAY.join('\n') + '\n', 'const a = 9\n'))
+    await write('conflict://*', '@theirs')
+    const after = bridge.files.get(path) ?? ''
+    expect(after).toContain('const a = 9')
+    expect(after).toContain('const a = 2')
+    expect(after).not.toContain('<<<<<<<')
+  })
+
+  it('keeps the next id resolvable after an earlier splice', async () => {
+    const { bridge, path, entries, write } = setup([TWO_WAY, THREE_WAY])
+    await write(`conflict://${entries[0]!.id}`, '@ours')
+    await write(`conflict://${entries[1]!.id}`, '@theirs')
+    const after = bridge.files.get(path) ?? ''
+    expect(after).toContain('const a = 1')
+    expect(after).toContain('const a = 2')
+    expect(after).not.toContain('<<<<<<<')
   })
 })
 
