@@ -1321,9 +1321,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: ~3.18.5
         version: 3.18.5
-      effect:
-        specifier: 4.0.0-rc.118
-        version: 4.0.0-rc.118
+      '@hy-sde-org/effect':
+        specifier: ~4.0.5
+        version: 4.0.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ~4.0.5
@@ -2340,6 +2340,9 @@ packages:
 
   '@huggingface/transformers@4.2.0':
     resolution: {integrity: sha512-8BRCoBMH0XsWaEIamuR0LrJGAfftgHAfb2Vrffy0VKlSAE/MnUJ5/h/zTfEP3fDIft+nk7TqB8xXEyABGitBjQ==}
+
+  '@hy-sde-org/effect@4.0.5':
+    resolution: {integrity: sha512-lP5L9+f9rl/uy60blxWDVwEykhsSNrvgO4Xsal2nAQ1DtVvOZO3mwVa8uvgt6x+MzXdYvUiDlWItXxX15fycpw==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -5200,6 +5203,8 @@ snapshots:
       onnxruntime-node: 1.24.3
       onnxruntime-web: 1.26.0-dev.20260416-b7804b056c
       sharp: 0.34.5
+
+  '@hy-sde-org/effect@4.0.5': {}
 
   '@iconify/types@2.0.0': {}
 
