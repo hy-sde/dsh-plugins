@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-git",
-  "version": "0.2.1-rc.5",
+  "version": "0.2.1-rc.5.1",
   "description": "Agentic git plumbing for DeepSeek Harness: the host ctx.git service (diff parsing, hunk staging, commit/push/log over the subprocess seam) plus the vcs/repo-lock/worktree layers behind the commit/review/worktree tools in @hy-sde-org/dsh-tool-git.",
   "type": "module",
   "main": "./dist/index.js",
@@ -82,7 +82,7 @@
     }
   },
   "dependencies": {
-    "effect": "4.0.0-rc.118",
+    "@hy-sde-org/effect": "~4.0.5",
     "@deepseek-ai/cordis": "~4.0.5",
     "@deepseek-ai/dsh-atomic-write": "^0.2.1-rc.5"
   },

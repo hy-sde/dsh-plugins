@@ -192,9 +192,9 @@ importers:
       '@deepseek-ai/dsh-atomic-write':
         specifier: ^0.2.1-rc.5
         version: 0.2.1-rc.5(@deepseek-ai/cordis@4.0.5)
-      effect:
-        specifier: 4.0.0-rc.118
-        version: 4.0.0-rc.118
+      '@hy-sde-org/effect':
+        specifier: ~4.0.5
+        version: 4.0.5
     devDependencies:
       '@deepseek-ai/dsh-subprocess':
         specifier: ^0.2.1-rc.5
@@ -1060,9 +1060,9 @@ importers:
 
   dsh-tool-debug/packages/dap:
     dependencies:
-      effect:
-        specifier: 4.0.0-rc.118
-        version: 4.0.0-rc.118
+      '@hy-sde-org/effect':
+        specifier: ~4.0.5
+        version: 4.0.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ~4.0.5
@@ -1302,9 +1302,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: ~4.0.5
         version: 4.0.5(@deepseek-ai/cordis-plugin-include@1.0.10)(@deepseek-ai/cordis-plugin-loader@1.0.6)
-      effect:
-        specifier: 4.0.0-rc.118
-        version: 4.0.0-rc.118
+      '@hy-sde-org/effect':
+        specifier: ~4.0.5
+        version: 4.0.5
     devDependencies:
       '@deepseek-ai/dsh-subprocess':
         specifier: ^0.2.1-rc.5
@@ -3342,9 +3342,6 @@ packages:
 
   ecdsa-sig-formatter@1.0.11:
     resolution: {integrity: sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ==}
-
-  effect@4.0.0-rc.118:
-    resolution: {integrity: sha512-hxhpCd+swzrtu9lnyPpEFre2ODQzJ9qxgyL1oHIEY8NKnW4PxTbM1XzplMZXiAsLD62HO+KJc41Nqxr9T791ZQ==}
 
   entities@8.1.0:
     resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
@@ -6066,8 +6063,6 @@ snapshots:
   ecdsa-sig-formatter@1.0.11:
     dependencies:
       safe-buffer: 5.2.1
-
-  effect@4.0.0-rc.118: {}
 
   entities@8.1.0: {}
 

@@ -24,7 +24,7 @@ import type {
   SubprocessRuntime,
   SubprocessSpawnSpec,
 } from '@deepseek-ai/dsh-subprocess'
-import { Effect, Scheduler } from 'effect'
+import { Effect, Scheduler } from '@hy-sde-org/effect'
 import type {
   VcsDiffMode,
   VcsDiffOptions,
