@@ -17,6 +17,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { parseFileDiffs } from '@hy-sde-org/dsh-git'
 import type { SubagentActivation } from '@deepseek-ai/dsh-subagent'
+import type {} from '@deepseek-ai/dsh-spill'
 import { resolveCwd } from './commit.ts'
 import { openReads, type ReadSurface } from './reads.ts'
 import { headOf, indexTreeOf, recordReviewVerdict } from './push-gate.ts'
@@ -28,7 +29,7 @@ export interface ReviewToolConfig {
   provider?: string
   /** Default cap on parallel reviewers (default 4). */
   maxReviewers?: number
-  /** Char cap on the diff inlined into one reviewer prompt (default 40000). */
+  /** Total inline diff character cap per reviewer; larger slices use spillStore (default 40000). */
   maxReviewerDiffChars?: number
 }
 
@@ -262,7 +263,8 @@ export function applyReviewTool(ctx: Context, config: ReviewToolConfig = {}): vo
 
       const target = args.target ?? 'worktree'
       const diffText = await resolveReviewDiff(reads, target, args.range)
-      const allFiles = Array.from(new Set(parseFileDiffs(diffText).map(file => file.filename)))
+      const diffFor = new Map(parseFileDiffs(diffText).map(file => [file.filename, file.content]))
+      const allFiles = Array.from(diffFor.keys())
 
       const focus = (args.focus ?? []).map(prefix => prefix.replace(/\/+$/, ''))
       const files = focus.length > 0
@@ -290,18 +292,6 @@ export function applyReviewTool(ctx: Context, config: ReviewToolConfig = {}): vo
         return value
       }
 
-      // Cap the inline diff handed to any one reviewer up front.
-      let anyTruncated = false
-      const diffFor = new Map<string, string>()
-      for (const file of files) {
-        let slice = gitDiffSection(diffText, file)
-        if (slice.length > 0 && slice.length > maxReviewerDiffChars) {
-          slice = slice.slice(0, maxReviewerDiffChars)
-          anyTruncated = true
-          warnings.push(`diff section for ${file} truncated to ${maxReviewerDiffChars} chars for the reviewer`)
-        }
-        if (slice.length > 0) diffFor.set(file, slice)
-      }
 
       const budget = Math.max(1, Math.min(args.maxReviewers ?? maxReviewers, files.length))
       const slices = sliceByWeight(files, diffFor, budget)
@@ -356,7 +346,7 @@ export function applyReviewTool(ctx: Context, config: ReviewToolConfig = {}): vo
       const value: ReviewValue = {
         target,
         files,
-        diffTruncated: anyTruncated,
+        diffTruncated: false,
         findings,
         verdict,
         verdictExplanation,
@@ -372,14 +362,43 @@ export function applyReviewTool(ctx: Context, config: ReviewToolConfig = {}): vo
         { kind: 'ok'; slice: SliceResult } | { kind: 'error'; error: string }
       > {
         const label = `reviewer ${index + 1}/${slices.length}`
-        const inline = sliceFiles.map(file => diffFor.get(file) ?? '').filter(Boolean).join('\n')
-        const prompt = buildReviewerPrompt(label, sliceFiles, inline)
         // Narrowing from the outer scope does not flow into this closure; the
         // checks were already performed above (parent exists, subagents provides
         // the selected provider), so re-assert them for the type checker.
         if (subagents === undefined || parent === undefined) {
           return { kind: 'error', error: 'subagents or calling agent unavailable' }
         }
+        exec.signal.throwIfAborted()
+        const inline = sliceFiles.map(file => diffFor.get(file) ?? '').join('\n')
+        let patch = inline
+        if (inline.length > maxReviewerDiffChars) {
+          const spillStore = ctx.get('spillStore')
+          if (spillStore === undefined) {
+            throw new Error('review needs spillStore for oversized diffs; load @deepseek-ai/dsh-spill-local or another spill backend')
+          }
+          const ref = await spillStore.saveText({
+            owner: { sessionId: parent.session.header.id },
+            source: { kind: 'tool', toolName: 'review', callId: exec.callId, label },
+            suggestedName: `review-${index + 1}.diff`,
+            content: inline,
+          })
+          const ranges: string[] = []
+          let startLine = 1
+          for (const file of sliceFiles) {
+            const content = diffFor.get(file) ?? ''
+            let endLine = startLine
+            for (let offset = content.indexOf('\n'); offset !== -1; offset = content.indexOf('\n', offset + 1)) {
+              endLine += 1
+            }
+            ranges.push(`- ${file}: lines ${startLine}-${endLine}`)
+            startLine = endLine + 1
+          }
+          patch = `Complete diff artifact: ${ref.locator}. ${ref.retrievalHint}\n`
+            + `Read by the file ranges below; narrow further within long ranges rather than loading the whole artifact.\n`
+            + ranges.join('\n')
+        }
+        exec.signal.throwIfAborted()
+        const prompt = buildReviewerPrompt(label, sliceFiles, patch)
         const controller = new AbortController()
         const forwardAbort = (): void => { controller.abort() }
         exec.signal.addEventListener('abort', forwardAbort, { once: true })
@@ -523,8 +542,14 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** The reviewer instruction prompt (adapted from omp reviewer.md). */
-export function buildReviewerPrompt(label: string, files: readonly string[], inlineDiff: string): string {
+/**
+ * Build read-only review instructions for a captured patch.
+ * @param label - Reviewer identity within the fan-out.
+ * @param files - Changed files assigned to this reviewer.
+ * @param patch - Inline diff or a complete artifact locator with retrieval guidance and file line ranges.
+ * @returns The reviewer task, including evidence requirements and structured output instructions.
+ */
+export function buildReviewerPrompt(label: string, files: readonly string[], patch: string): string {
   const parts: string[] = []
   parts.push(`You are ${label}, a code review specialist performing a READ-ONLY review.`)
   parts.push('')
@@ -534,8 +559,8 @@ export function buildReviewerPrompt(label: string, files: readonly string[], inl
   parts.push('Find bugs the author wants fixed before merge.')
   parts.push('')
   parts.push('PROCEDURE')
-  parts.push('1. Patch: `git diff` (recomputed) or the inline diff below — never trust it blindly.')
-  parts.push('2. Read the FULL context of each modified file with read/lsp before judging (the inline diff omits surrounding code).')
+  parts.push('1. Inspect the captured patch below, one owned file at a time. For an artifact, read bounded line ranges; do not load the whole diff.')
+  parts.push('2. Read enclosing declarations and relevant callers with read/lsp, expanding as needed to establish impact. Do not load entire files unnecessarily.')
   parts.push('3. Report each issue as a finding (see OUTPUT).')
   parts.push('4. Return the final verdict in the structured result (see OUTPUT).')
   parts.push('')
@@ -551,7 +576,7 @@ export function buildReviewerPrompt(label: string, files: readonly string[], inl
     + 'P1: high, fix next cycle (race under load). P2: medium, fix eventually (edge-case mishandling). '
     + 'P3: info / nice to have (suboptimal but correct).')
   parts.push('')
-  parts.push(`INLINE DIFF (may be truncated; recompute with git diff / git diff --cached / git diff <range>):\n\n${inlineDiff}`)
+  parts.push(`CAPTURED PATCH (the requested review target; not truncated):\n\n${patch}`)
   parts.push('')
   parts.push('RULES: This is READ-ONLY. NEVER edit files, never stage, never commit, never run builds or tests that mutate '
     + 'state — git diff/log/show/status and file reads only.')

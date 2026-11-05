@@ -1,16 +1,11 @@
-/**
- * The `review` tool: pure helper coverage (slicing, prompt shape, priority
- * mapping) plus an end-to-end execute with a fabricated subagent provider
- * returning canned reviewer verdicts, exercising slice fan-out and verdict
- * aggregation without real agents.
- */
+/** Review slice budgeting, artifact retrieval, and verdict aggregation. */
 
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -18,16 +13,20 @@ import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import * as Git from '@hy-sde-org/dsh-git'
 import toolGitPackage from '@hy-sde-org/dsh-tool-git'
+import LocalSpillStore from '@deepseek-ai/dsh-spill-local'
 import {
   toPriority,
   sliceByWeight,
   gitDiffSection,
-  buildReviewerPrompt,
 } from '../src/review.ts'
 
 let dir: string
 let ctx: Context
 let counter = 0
+let spillRoot: string
+const maxReviewerDiffChars = 40_000
+type ActivationOptions = Parameters<Context['subagents']['startActivation']>[0]
+let reviewerPrompts: string[] = []
 
 function runGit(args: string[]): string {
   const result = spawnSync('git', args, { cwd: dir, encoding: 'utf8' })
@@ -63,10 +62,14 @@ interface CannedReviewer {
 let cannedRuns: CannedReviewer[] = []
 let erroringStart = false
 let fakeIndex = 0
-function fakeSubagents(): { getProvider: () => unknown; startActivation: (spec: unknown) => Promise<unknown> } {
+function fakeSubagents(): {
+  getProvider: () => unknown
+  startActivation: (options: ActivationOptions) => Promise<unknown>
+} {
   return {
     getProvider: () => ({ provider: 'spawn' }),
-    startActivation: (_spec: unknown) => {
+    startActivation: (options) => {
+      reviewerPrompts.push(options.request.prompt.filter(block => block.type === 'text').map(block => block.text).join('\n'))
       if (erroringStart) {
         return Promise.resolve({
           result: Promise.resolve({ stopReason: 'error', diagnostic: 'model transport failed', output: [] }),
@@ -87,6 +90,7 @@ function resetFake(): void {
   cannedRuns = []
   erroringStart = false
   fakeIndex = 0
+  reviewerPrompts = []
 }
 
 beforeAll(async () => {
@@ -100,14 +104,19 @@ beforeAll(async () => {
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(Git)
-  await ctx.plugin(toolGitPackage)
+  spillRoot = `${dir}-spill`
+  await ctx.plugin(LocalSpillStore, { root: spillRoot, cleanupPeriodDays: 0 })
+  await ctx.plugin(toolGitPackage, { maxReviewerDiffChars })
   ctx.provide('subagents', fakeSubagents() as never)
 })
 
 afterAll(async () => {
   rmSync(dir, { recursive: true, force: true })
   await ctx.fiber.dispose()
+  rmSync(spillRoot, { recursive: true, force: true })
 })
+
+afterEach(() => { vi.restoreAllMocks() })
 
 async function seedChanges(): Promise<void> {
   runGit(['reset', '-q'])
@@ -146,14 +155,6 @@ describe('pure helpers', () => {
     const section = gitDiffSection(diff, 'src/a.ts')
     expect(section).toContain('diff --git a/src/a.ts b/src/a.ts')
     expect(section).not.toContain('src/b.ts')
-  })
-
-  it('builds a reviewer prompt with the owned files and inline diff', () => {
-    const prompt = buildReviewerPrompt('reviewer 1/1', ['src/a.ts'], 'diff')
-    expect(prompt).toContain('reviewer 1/1')
-    expect(prompt).toContain('src/a.ts')
-    expect(prompt).toContain('READ-ONLY')
-    expect(prompt).toContain('P0')
   })
 })
 
@@ -196,6 +197,52 @@ describe('review tool with fabricated reviewers', () => {
     expect(value.findings[0]!.priority).toBe('P0')
     // Overall confidence is the minimum across reviewers.
     expect(value.confidence).toBeLessThan(1)
+  })
+
+  it.each([26_000, 50_000])('keeps complete scoped diffs retrievable when reviewer input exceeds the cap (%i chars per file)', async (chars) => {
+    await seedChanges()
+    resetFake()
+    for (const name of ['a', 'b']) {
+      await writeFile(join(dir, `src/${name}.ts`), `export const ${name} = "${name.repeat(chars)}";\n`)
+    }
+    runGit(['add', 'src'])
+    const sections = Git.parseFileDiffs(runGit(['diff', '--cached', '--', 'src']))
+    const expected = sections.map(section => section.content).join('\n')
+    expect(expected.length).toBeGreaterThan(maxReviewerDiffChars)
+    if (chars < maxReviewerDiffChars) {
+      expect(sections.every(section => section.content.length <= maxReviewerDiffChars)).toBe(true)
+    }
+    const save = vi.spyOn(ctx.spillStore, 'saveText')
+    const result = await call('review', { target: 'staged', focus: ['src'], maxReviewers: 1 })
+    expect(result.value).toMatchObject({ verdict: 'ship', errors: [], diffTruncated: false })
+    expect(save).toHaveBeenCalledTimes(1)
+    const ref = await save.mock.results[0]!.value
+    const captured = await readFile(ref.locator, 'utf8')
+    expect(captured).toBe(expected)
+    const prompt = reviewerPrompts[0]!
+    expect(prompt.length).toBeLessThan(maxReviewerDiffChars)
+    expect(prompt).toContain(ref.locator)
+    const ranges = [...prompt.matchAll(/^- (src\/[ab]\.ts): lines (\d+)-(\d+)$/gm)]
+    expect(ranges.map(range => range[1])).toEqual(sections.map(section => section.filename))
+    const lines = captured.split('\n')
+    for (const [index, range] of ranges.entries()) {
+      expect(lines.slice(Number(range[2]) - 1, Number(range[3])).join('\n')).toBe(sections[index]!.content)
+    }
+  })
+
+  it('does not start a reviewer with incomplete input when artifact storage fails', async () => {
+    await seedChanges()
+    resetFake()
+    await writeFile(join(dir, 'src/a.ts'), `export const a = "${'a'.repeat(maxReviewerDiffChars)}";\n`)
+    runGit(['add', 'src/a.ts'])
+    vi.spyOn(ctx.spillStore, 'saveText').mockRejectedValue(new Error('spill storage unavailable'))
+    const result = await call('review', { target: 'staged', focus: ['src/a.ts'], maxReviewers: 1 })
+    expect(result.value).toMatchObject({
+      verdict: 'reject',
+      slices: [],
+      errors: [expect.stringContaining('spill storage unavailable')],
+    })
+    expect(reviewerPrompts).toEqual([])
   })
 
   it('reports reviewer failures as errors without crashing', async () => {

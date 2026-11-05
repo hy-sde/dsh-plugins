@@ -32,7 +32,7 @@ export interface Config extends GitPromptConfig, WorktreeToolConfig {
   reviewProvider?: string
   /** Cap on parallel review reviewers (default 4). */
   maxReviewers?: number
-  /** Char cap on one reviewer's inline diff (default 40000). */
+  /** Total inline diff character cap per reviewer; larger slices use spillStore (default 40000). */
   maxReviewerDiffChars?: number
   /** Char cap on the diff in a `commit` analysis (default 60000). */
   maxDiffChars?: number
