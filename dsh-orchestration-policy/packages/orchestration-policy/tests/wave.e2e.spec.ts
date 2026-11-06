@@ -32,6 +32,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import policyPackage, { type OrchestrationPolicyService } from '../src/index.ts'
 
 interface Fixture {
@@ -84,6 +85,7 @@ async function makeFixture(): Promise<Fixture> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
   const provider = new WaveProvider()
   // The unpublished `tool-subagent` policy seam, verbatim from the fork:
   // lazy `ctx.get('orchestrationPolicy')`, then `assertWorkspace(...)` with
@@ -176,12 +178,10 @@ const parentAgent = (cwd: string): FakeAgent => ({ session: { header: { id: 'par
 
 async function call(ctx: Context, name: string, args: Record<string, unknown>, agent: FakeAgent): Promise<{ value: unknown; text: string }> {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`wave-${name}-${Math.random().toString(16).slice(2, 8)}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`wave-${name}-${Math.random().toString(16).slice(2, 8)}`),
-    name,
-    arguments: args,
     agent: agent as never,
-  })
+  }).then(b => b.results[0]!.result)
   const text = result.content.filter(block => block.type === 'text').map(block => block.text).join(' ')
   if (result.isError) throw new Error(text || 'tool failed')
   return { value: result.value, text }

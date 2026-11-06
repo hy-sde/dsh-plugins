@@ -13,6 +13,7 @@ import type { FsDirEntry, FsEditOutcome, FsEditRequest, FsInfo, FsPathInfo, FsTa
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import * as InternalUrls from '@hy-sde-org/dsh-internal-urls'
 import * as ToolFs from '@hy-sde-org/dsh-tool-fs-internal-urls'
 import { isAbsolute, join } from 'node:path'
@@ -40,6 +41,9 @@ class FakeFs extends FileSystem {
     return String(target.targetKey).startsWith('abs:') ? String(target.targetKey).slice(4) : String(target.targetKey)
   }
   override fileUrl(target: FsTarget): string { return `file://${target.targetKey}` }
+  override async patchText(): Promise<never> { throw new FsError('patch unsupported by test provider', 'FS_IO_ERROR') }
+  override async deleteFile(): Promise<never> { throw new FsError('delete unsupported by test provider', 'FS_IO_ERROR') }
+  override async moveFile(): Promise<never> { throw new FsError('move unsupported by test provider', 'FS_IO_ERROR') }
   override contains(parent: FsTarget, child: FsTarget): boolean {
     return String(child.targetKey).startsWith(String(parent.targetKey))
   }
@@ -112,6 +116,7 @@ async function setup(files: Record<string, string>) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(FakeFs) // Service class: self-registers as ctx.fs
   const fs = ctx.fs as FakeFs
   for (const [name, content] of Object.entries(files)) {
@@ -127,12 +132,10 @@ const agent = { session: { header: { id: 's1', cwd: CWD } } }
 
 async function call(ctx: Context, name: string, args: unknown) {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`call-${++callCounter}`), name, arguments: JSON.stringify(args)}],
     signal: testToolSignal,
-    callId: ToolCallId(`call-${++callCounter}`),
-    name,
-    arguments: args,
     agent: agent as never,
-  })
+  }).then(b => b.results[0]!.result)
   return result
 }
 
@@ -145,6 +148,7 @@ describe('read/grep/write scheme routing', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     await ctx.plugin(FakeFs)
     await ctx.plugin(ToolFs)
     const fs = ctx.fs as FakeFs

@@ -16,6 +16,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, { TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import LocalFileSystem from '@deepseek-ai/dsh-fs-local'
 import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
@@ -31,12 +32,10 @@ let ctx: Context
 let callCounter = 0
 function call(name: string, args: unknown, agentObj?: object) {
   return ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`it-${++callCounter}`), name, arguments: JSON.stringify(args)}],
     signal: testToolSignal,
-    callId: ToolCallId(`it-${++callCounter}`),
-    name,
-    arguments: args,
     ...agentObj ? { agent: agentObj as never } : {},
-  })
+  }).then(b => b.results[0]!.result)
 }
 
 function text(result: { content: { type: string; text?: string }[] }): string {
@@ -70,6 +69,7 @@ describe('ast tools over the real subprocess service + the packaged ast-grep', (
     ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalFileSystem, { cwd: dir })
     await ctx.plugin(FsPolicy)
@@ -182,22 +182,16 @@ describe('ast tools over the real subprocess service + the packaged ast-grep', (
         await sandboxCtx.plugin(SystemPrompt)
         await sandboxCtx.plugin(ToolRuntime)
         await sandboxCtx.plugin(LocalSubprocessRuntime)
+        await sandboxCtx.plugin(NativeToolExecutor)
         await sandboxCtx.plugin(SandboxPolicy, { mode: 'read-only', workspaceRoot: sandboxDir })
         await sandboxCtx.plugin(SandboxedFileSystem, { cwd: sandboxDir })
         await sandboxCtx.plugin(FsPolicy)
         await sandboxCtx.plugin(ToolAst, {})
         const result = await sandboxCtx.tools.execute({
+          calls: [{ type: 'tool-call' as const, id: ToolCallId(`sbx-${++callCounter}`), name: 'ast_edit', arguments: JSON.stringify({ pat: 'run($A), $B)', rewrite: 'run($B, $A)', path: 'a.ts', apply: true }) }],
           signal: testToolSignal,
-          callId: ToolCallId(`sbx-${++callCounter}`),
-          name: 'ast_edit',
-          arguments: {
-            pat: 'run($A, $B)',
-            rewrite: 'run($B, $A)',
-            path: 'a.ts',
-            apply: true,
-          },
           agent: { session: { header: { id: 'session-ast-sbx', cwd: sandboxDir } } } as never,
-        })
+        }).then(b => b.results[0]!.result)
         expect(result.isError).toBe(true)
         expect(await readFile(join(sandboxDir, 'a.ts'), 'utf8')).toBe('run(1,2)\n')
         await sandboxCtx.fiber.dispose()
@@ -256,12 +250,10 @@ describe('ast tools over the real subprocess service + the packaged ast-grep', (
       const controller = new AbortController()
       controller.abort()
       const result = await ctx.tools.execute({
+        calls: [{ type: 'tool-call' as const, id: ToolCallId(`abort-${++callCounter}`), name: 'ast_grep', arguments: JSON.stringify({ pat: 'x($A)', path: '.' }) }],
         signal: controller.signal,
-        callId: ToolCallId(`abort-${++callCounter}`),
-        name: 'ast_grep',
-        arguments: { pat: 'x($A)', path: '.' },
         agent: { session: { header: { id: 'session-ast', cwd: dir } } } as never,
-      })
+      }).then(b => b.results[0]!.result)
       expect(result.isError).toBe(true)
       expect(result.error?.info).toMatchObject({ code: TOOL_ABORTED_BEFORE_DISPATCH })
     })

@@ -14,6 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import * as Git from '@hy-sde-org/dsh-git'
@@ -50,12 +51,10 @@ const agent = { session: { header: { id: 's1', cwd: '' } } } as never
 
 async function call(name: string, args: unknown): Promise<{ value: unknown }> {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`call-${++counter}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`call-${++counter}`),
-    name,
-    arguments: args,
     agent,
-  })
+  }).then(b => b.results[0]!.result)
   if (result.isError) {
     const text = result.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
     throw new Error(text || 'tool failed')
@@ -72,6 +71,7 @@ beforeAll(async () => {
   ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(Git)
   await ctx.plugin(toolGitPackage)

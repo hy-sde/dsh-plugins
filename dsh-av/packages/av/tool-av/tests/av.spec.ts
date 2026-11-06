@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import avPackage from '@hy-sde-org/dsh-av'
@@ -104,12 +105,10 @@ const agent = { session: { header: { id: 'av1', cwd: '' } } } as never
 
 async function call<T>(name: string, args: unknown): Promise<T> {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`av-${++counter}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`av-${++counter}`),
-    name,
-    arguments: args,
     agent,
-  })
+  }).then(b => b.results[0]!.result)
   if (result.isError) {
     const text = result.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
     throw new Error(text || 'tool failed')
@@ -121,6 +120,7 @@ async function setup(overrides: { avPath?: string; toolConfig?: AvToolConfig } =
   ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(avPackage, { avPath: overrides.avPath ?? 'av' })
   if (overrides.toolConfig !== undefined) {

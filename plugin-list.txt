@@ -1,6 +1,14 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
+## BUMPED NOT YET PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.2-rc.1
+##   (2026-11-05, harness 0.2.2-rc.1-parity wave: members 0.2.1-rc.5/.5.1 → 0.2.2-rc.1,
+##   @deepseek-ai/dsh-* peers → ^0.2.2-rc.1, pnpm-workspace.yaml minimumReleaseAgeExclude
+##   || 0.2.2-rc.1. Vendor pins realigned to upstream 0.2.2: cordis ~4.1.0 / schemastery
+##   ~3.19.0 / loader ~1.1.0 / include ~1.1.0. Test suites migrated to the 0.2.2 batch
+##   execute API (ctx.tools.execute {calls:[…]} → results[0].result, executor mounts
+##   required). Validation: serial check + full recursive test exit 0.)
+
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-rc.5 on npm
 ##   (2026-11-01, harness rc.5-parity wave: members 0.2.1-rc.3/.1 → 0.2.1-rc.5, @deepseek-ai/dsh-*
 ##   peers → ^0.2.1-rc.5, pnpm-workspace.yaml minimumReleaseAgeExclude || 0.2.1-rc.5. Vendor pins

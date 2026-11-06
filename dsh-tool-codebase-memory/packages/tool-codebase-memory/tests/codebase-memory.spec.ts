@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { applyCodebaseMemoryTools, CodebaseMemoryCliError, renderPayload } from '../src/codebase-memory.ts'
 import { buildCodebaseMemoryPromptSection } from '../src/prompt.ts'
@@ -100,12 +101,10 @@ const agent = { session: { header: { id: 'cbm1', cwd: '' } } } as never
 
 async function call<T>(name: string, args: unknown): Promise<T> {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`cbm-${++counter}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`cbm-${++counter}`),
-    name,
-    arguments: args,
     agent,
-  })
+  }).then(b => b.results[0]!.result)
   if (result.isError) {
     const text = result.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
     throw new Error(text || 'tool failed')
@@ -117,6 +116,7 @@ async function setup(shimPath: string, toolConfig: Parameters<typeof applyCodeba
   ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   applyCodebaseMemoryTools(ctx, { ...toolConfig, cliPath: shimPath })
   ctx.systemPrompt.section(buildCodebaseMemoryPromptSection())
 }
@@ -242,6 +242,7 @@ describe('codebase-memory tools — live integration (CBM_INTEGRATION=1 only)', 
     ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     applyCodebaseMemoryTools(ctx, { project: 'deepseek-harness', cliPath: real })
     ctx.systemPrompt.section(buildCodebaseMemoryPromptSection())
     const projects = await call<{ text: string }>('codebase_list_projects', {})

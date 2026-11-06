@@ -12,6 +12,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import * as Memory from '@hy-sde-org/dsh-memory'
 import * as ToolMemory from '@hy-sde-org/dsh-tool-memory'
 import { SUMMARY_FILE } from '@hy-sde-org/dsh-memory'
@@ -23,6 +24,7 @@ async function mount(config?: Record<string, unknown>) {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   await ctx.plugin(Memory, { root })
   // The prompt section reads the same root as the service (both default to the
   // same path in production; tests pin it explicitly so they agree).
@@ -35,12 +37,10 @@ const agent = { session: { header: { id: 's1', cwd: CWD } } }
 let callCounter = 0
 async function call(ctx: Context, name: string, args: unknown) {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`call-${++callCounter}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`call-${++callCounter}`),
-    name,
-    arguments: args,
     agent: agent as never,
-  })
+  }).then(b => b.results[0]!.result)
   return result
 }
 

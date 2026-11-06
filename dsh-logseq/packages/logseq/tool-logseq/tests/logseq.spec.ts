@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import { applyLogseqTools, LogseqCliError } from '../src/logseq.ts'
 import { parseOutput, renderItems, renderValue } from '../src/logseq.ts'
@@ -83,12 +84,10 @@ const agent = { session: { header: { id: 'lg1', cwd: '' } } } as never
 
 async function call<T>(name: string, args: unknown): Promise<T> {
   const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`logseq-${++counter}`), name, arguments: JSON.stringify(args)}],
     signal: new AbortController().signal,
-    callId: ToolCallId(`logseq-${++counter}`),
-    name,
-    arguments: args,
     agent,
-  })
+  }).then(b => b.results[0]!.result)
   if (result.isError) {
     const text = result.content.filter(b => b.type === 'text').map(b => b.text).join(' ')
     throw new Error(text || 'tool failed')
@@ -100,6 +99,7 @@ async function setup(shimPath: string, toolConfig: Parameters<typeof applyLogseq
   ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
   applyLogseqTools(ctx, { ...toolConfig, cliPath: shimPath })
   ctx.systemPrompt.section(buildLogseqPromptSection())
 }

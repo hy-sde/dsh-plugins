@@ -139,12 +139,10 @@ async function startHeldParentTurn(parent: Agent, adapter: HeldAdapter): Promise
 let calls = 0
 function callReport(ctx: Context, child: Agent, output: string, signal = testSignal) {
   return ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-${++calls}`), name: 'report', arguments: JSON.stringify({ output}) }],
     signal,
-    callId: ToolCallId(`report-${++calls}`),
-    name: 'report',
-    arguments: { output },
     agent: child,
-  })
+  }).then(b => b.results[0]!.result)
 }
 
 /** Occupy the child-local report name to force installation rollback. */
@@ -523,15 +521,17 @@ describe('dsh-tool-subagent-report', () => {
       return dispose
     })
 
-    // No session may be announced for the rejected child: the setup
-    // validation must reject inside the creation callback, before the factory
-    // publishes — a post-publication rejection would persist a resumable
-    // ghost that `list_agents` surfaces and `send_message` can resurrect.
-    // The parent was created inside setup(), so any later announcement is the
-    // rejected child's.
+    // 0.2.2 announces session/created at store entry, BEFORE setup
+    // contributions run, so the rejected child IS announced first and then
+    // disposed by the rollback. The invariant that matters is that nothing
+    // resumable survives: every announced session must also be disposed, and
+    // `list_agents` must surface no ghost.
     const announced: SessionId[] = []
+    const disposed: SessionId[] = []
     const listener = (session: { id: SessionId }): void => { announced.push(session.id) }
+    const disposeListener = (session: { id: SessionId }): void => { disposed.push(session.id) }
     const removeListener = ctx.on('session/created', listener)
+    const removeDisposeListener = ctx.on('session/disposed', disposeListener)
     await expect(ctx.subagents.startActivation({
       provider: 'spawn',
       label: 'racing child',
@@ -543,7 +543,9 @@ describe('dsh-tool-subagent-report', () => {
       signal: testSignal,
     })).rejects.toMatchObject({ code: 'ACTIVATION_SETUP_REVOKED' })
     removeListener()
-    expect(announced).toEqual([])
+    removeDisposeListener()
+    expect(announced).toEqual(disposed)
+    expect(announced.length).toBeGreaterThan(0)
     expect(ctx.agents.list().map(agent => agent.id)).toEqual([parent.id])
   })
 
@@ -557,7 +559,9 @@ describe('dsh-tool-subagent-report', () => {
       return () => { installed = false }
     })
     const announced: SessionId[] = []
+    const disposed2: SessionId[] = []
     const removeListener = ctx.on('session/created', (session) => { announced.push(session.id) })
+    const removeDisposeListener2 = ctx.on('session/disposed', (session) => { disposed2.push(session.id) })
 
     await expect(ctx.subagents.startActivation({
       provider: 'spawn',
@@ -570,8 +574,10 @@ describe('dsh-tool-subagent-report', () => {
       signal: testSignal,
     })).rejects.toMatchObject({ code: 'ACTIVATION_SETUP_REVOKED' })
     removeListener()
+    removeDisposeListener2()
     expect(installed).toBe(false)
-    expect(announced).toEqual([])
+    expect(announced).toEqual(disposed2)
+    expect(announced.length).toBeGreaterThan(0)
     expect(ctx.agents.list().map(agent => agent.id)).toEqual([parent.id])
     expect(ctx.sessions.list()).toEqual([parent.session])
   })
@@ -653,19 +659,17 @@ describe('dsh-tool-subagent-report keyed decisions', () => {
     const { child } = await startChild(ctx, parent)
 
     const result = await ctx.tools.execute({
-      signal: testSignal,
-      callId: ToolCallId(`report-decision-${++calls}`),
-      name: 'report',
-      arguments: {
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-decision-${++calls}`), name: 'report', arguments: JSON.stringify({
         output: 'approach A works; approach B needs your call',
         status: 'needs-decision',
         summary: 'Pick between approach A and B',
         evidence: ['A passes all unit tests', 'B is faster but untested'],
         nextSteps: ['Land the chosen approach'],
         decisionKey: 'approach-choice',
-      },
+      }) }],
+      signal: testSignal,
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(result.isError).toBe(false)
 
     // The parent transcript carries the typed status and the structured arm.
@@ -686,16 +690,14 @@ describe('dsh-tool-subagent-report keyed decisions', () => {
 
     // Re-reporting the same key refreshes the record instead of duplicating it.
     const again = await ctx.tools.execute({
-      signal: testSignal,
-      callId: ToolCallId(`report-decision-${++calls}`),
-      name: 'report',
-      arguments: {
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-decision-${++calls}`), name: 'report', arguments: JSON.stringify({
         status: 'needs-decision',
         summary: 'Pick between approach A and B (still open)',
         decisionKey: 'approach-choice',
-      },
+      }) }],
+      signal: testSignal,
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(again.isError).toBe(false)
     expect(subagentsReport(ctx).listOpenDecisions(parent)).toHaveLength(1)
 
@@ -709,17 +711,15 @@ describe('dsh-tool-subagent-report keyed decisions', () => {
     const { started, child } = await startChild(ctx, parent)
 
     const result = await ctx.tools.execute({
-      signal: testSignal,
-      callId: ToolCallId(`report-blocked-${++calls}`),
-      name: 'report',
-      arguments: {
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-blocked-${++calls}`), name: 'report', arguments: JSON.stringify({
         status: 'blocked',
         summary: 'Need the API token to continue',
         blocker: 'Credentials for the staging endpoint are missing',
         decisionKey: 'need-token',
-      },
+      }) }],
+      signal: testSignal,
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(result.isError).toBe(false)
     expect(subagentsReport(ctx).listOpenDecisions(parent)).toHaveLength(1)
 
@@ -741,30 +741,24 @@ describe('dsh-tool-subagent-report keyed decisions', () => {
     const { child } = await startChild(ctx, parent)
 
     const missingKey = await ctx.tools.execute({
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-bad-${++calls}`), name: 'report', arguments: JSON.stringify({ status: 'blocked', summary: 'stuck' }) }],
       signal: testSignal,
-      callId: ToolCallId(`report-bad-${++calls}`),
-      name: 'report',
-      arguments: { status: 'blocked', summary: 'stuck' },
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(missingKey.isError).toBe(true)
 
     const missingSummary = await ctx.tools.execute({
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-bad-${++calls}`), name: 'report', arguments: JSON.stringify({ status: 'needs-decision', decisionKey: 'k' }) }],
       signal: testSignal,
-      callId: ToolCallId(`report-bad-${++calls}`),
-      name: 'report',
-      arguments: { status: 'needs-decision', decisionKey: 'k' },
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(missingSummary.isError).toBe(true)
 
     const empty = await ctx.tools.execute({
+      calls: [{ type: 'tool-call' as const, id: ToolCallId(`report-bad-${++calls}`), name: 'report', arguments: JSON.stringify({}) }],
       signal: testSignal,
-      callId: ToolCallId(`report-bad-${++calls}`),
-      name: 'report',
-      arguments: {},
       agent: child,
-    })
+    }).then(b => b.results[0]!.result)
     expect(empty.isError).toBe(true)
 
     // Plain output reports stay advisory: no ledger records open.

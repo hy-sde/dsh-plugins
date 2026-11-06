@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import { applyOpenWikiTools } from '../src/tools.ts'
 import { buildOpenWikiPromptSection } from '../src/prompt.ts'
 
@@ -25,6 +26,7 @@ describe('openwiki tool surface', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     applyOpenWikiTools(ctx, { host: 'test', producerActor: 'test' })
 
     const visible = ctx.tools.schemas()
@@ -40,6 +42,7 @@ describe('openwiki tool surface', () => {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     applyOpenWikiTools(ctx, {})
 
     const visible = ctx.tools.schemas()
@@ -104,6 +107,7 @@ describe('openwiki tools over a real scratch repository (registry-integration)',
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
     applyOpenWikiTools(ctx, { host: 'test', producerActor: 'test' })
     const signal = new AbortController().signal
 
@@ -170,7 +174,10 @@ type ToolOutcome = { status: string } & Record<string, unknown>
 
 /** One registry dispatch returning the parsed tool output value. */
 async function runTool(ctx: CordisContext, signal: AbortSignal, name: string, args: unknown): Promise<ToolOutcome> {
-  const result = await ctx.tools.execute({ signal, callId: ToolCallId(`it-${Math.random()}`), name, arguments: args })
+  const result = await ctx.tools.execute({
+    calls: [{ type: 'tool-call' as const, id: ToolCallId(`it-${Math.random()}`), name, arguments: JSON.stringify(args)}],
+    signal,
+  }).then(b => b.results[0]!.result)
   if (result.error) throw new Error(`tool ${name} failed: ${result.error.message}`)
   const text = result.content.filter(b => b.type === 'text').map(b => 'text' in b ? b.text : '').join('')
   return JSON.parse(text) as { status: string; [k: string]: unknown }
