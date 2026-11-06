@@ -1,14 +1,16 @@
 /**
- * A dependency-light Language Server Protocol client (text-document subset)
- * driving one server process. Covers exactly what the edit tool needs:
- * initialize, didOpen/didChange, textDocument/formatting, and the
- * publishDiagnostics notifications feeding diagnostic collection.
+ * A Language Server Protocol client (text-document subset) driving one
+ * server process. Covers exactly what the edit tool needs: initialize,
+ * didOpen/didChange, textDocument/formatting, and the publishDiagnostics
+ * notifications feeding diagnostic collection. Request correlation and
+ * deadlines run on the trimmed Effect core (`@hy-sde-org/effect`).
  *
  * All public operations degrade instead of throw when the server is
  * unavailable: callers observe `undefined` and continue with edit-only.
  * @module @hy-sde-org/dsh-tool-edit/lsp
  */
 
+import { Deferred, Effect, Scheduler } from '@hy-sde-org/effect'
 import type { LspMessage, StdioLspProcess } from './stdio.ts'
 import { spawnLspProcess, splitCommand } from './stdio.ts'
 
@@ -16,6 +18,10 @@ import { spawnLspProcess, splitCommand } from './stdio.ts'
 const REQUEST_TIMEOUT_MS = 60_000
 /** Seconds for `initialize` before the server is declared unresponsive. */
 const INIT_TIMEOUT_MS = 20_000
+// Effect's default scheduler dispatches on `setImmediate`, which vitest fake
+// timers replace without advancing; pinning the sync scheduler keeps awaited
+// runPromises live under fake timers (same pin as every Effect consumer).
+const syncScheduler = new Scheduler.MixedScheduler('sync')
 
 /** LSP severity constants (1=error, 2=warning, 3=info, 4=hint). */
 export const SEVERITY = { error: 1, warning: 2, info: 3, hint: 4 } as const
@@ -38,11 +44,6 @@ export interface LspStatus {
   serverPid: number | undefined
 }
 
-interface PendingRequest {
-  resolve: (value: unknown) => void
-  reject: (error: Error) => void
-  timer: ReturnType<typeof setTimeout>
-}
 
 interface OpenDocument {
   uri: string
@@ -101,7 +102,7 @@ export function pathToUri(filePath: string): string {
  */
 export class TextDocumentLspClient {
   private process: StdioLspProcess | undefined
-  private pending = new Map<number, PendingRequest>()
+  private pending = new Map<number, Deferred.Deferred<unknown, Error>>()
   private nextId = 1
   private documents = new Map<string, OpenDocument>()
   private diagnosticsByUri = new Map<string, EditLspDiagnostic[]>()
@@ -149,55 +150,58 @@ export class TextDocumentLspClient {
   private initialize(): Promise<void> {
     const lspProcess = this.process
     if (!lspProcess) return Promise.reject(new Error('lsp client: no process'))
-    return new Promise<void>((resolve, reject) => {
-      let settled = false
-      const fail = (reason: string): void => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        reject(new Error(reason))
-      }
-      const succeed = (): void => {
-        if (settled) return
-        settled = true
-        clearTimeout(timeout)
-        this.notify('initialized', {})
-        resolve()
-      }
-      const timeout = setTimeout(() => fail('lsp client: initialize timed out'), INIT_TIMEOUT_MS)
-      lspProcess.onClose(() => fail('lsp server exited during initialize'))
-      this.requestRaw(
-        'initialize',
-        {
-          processId: typeof process !== 'undefined' && typeof process.pid === 'number' ? process.pid : null,
-          clientInfo: { name: 'dsh-tool-edit', version: '0.1.1-rc.2' },
-          capabilities: {
-            textDocument: {
-              synchronization: { dynamicRegistration: false, willSave: false, didSave: false },
-              formatting: { dynamicRegistration: false },
+    const self = this
+    return Effect.runPromise(
+      Effect.gen(function*() {
+        // Three sources race the handshake: the initialize request, the
+        // server exiting, and the deadline. First settlement wins and the
+        // losers — including the request fiber and its scope-owned timer —
+        // are interrupted and released.
+        const closed = yield* Deferred.make<never, Error>()
+        lspProcess.onClose(() => {
+          Deferred.doneUnsafe(closed, Effect.fail(new Error('lsp server exited during initialize')))
+        })
+        const deadline = Effect.sleep(INIT_TIMEOUT_MS).pipe(
+          Effect.flatMap(() => Effect.fail(new Error('lsp client: initialize timed out'))),
+        )
+        yield* Effect.raceAllFirst([
+          self.requestEffect(lspProcess, 'initialize', {
+            processId: typeof process !== 'undefined' && typeof process.pid === 'number' ? process.pid : null,
+            clientInfo: { name: 'dsh-tool-edit', version: '0.1.1-rc.2' },
+            capabilities: {
+              textDocument: {
+                synchronization: { dynamicRegistration: false, willSave: false, didSave: false },
+                formatting: { dynamicRegistration: false },
+              },
+              workspace: {
+                workspaceFolders: true,
+              },
             },
-            workspace: {
-              workspaceFolders: true,
-            },
-          },
-          rootUri: null,
-        },
-      ).then(succeed, (error: unknown) => fail(errorMessage(error)))
-    })
+            rootUri: null,
+          }),
+          Deferred.await(closed),
+          deadline,
+        ])
+        self.notify('initialized', {})
+      }),
+      { scheduler: syncScheduler },
+    )
   }
 
   /** One-time message router: responses → pending, notifications → store. */
   private dispatch(message: LspMessage): void {
     const method = message.method
     if (typeof message.id === 'number' && method === undefined) {
-      const pending = this.pending.get(message.id)
-      if (pending) {
-        clearTimeout(pending.timer)
+      const deferred = this.pending.get(message.id)
+      if (deferred) {
         this.pending.delete(message.id)
         if (message.error !== undefined) {
-          pending.reject(new Error(`lsp server error: ${JSON.stringify(message.error)}`))
+          Deferred.doneUnsafe(
+            deferred,
+            Effect.fail(new Error(`lsp server error: ${JSON.stringify(message.error)}`)),
+          )
         } else {
-          pending.resolve(message.result)
+          Deferred.doneUnsafe(deferred, Effect.succeed(message.result))
         }
       }
       return
@@ -213,18 +217,57 @@ export class TextDocumentLspClient {
     // Other notifications (e.g. window/logMessage) are intentionally ignored.
   }
 
-  private requestRaw(method: string, params: unknown): Promise<unknown> {
-    const process = this.process
-    if (!process) return Promise.reject(new Error('lsp client: no process'))
+  /**
+   * One JSON-RPC request as an Effect. Correlation (the pending entry), the
+   * answer deadline, and their cleanup are scope-owned: the release
+   * finalizer drops the entry and clears the timer on every exit path —
+   * response, timeout, disposal, interruption — replacing per-site
+   * clearTimeout bookkeeping. The failure carries the original Error by
+   * identity, so facades rethrow exactly what the server produced.
+   */
+  private requestEffect(
+    lspProcess: StdioLspProcess,
+    method: string,
+    params: unknown,
+  ): Effect.Effect<unknown, Error> {
+    const pending = this.pending
     const id = this.nextId++
-    return new Promise<unknown>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id)
-        reject(new Error(`lsp client: request ${method} timed out`))
-      }, REQUEST_TIMEOUT_MS)
-      this.pending.set(id, { resolve, reject, timer })
-      process.send({ jsonrpc: '2.0', id, method, params })
-    })
+    return Effect.scoped(
+      Effect.gen(function*() {
+        // `Effect.gen` takes a `function*`, which does not close over the
+        // class `this`; the map is captured as a local above instead.
+        const deferred = yield* Deferred.make<unknown, Error>()
+        const settleFailure = (error: Error): void => {
+          pending.delete(id)
+          Deferred.doneUnsafe(deferred, Effect.fail(error))
+        }
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            pending.set(id, deferred)
+            lspProcess.send({ jsonrpc: '2.0', id, method, params })
+            const timer = setTimeout(() => {
+              if (!pending.has(id)) return
+              settleFailure(new Error(`lsp client: request ${method} timed out`))
+            }, REQUEST_TIMEOUT_MS)
+            return timer
+          }),
+          timer =>
+            Effect.sync(() => {
+              clearTimeout(timer)
+              pending.delete(id)
+            }),
+        )
+        // Effect.gen's success value is the generator's completion value —
+        // the awaited answer must be RETURNED, not just yielded into a local.
+        return yield* Deferred.await(deferred)
+      }),
+    )
+  }
+
+  private requestRaw(method: string, params: unknown): Promise<unknown> {
+    const lspProcess = this.process
+    if (!lspProcess) return Promise.reject(new Error('lsp client: no process'))
+    return Effect.runPromise(this.requestEffect(lspProcess, method, params), { scheduler: syncScheduler })
   }
 
   private notify(method: string, params: unknown): void {
@@ -304,9 +347,11 @@ export class TextDocumentLspClient {
         }
       })
     }
-    for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer)
-      pending.reject(new Error('lsp client: disposed'))
+    // Fail every in-flight request. Per-request deadline timers are cleared
+    // by each request's own scope release as its Deferred settles — there is
+    // no timer bookkeeping left at this level.
+    for (const deferred of this.pending.values()) {
+      Deferred.doneUnsafe(deferred, Effect.fail(new Error('lsp client: disposed')))
     }
     this.pending.clear()
   }

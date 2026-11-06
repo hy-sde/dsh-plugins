@@ -1182,6 +1182,9 @@ importers:
       '@hy-sde-org/dsh-hashline':
         specifier: workspace:^
         version: link:../hashline
+      '@hy-sde-org/effect':
+        specifier: ~4.0.5
+        version: 4.0.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ~4.1.0

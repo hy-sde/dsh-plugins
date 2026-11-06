@@ -54,9 +54,22 @@ peer dependencies, not copied source.
 |---|---|
 | @deepseek-ai/schemastery | MIT |
 | @hy-sde-org/dsh-hashline | MIT (this repo) |
+| @hy-sde-org/effect | MIT (fork, see below) |
 
 and declares peer dependencies on the published DeepSeek Harness packages
 (`@deepseek-ai/cordis`, `dsh-tools`, `dsh-fs`, `dsh-fs-local`,
 `dsh-fs-observation-policy`, `dsh-sandbox`, `dsh-sandbox-policy`,
 `dsh-session`, `dsh-system-prompt`), all served from the
 npm registry under their published licenses.
+
+## @hy-sde-org/effect
+
+The edit tool's embedded LSP client (request correlation, answer deadlines,
+handshake racing) uses [`@hy-sde-org/effect`](https://www.npmjs.com/package/@hy-sde-org/effect) —
+a trimmed source fork of [`effect`](https://github.com/Effect-TS/effect) `packages/effect`
+at tag `effect@4.0.5` (commit `7f524e25cfb49a71ac39b0f44278d08d40dda5de`). The fork carries
+only the combinator core (`Effect`, `Cause`, `Data`, `Deferred`, `Exit`, `Scheduler` and their
+closed dependency set); the kept fiber runtime is unmodified upstream source. effect is
+distributed under the MIT License (© the Effect-TS authors), included in the fork's LICENSE.
+
+All other code in this package is MIT (see LICENSE).
