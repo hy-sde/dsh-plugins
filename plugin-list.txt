@@ -1,13 +1,20 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
-## BUMPED NOT YET PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.2-rc.1
-##   (2026-11-05, harness 0.2.2-rc.1-parity wave: members 0.2.1-rc.5/.5.1 → 0.2.2-rc.1,
+## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.2-rc.1 on npm
+##   (2026-11-06, harness 0.2.2-rc.1-parity wave: members 0.2.1-rc.5/.5.1 → 0.2.2-rc.1,
 ##   @deepseek-ai/dsh-* peers → ^0.2.2-rc.1, pnpm-workspace.yaml minimumReleaseAgeExclude
 ##   || 0.2.2-rc.1. Vendor pins realigned to upstream 0.2.2: cordis ~4.1.0 / schemastery
 ##   ~3.19.0 / loader ~1.1.0 / include ~1.1.0. Test suites migrated to the 0.2.2 batch
 ##   execute API (ctx.tools.execute {calls:[…]} → results[0].result, executor mounts
-##   required). Validation: serial check + full recursive test exit 0.)
+##   required). Validation: serial check + full recursive test exit 0. Lane: main pushed
+##   63ece08 → sync-mirrors 27/27 fast-forward → serial release-public.sh --check 43/43 →
+##   av-injected (+NODE_AUTH_TOKEN, ~/.npmrc token line temporarily uncommented) per-package
+##   release-public.sh --publish in ordered-packages order, 43/43 exit 0, zero retries.
+##   npm view verified 38/43 immediately (5 stale-CDN 404s: tool-logseq, session-intelligence,
+##   graph-executor, memory-extraction, tool-memory — all confirmed within 75s via
+##   --prefer-online; republish probe 404s were the known stale-edge artifact). ~/.npmrc
+##   token line re-commented after.)
 
 ## LAST PUBLISHED: all 43 @hy-sde-org/dsh-* workspace packages at 0.2.1-rc.5 on npm
 ##   (2026-11-01, harness rc.5-parity wave: members 0.2.1-rc.3/.1 → 0.2.1-rc.5, @deepseek-ai/dsh-*
