@@ -57,8 +57,8 @@ describe('edit error kinds', () => {
       new MismatchError({ ...details, hashRecognized: true, expectedFileHash: '', tagOriginPaths: ['/tmp/a.ts'] }).kind,
     ).toBe('stale_tag')
     expect(new MismatchError({ ...details, expectedFileHash: '', hashRecognized: false }).kind).toBe('missing_tag')
-    // The constructor also tags the error itself, so the kind travels on the
-    // thrown error even where the tool framework does not surface it.
+    // The constructor also tags the error itself, so the kind reaches
+    // result.error.errorKind through the tool framework.
     expect(errorKindOf(new MismatchError({ ...details, hashRecognized: true }))).toBe('stale_tag')
   })
 

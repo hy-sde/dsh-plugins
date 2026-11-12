@@ -208,13 +208,35 @@ describe('Patcher shift-consistent anchor rescue', () => {
     expect(message).toMatch(/never displayed/)
   })
 
-  // NOTE (mirror): the fork's "never rescues on the drift path" test is not
-  // ported. Its rejection comes from the fork's drift-path seen-line guard
-  // (`#assertSeenLines(section, expected, storedSnapshotForTag)` before
-  // recovery), a pre-existing fork feature this standalone plugin deliberately
-  // omits — the plugin's seen-guard runs only on the no-drift path. Without
-  // that guard the plugin's drift path runs recovery, which here relocates
-  // the content-unique anchor and applies the edit; the rescue itself is
-  // unreachable on the drift path (it is wired only at the no-drift call
-  // site), so the invariant the test protects holds trivially.
+  it('never rescues on the drift path, whose anchors index the tagged snapshot', async () => {
+    // The tag names v0; the live file is v0 shifted by two rows. Line 6's
+    // current content ("juliet kilo lima four") images seen v0 line 4 and
+    // the payload carries it — the no-drift rescue would accept — but
+    // drift-path anchors remap through the TAGGED text, so the guard
+    // rejects rather than guessing across numberings.
+    const v1 = [
+      'alpha bravo charlie one',
+      'INSERTED ALPHA ROW A',
+      'INSERTED BRAVO ROW B',
+      'delta echo foxtrot two',
+      'golf hotel india three',
+      'juliet kilo lima four',
+      'mike november oscar five',
+      'papa quebec romeo six',
+      '',
+    ].join('\n')
+    const fs = new InMemoryFilesystem([[PATH, v1]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag0 = snapshots.record(PATH, V0, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${tag0}]\nPUT 6-6:\n+juliet kilo lima four (revised)`))
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toMatch(/never displayed/)
+    expect(fs.get(PATH)).toBe(v1)
+  })
 })

@@ -34,6 +34,7 @@ export function formatAnchoredContext(anchorLines: readonly number[], fileLines:
   }
   return rows
 }
+
 /**
  * Line numbers a mismatch reply prints around `anchorLines`
  * (±{@link MISMATCH_CONTEXT}, clamped to the file). Rows the reply renders
@@ -598,6 +599,7 @@ export function unverifiedWideLinesMessage(sectionPath: string, wideLines: reado
     '(e.g. maxLineLength: 1000000) for their full content, then re-issue the edit.'
   )
 }
+
 /**
  * An unseen anchor line is wider than the inline reveal cap: a column-capped
  * preview would leave part of the line unseen while signaling "ok to retry",

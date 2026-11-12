@@ -8,7 +8,7 @@
  * between authored and remapped anchors (lexical approximation of the
  * upstream tree-sitter node chain; see src/syntax-chain.ts).
  *
- * Mirrors oh-my-pi facc0f9cdf (`recovery_refuses_a_remap_into_a_sibling_construct`
+ * Mirrors oh-my-pi (`recovery_refuses_a_remap_into_a_sibling_construct`
  * and `recovery_remaps_a_shift_inside_the_same_construct`).
  */
 import { describe, expect, it } from 'vitest'

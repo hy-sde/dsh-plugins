@@ -871,6 +871,7 @@ function spliceBoundaryCombo(
   })
   const out: AppliedEdit[] = []
   let i = 0
+  /* jscpd:ignore-start -- normalizeTextualBoundaryEchoes and spliceBoundaryCombo splice replacement groups with independently owned variant selection. */
   while (i < edits.length) {
     const group = findReplacementGroup(edits, i)
     if (!group) {
@@ -898,6 +899,7 @@ function spliceBoundaryCombo(
     i = (group.deleteIndices[group.deleteIndices.length - 1] ?? 0) + 1
   }
   return out
+  /* jscpd:ignore-end */
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

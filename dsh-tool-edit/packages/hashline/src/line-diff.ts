@@ -120,7 +120,7 @@ export function diffLineRuns(oldText: string, newText: string): LineDiffRun[] {
  * @oh-my-pi/hashline's `shifted_images` (pi-edit patcher.rs, PR #14254).
  */
 export function shiftedImages(oldText: string, newText: string): (number | null)[] {
-  const image: (number | null)[] = new Array(newText.split('\n').length).fill(null)
+  const image: (number | null)[] = Array.from({ length: newText.split('\n').length }, () => null)
   let oldLine = 1
   let newLine = 1
   for (const run of diffLineRuns(oldText, newText)) {

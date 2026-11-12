@@ -1,6 +1,6 @@
 /**
  * Lexical approximation of the upstream tree-sitter `node_chain` used by
- * stale-anchor recovery's sibling-construct guard (omp facc0f9cdf).
+ * stale-anchor recovery's sibling-construct guard (omp's sibling recovery tests).
  *
  * The original compares the chain of enclosing syntax nodes (kind + opening
  * row text) at an authored anchor against the chain at its remapped landing

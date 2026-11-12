@@ -78,11 +78,6 @@ export class MismatchError extends Error {
   constructor(details: MismatchDetails) {
     super(MismatchError.formatMessage(details))
     this.name = 'MismatchError'
-    this.kind = MismatchError.rejectionKind(details)
-    // Carry the kind on the thrown error itself (WeakMap tag) so hashline
-    // mismatch rejections surface machine-readably in result.error, like the
-    // tagged apply_patch kinds.
-    withErrorKind(this, this.kind)
     this.path = details.path
     this.expectedFileHash = details.expectedFileHash
     this.actualFileHash = details.actualFileHash
@@ -90,6 +85,11 @@ export class MismatchError extends Error {
     this.anchorLines = details.anchorLines ?? []
     this.hashRecognized = details.hashRecognized ?? true
     this.tagOriginPaths = details.tagOriginPaths ?? []
+    this.kind = MismatchError.rejectionKind(details)
+    // Carry the kind on the thrown error itself (WeakMap tag) so hashline
+    // mismatch rejections surface machine-readably in result.error, like the
+    // tagged apply_patch kinds.
+    withErrorKind(this, this.kind)
   }
 
   get displayMessage(): string {
@@ -128,15 +128,15 @@ export class MismatchError extends Error {
     ]
   }
 
-  static formatDisplayMessage(details: MismatchDetails): string {
-    return MismatchError.formatMessage(details)
-  }
-
   private static rejectionKind(details: MismatchDetails): EditErrorKind {
     if (details.hashRecognized ?? true) return 'stale_tag'
     if (details.expectedFileHash === '') return 'missing_tag'
     if ((details.tagOriginPaths ?? []).length === 0) return 'unknown_tag'
     return 'other_file_tag'
+  }
+
+  static formatDisplayMessage(details: MismatchDetails): string {
+    return MismatchError.formatMessage(details)
   }
 
   static formatMessage(details: MismatchDetails): string {

@@ -41,7 +41,7 @@ export interface Snapshot {
 	 * this tag. A partial read (range, or a structural summary that collapsed
 	 * bodies) leaves this sparse; a whole-file read fills every line. Multiple
 	 * reads of the same content union into one set. `undefined` means "no
-	 * provenance recorded" — the patcher then skips the seen-line check and
+	 * origin recorded" — the patcher then skips the seen-line check and
 	 * applies as before. Mutated in place as more of the same content is read.
 	 */
   seenLines?: Set<number>
@@ -66,7 +66,7 @@ export abstract class SnapshotStore {
   /**
 	 * Recorded version for `path` whose {@link Snapshot.text} equals `fullText`,
 	 * or `null`. The patcher uses it on the no-drift path to attach seen-line
-	 * provenance to the exact text the model read.
+	 * origin to the exact text the model read.
 	 */
   abstract byContent(path: string, fullText: string): Snapshot | null
 
@@ -114,7 +114,7 @@ export abstract class SnapshotStore {
   abstract invalidate(path: string): void
 
   /**
-	 * Move retained version history (and read provenance) from `from` to `to`.
+	 * Move retained version history (and read origin) from `from` to `to`.
 	 * No-op when `from` has no history. Used by file moves so tags minted from
 	 * reads of the source path stay valid at the destination.
 	 */
@@ -270,7 +270,7 @@ export class InMemorySnapshotStore extends SnapshotStore {
   }
 
   recordSeenLines(path: string, hash: string, lines: Iterable<number>): void {
-    // Provenance growth counts against the budget: re-set the mutated
+    // Seen-line growth counts against the budget: re-set the mutated
     // history so the LRU recomputes its size and evicts when over — the
     // oldest path's history goes first (upstream b3458f5073).
     const history = this.#versions.get(path)

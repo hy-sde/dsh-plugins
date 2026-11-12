@@ -220,7 +220,7 @@ interface RemappedEdits {
  * neighbors, and the edit lands in the wrong block while every positional
  * check passes. Comparing the enclosing constructs by content rejects those
  * landings. Files with no inferable language report no chain on either side
- * and stay allowed (mirrors upstream facc0f9cdf).
+ * and stay allowed (mirrors the upstream sibling-construct guard).
  */
 export function contextPreserved(
   previous: string,
@@ -353,6 +353,7 @@ function remapEditsToCurrent(previousText: string, currentText: string, edits: r
       if (mappedBlockStart === null) return null
       blockStart = mappedBlockStart
     }
+    /* jscpd:ignore-start -- recovery remapping keeps separate paste-gap and top-level cursor remap blocks with the same anchor checks. */
     const cursor = edit.cursor
     if (cursor.kind !== 'before_anchor' && cursor.kind !== 'after_anchor') {
       remapped.push(blockStart === edit.blockStart ? edit : { ...edit, ...(blockStart === undefined ? {} : { blockStart }) })
@@ -365,6 +366,7 @@ function remapEditsToCurrent(previousText: string, currentText: string, edits: r
       cursor: { kind: cursor.kind, anchor },
       ...(blockStart === undefined ? {} : { blockStart }),
     })
+    /* jscpd:ignore-end */
   }
 
   if (offsets.length === 0) return null

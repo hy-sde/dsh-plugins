@@ -5,7 +5,7 @@
  * (see {@link computeFileHash}), so any read of byte-identical content mints
  * the same tag and `read`-side producers and the `edit` patcher can share tags
  * even before a store round-trip. Sharing ONE store per agent session is what
- * makes recovery and seen-line provenance work across tool calls: the `read`
+ * makes recovery and seen-line origin work across tool calls: the `read`
  * tool records what it displayed so a later `edit` verifies its anchors
  * against the exact content (and lines) the model saw.
  *

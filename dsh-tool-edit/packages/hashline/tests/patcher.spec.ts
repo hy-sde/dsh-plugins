@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import {
   computeFileHash,
   type BlockSpan,
+  errorKindOf,
   formatHashlineHeader,
   HEADTAIL_DRIFT_WARNING,
   InMemoryFilesystem,
@@ -40,7 +41,7 @@ describe('Patcher snapshot tag integrity', () => {
     expect(fs.get(PATH)).toBe('after\n')
   })
 
-  it("applies an edit to a file whose name contains '#' (yadm alt file)", async () => {
+  it('applies an edit to a file whose name contains \'#\' (yadm alt file)', async () => {
     const ALT_PATH = 'conf.yaml##hostname.home'
     const fs = new InMemoryFilesystem([[ALT_PATH, 'alpha\nbeta\n']])
     const snapshots = new InMemorySnapshotStore()
@@ -321,7 +322,7 @@ describe('Patcher mandatory snapshot tag policy', () => {
   })
 })
 
-describe('Patcher seen-line provenance', () => {
+describe('Patcher seen-line origin', () => {
   const CONTENT = 'l1\nl2\nl3\nl4\nl5\n'
 
   it('red-proof: a re-minted tag from a mismatch reply lets a blind resend apply', async () => {
@@ -348,9 +349,9 @@ describe('Patcher seen-line provenance', () => {
     expect(mismatch.displayMessage).toContain('*2:b2')
     const currentTag = mismatch.actualFileHash
     // The reply's displayed rows (anchor 2 ± 2 → lines 1-4) register as seen
-    // on the current-content snapshot, plus line 0 (which no read display
-    // includes) — the line-0 marker keeps the reply-recorded snapshot
-    // restricted even though rows exist.
+    // on the current-content snapshot; line 0 (which no read display
+    // includes) keeps the reply-recorded snapshot restricted even though rows exist
+    // (oh-my-pi f11dac11be).
     expect([...(snapshots.byHash(PATH, currentTag)?.seenLines ?? [])]).toEqual([1, 2, 3, 4, 0])
 
     // Resend under the re-minted tag anchoring on a line the reply never
@@ -449,6 +450,40 @@ describe('Patcher seen-line provenance', () => {
     expect(fs.get(PATH)).toBe('l1\nl2\nl3\nL4\nl5\n')
   })
 
+  it('applies the seen-line contract to drift recovery — no blind remap of unseen anchors', async () => {
+    const v0 = 'l1\nl2\nl3\nl4\nl5\n'
+    const v1 = 'l1\nl2\ninserted\nl3\nl4\nl5\n'
+    const fs = new InMemoryFilesystem([[PATH, v1]])
+    const snapshots = new InMemorySnapshotStore()
+    // Read only surfaced lines 1-2 of v0; anchor 5 is unseen. The file then
+    // drifted, so a naive recovery would remap 5→6 and apply anyway.
+    const tag = snapshots.record(PATH, v0, [1, 2])
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 5-5:\n+L5-MODEL`))
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toMatch(/never displayed/)
+    // Disk untouched — refusal must never leave a partial write.
+    expect(fs.get(PATH)).toBe(v1)
+  })
+
+  it('still recovers drifted anchors the read displayed', async () => {
+    const v0 = 'l1\nl2\nl3\nl4\nl5\n'
+    const v1 = 'l1\nl2\ninserted\nl3\nl4\nl5\n'
+    const fs = new InMemoryFilesystem([[PATH, v1]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record(PATH, v0, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 5-5:\n+L5-MODEL`))
+    expect(result.sections[0]?.op).toBe('update')
+    expect(fs.get(PATH)).toBe('l1\nl2\ninserted\nl3\nl4\nL5-MODEL\n')
+  })
+
   it('truncates the reveal at the cap and directs the tail back to a range re-read', async () => {
     const bigContent = `${Array.from({ length: 200 }, (_, i) => `l${i + 1}`).join('\n')}\n`
     const fs = new InMemoryFilesystem([[PATH, bigContent]])
@@ -516,7 +551,7 @@ describe('Patcher seen-line provenance', () => {
     expect(fs.get(PATH)).toBe(wideContent)
 
     // A straight retry STILL rejects with the same remedy: only a re-read
-    // that displays the line in full (which re-mints the tag) can unlock it.
+    // with a raised maxLineLength (which re-mints the tag) can unlock it.
     let retryMessage: string | undefined
     try {
       await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 2-3:\n+X\n+Y`))
@@ -527,7 +562,6 @@ describe('Patcher seen-line provenance', () => {
     expect(retryMessage).not.toContain('a'.repeat(513))
     expect(fs.get(PATH)).toBe(wideContent)
   })
-
   it('rejects a wide anchor when no retained read shows the content', async () => {
     // The tag was minted outside this session (write, aged-out store, or an
     // externally supplied hash) with NO seen set: anchors on lines wider
@@ -580,6 +614,140 @@ describe('Patcher seen-line provenance', () => {
     const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 4-4:\n+L4`))
 
     expect(result.sections[0]?.op).toBe('update')
+  })
+})
+
+describe('Patcher stale-tag seen guard (oh-my-pi ff0d7262f8, f11dac11be, 2995614a54)', () => {
+  const longFile = (label: string): string => `${Array.from({ length: 60 }, (_, i) => `${label}${i + 1}`).join('\n')}\n`
+
+  function extractLiveTag(message: string): string {
+    // Tags are content-hash words (any alphabet); every header carries the
+    // path, so anchor on it and take the last header — the handed-back tag.
+    const tags = [...message.matchAll(new RegExp(`\\[${PATH}#([^\\]]+)\\]`, 'g'))].map(match => match[1] ?? '')
+    const liveTag = tags[tags.length - 1]
+    expect(liveTag).toBeDefined()
+    return liveTag ?? ''
+  }
+
+  it('a shifted stale-tag cut line reads its current number', async () => {
+    const staleText = `${'a'.repeat(4096)}\nl2\nl3\nl4\nl5\nl6\n`
+    const liveText = `head-a\nhead-b\n${staleText}`
+    // The read column-cut the wide line 1, so lines 2-6 are the seen set.
+    const staleTag = new InMemorySnapshotStore().record(PATH, staleText, [2, 3, 4, 5, 6])
+    const fs = new InMemoryFilesystem([[PATH, liveText]])
+    const snapshots = new InMemorySnapshotStore()
+    expect(snapshots.record(PATH, staleText, [2, 3, 4, 5, 6])).toBe(staleTag)
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    let thrown: Error | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${staleTag}]\nCUT 1.=1`))
+      throw new Error('expected rejection')
+    } catch (err) {
+      thrown = err as Error
+      message = (err as Error).message
+    }
+    expect(errorKindOf(thrown)).toBe('unseen_lines')
+    expect(message).toContain(`${PATH}:3`)
+    expect(message).not.toContain(`${PATH}:1`)
+    expect(message).toContain('maxLineLength')
+    const liveTag = extractLiveTag(message ?? '')
+
+    // Reading live line 3 lands on the handed-back tag (record merges into
+    // the reply snapshot recorded for the live content).
+    expect(snapshots.record(PATH, liveText, [3])).toBe(liveTag)
+    await patcher.apply(Patch.parse(`[${PATH}#${liveTag}]\nPUT 3.=3:\n+wide-model`))
+    expect(fs.get(PATH)).toBe('head-a\nhead-b\nwide-model\nl2\nl3\nl4\nl5\nl6\n')
+  })
+
+  it('a shifted stale-tag cut over the reveal cap reads current numbers', async () => {
+    const staleText = longFile('l')
+    const liveText = `l1\nl2\nl3\nextra-a\nextra-b\n${staleText.split('\n').slice(3).join('\n')}`
+    const fs = new InMemoryFilesystem([[PATH, liveText]])
+    const snapshots = new InMemorySnapshotStore()
+    const staleTag = snapshots.record(PATH, staleText, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    let thrown: Error | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${staleTag}]\nCUT 10.=55`))
+      throw new Error('expected rejection')
+    } catch (err) {
+      thrown = err as Error
+      message = (err as Error).message
+    }
+    expect(errorKindOf(thrown)).toBe('unseen_lines')
+    expect(message).toContain('`a.ts:12-57`')
+    expect(message).not.toContain('`a.ts:10-55`')
+    expect(message).toContain(`\[${PATH}#${extractLiveTag(message ?? '')}\]`)
+    expect(fs.get(PATH)).toBe(liveText)
+  })
+
+  it('an external change hands back a live tag that needs the requested read', async () => {
+    const staleText = longFile('l')
+    const liveText = `ext-a\next-b\n${staleText}`
+    const fs = new InMemoryFilesystem([[PATH, liveText]])
+    const snapshots = new InMemorySnapshotStore()
+    const staleTag = snapshots.record(PATH, staleText, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${staleTag}]\nCUT 10.=55`))
+      throw new Error('expected rejection')
+    } catch (err) {
+      message = (err as Error).message
+    }
+    const liveTag = extractLiveTag(message ?? '')
+
+    // Resending with current line numbers under the handed-back tag, before
+    // the requested read, still hits the never-displayed guard.
+    await expect(patcher.apply(Patch.parse(`[${PATH}#${liveTag}]\nCUT 12.=57`))).rejects.toThrow(
+      /never displayed \(it showed/,
+    )
+    expect(fs.get(PATH)).toBe(liveText)
+
+    // The named read 12-57 is exactly what unblocks the edit.
+    expect(snapshots.record(PATH, liveText, Array.from({ length: 46 }, (_, i) => 12 + i))).toBe(liveTag)
+    await patcher.apply(Patch.parse(`[${PATH}#${liveTag}]\nCUT 12.=57`))
+    expect(fs.get(PATH)).toBe(
+      `ext-a\next-b\n${Array.from({ length: 9 }, (_, i) => `l${i + 1}`).join('\n')}\n${Array.from({ length: 5 }, (_, i) => `l${i + 56}`).join('\n')}\n`,
+    )
+  })
+
+  it('a stale cut carries its seen anchors onto the live tag', async () => {
+    const staleText = longFile('l')
+    const liveText = `carry-a\ncarry-b\n${staleText}`
+    const fs = new InMemoryFilesystem([[PATH, liveText]])
+    const snapshots = new InMemorySnapshotStore()
+    const staleTag = snapshots.record(PATH, staleText, [54, 55])
+    const patcher = new Patcher({ fs, snapshots })
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${staleTag}]\nCUT 10.=55`))
+      throw new Error('expected rejection')
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toContain('`a.ts:12-55`')
+    const liveTag = extractLiveTag(message ?? '')
+
+    // Old rows 54-55 now live at 56-57: the rejection carries them onto the
+    // live snapshot, so the model re-reads only 12-55 (not 56-57) and the
+    // resend applies.
+    const liveSeen = snapshots.byHash(PATH, liveTag)?.seenLines ?? new Set<number>()
+    expect(liveSeen.has(56)).toBe(true)
+    expect(liveSeen.has(57)).toBe(true)
+
+    const readLines = Array.from({ length: 44 }, (_, i) => 12 + i)
+    expect(snapshots.record(PATH, liveText, readLines)).toBe(liveTag)
+    await patcher.apply(Patch.parse(`[${PATH}#${liveTag}]\nCUT 12.=57`))
+    expect(fs.get(PATH)).toBe(
+      `carry-a\ncarry-b\n${Array.from({ length: 9 }, (_, i) => `l${i + 1}`).join('\n')}\n${Array.from({ length: 5 }, (_, i) => `l${i + 56}`).join('\n')}\n`,
+    )
   })
 })
 

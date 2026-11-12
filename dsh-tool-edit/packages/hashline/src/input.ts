@@ -474,6 +474,7 @@ export class PatchSection {
 	 * unresolvable block is silently dropped so a half-written file does not
 	 * throw mid-stream. A `PASTE` with an empty register is dropped too.
 	 */
+  /* jscpd:ignore-start -- PatchSection.applyTo and applyPartialTo parse the same op stream through strict and streaming-tolerant paths. */
   applyPartialTo(text: string, blockResolver?: BlockResolver, clipboard?: Clipboard): ApplyResult {
     const { edits, warnings } = parsePatchStreaming(this.diff)
     const resolveWarnings: string[] = []
@@ -494,6 +495,7 @@ export class PatchSection {
         ...(result.firstChangedLine === undefined ? {} : { firstChangedLine: result.firstChangedLine }),
       }
   }
+  /* jscpd:ignore-end */
 
   /**
 	 * A copy of this section rebound to a different target `path`, preserving

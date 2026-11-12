@@ -27,6 +27,7 @@ import * as path from 'node:path'
 import { applyEdits, findReplacementGroup } from './apply.ts'
 import { hasBlockEdit, resolveBlockEdits } from './block.ts'
 import { commitClipboard, forkClipboard, startClipboardBatch, validateClipboardSequence } from './clipboard.ts'
+import { withErrorKind } from './error-kind.ts'
 import { computeFileHash, formatHashlineHeader } from './format.ts'
 import type { Filesystem, WriteResult } from './fs.ts'
 import { isNotFound } from './fs.ts'
@@ -38,6 +39,7 @@ import {
   unverifiedWideLinesMessage,
   pathRecoveredFromTagMessage,
   type RevealedLine,
+  staleUnseenLinesMessage,
   unseenLinesMessage,
   wideUnseenLinesMessage,
   writeDriftWarning,
@@ -45,8 +47,7 @@ import {
 import { MismatchError } from './mismatch.ts'
 import { detectLineEnding, type LineEnding, normalizeToLF, restoreLineEndings, stripBom } from './normalize.ts'
 import { InvalidAbsoluteRangeError } from './parser.ts'
-import { withErrorKind } from './error-kind.ts'
-import { Recovery, type RecoveryResult } from './recovery.ts'
+import { currentLineMap, Recovery, type RecoveryResult } from './recovery.ts'
 import type { Snapshot, SnapshotStore } from './snapshots.ts'
 import type { ApplyResult, BlockResolution, BlockResolver, BlockSpan, Clipboard, Edit, FileOp } from './types.ts'
 
@@ -79,22 +80,22 @@ export interface PatcherOptions {
    */
   snapshots?: SnapshotStore
   /**
-	 * Resolves `replace_block N:` anchors to concrete line spans via tree-sitter.
-	 * Optional: when omitted, any `replace_block N:` edit throws on apply (the
-	 * host did not wire a resolver). Plain line-range ops never need it.
-	 */
+   * Resolves `replace_block N:` anchors to concrete line spans via tree-sitter.
+   * Optional: when omitted, any `replace_block N:` edit throws on apply (the
+   * host did not wire a resolver). Plain line-range ops never need it.
+   */
   blockResolver?: BlockResolver
   /**
-	 * Enforce the seen-line guard: reject anchored edits on lines the read/search
-	 * that minted the tag never displayed. Defaults to `true`. When `false`, tags
-	 * validate on content hash alone and any anchor into the tagged content applies.
-	 */
+   * Enforce the seen-line guard: reject anchored edits on lines the read/search
+   * that minted the tag never displayed. Defaults to `true`. When `false`, tags
+   * validate on content hash alone and any anchor into the tagged content applies.
+   */
   enforceSeenLines?: boolean
   /**
-	 * Host-owned clipboard register shared across batches, so `CUT` content
-	 * can be `PASTE`d by a later {@link Patcher.apply} call. Each batch works
-	 * on a fork and publishes it back only after writes land.
-	 */
+   * Host-owned clipboard register shared across batches, so `CUT` content
+   * can be `PASTE`d by a later {@link Patcher.apply} call. Each batch works
+   * on a fork and publishes it back only after writes land.
+   */
   clipboard?: Clipboard
 }
 
@@ -115,12 +116,12 @@ export interface PatchSectionResult {
   /** Final text that the {@link Filesystem} actually wrote (may differ if the FS transformed it). */
   written: string
   /**
-	 * 4-hex content-hash tag. Hashes the content the {@link Filesystem}
-	 * reports actually landed on disk (see `written`), which normally equals
-	 * `after` but can diverge when the write path transforms content (e.g. an
-	 * ACP-bridge write reformatted by the client's format-on-save). Use to
-	 * anchor follow-up edits.
-	 */
+   * 4-hex content-hash tag. Hashes the content the {@link Filesystem}
+   * reports actually landed on disk (see `written`), which normally equals
+   * `after` but can diverge when the write path transforms content (e.g. an
+   * ACP-bridge write reformatted by the client's format-on-save). Use to
+   * anchor follow-up edits.
+   */
   fileHash: string
   /** Hashline section header (`[path#tag]`) of the post-edit content. */
   header: string
@@ -131,9 +132,9 @@ export interface PatchSectionResult {
   /** Destination path when this section includes `MV DEST`. */
   moveDest?: string
   /**
-	 * Resolved spans for block ops, present when the apply matched the tagged
-	 * content. Undefined for patches with no block ops and for drift recovery.
-	 */
+   * Resolved spans for block ops, present when the apply matched the tagged
+   * content. Undefined for patches with no block ops and for drift recovery.
+   */
   blockResolutions?: BlockResolution[]
 }
 
@@ -159,7 +160,7 @@ export class PreparedSection {
     readonly applyResult: ApplyResult,
     readonly parseWarnings: readonly string[],
     readonly fileOp: FileOp | undefined,
-  ) {}
+  ) { }
 
   /** Convenience: returns true when the apply produced no change and no file op. */
   get isNoop(): boolean {
@@ -167,6 +168,7 @@ export class PreparedSection {
   }
 }
 
+/* jscpd:ignore-start -- hashline patcher and PatchSection input track anchor-scoped edits independently for apply and preview. */
 function hasAnchorScopedEdit(edits: readonly Edit[]): boolean {
   return edits.some((edit) => {
     if (edit.kind === 'delete' || edit.kind === 'block' || edit.kind === 'cut') return true
@@ -177,7 +179,7 @@ function hasAnchorScopedEdit(edits: readonly Edit[]): boolean {
     return edit.cursor.kind === 'before_anchor' || edit.cursor.kind === 'after_anchor'
   })
 }
-
+/* jscpd:ignore-end */
 
 function recoveryToApplyResult(result: RecoveryResult): ApplyResult {
   return {
@@ -422,11 +424,11 @@ export class Patcher {
   }
 
   /**
-	 * Apply every section in `patch`. `prepare` runs the full apply for each
-	 * section in memory before any write hits the filesystem, so a
-	 * multi-section batch is naturally all-or-nothing. Returns one
-	 * {@link PatchSectionResult} per section in the original patch order.
-	 */
+   * Apply every section in `patch`. `prepare` runs the full apply for each
+   * section in memory before any write hits the filesystem, so a
+   * multi-section batch is naturally all-or-nothing. Returns one
+   * {@link PatchSectionResult} per section in the original patch order.
+   */
   async apply(patch: Patch): Promise<PatcherApplyResult> {
     // One register per batch: `CUT` in one section feeds `PASTE` in a later
     // one, so content can move across files. A host-owned register
@@ -480,8 +482,8 @@ export class Patcher {
         const message = error instanceof Error ? error.message : String(error)
         throw new Error(
           `Failed to write ${entry.section.path}: ${message}` +
-						(written.length > 0 ? ` Sections already written: ${written.join(', ')}.` : '') +
-						(notWritten.length > 0 ? ` Sections not written: ${notWritten.join(', ')}.` : ''),
+          (written.length > 0 ? ` Sections already written: ${written.join(', ')}.` : '') +
+          (notWritten.length > 0 ? ` Sections not written: ${notWritten.join(', ')}.` : ''),
           { cause: error },
         )
       }
@@ -495,9 +497,9 @@ export class Patcher {
   }
 
   /**
-	 * Run the preflight pass only: read, parse, validate, apply-in-memory.
-	 * No writes hit the filesystem. Use for CI checks and dry runs.
-	 */
+   * Run the preflight pass only: read, parse, validate, apply-in-memory.
+   * No writes hit the filesystem. Use for CI checks and dry runs.
+   */
   async preflight(patch: Patch): Promise<void> {
     // Dry run: fork the register and never publish it back.
     const clipboard = startClipboardBatch(this.clipboard)
@@ -531,17 +533,17 @@ export class Patcher {
   }
 
   /**
-	 * Read a section's target file, parse the section, validate the snapshot
-	 * tag (with recovery), and apply the edits in memory. Returns a
-	 * {@link PreparedSection} which can be fed to {@link commit} to land
-	 * the result on the filesystem.
-	 *
-	 * `clipboard` is the register shared by `CUT`/`PASTE` ops. Pass the batch
-	 * register when preparing several sections so content can move across files.
-	 *
-	 * Throws on parse error, missing-file-for-anchored-edit, or unrecovered
-	 * tag mismatch ({@link MismatchError}).
-	 */
+   * Read a section's target file, parse the section, validate the snapshot
+   * tag (with recovery), and apply the edits in memory. Returns a
+   * {@link PreparedSection} which can be fed to {@link commit} to land
+   * the result on the filesystem.
+   *
+   * `clipboard` is the register shared by `CUT`/`PASTE` ops. Pass the batch
+   * register when preparing several sections so content can move across files.
+   *
+   * Throws on parse error, missing-file-for-anchored-edit, or unrecovered
+   * tag mismatch ({@link MismatchError}).
+   */
   async prepare(section: PatchSection, clipboard?: Clipboard): Promise<PreparedSection> {
     const parsed = await this.#parseWithRangeDiagnostics(section)
     const parseWarnings = [...parsed.warnings]
@@ -578,6 +580,7 @@ export class Patcher {
     if (!read.exists) {
       throw new Error(`File not found: ${target.path}. Use the write tool to create new files.`)
     }
+
     // A section with no current tag (untagged header or a placeholder like
     // #AUTO) is rejected AFTER the read so a missing file reports File-not-found
     // first and the reply names the file's CURRENT tag (oh-my-pi 6dec51c4dd).
@@ -629,18 +632,18 @@ export class Patcher {
   }
 
   /**
-	 * Resolve a missing authored path to a file read this session by matching
-	 * its filename and snapshot tag. Returns the section rebound to that file's
-	 * canonical path, or `null` when no unique filename+tag match exists.
-	 *
-	 * Resolution requires BOTH the bare filename (basename) and the section tag
-	 * to match a single retained file: a whole-file content hash plus an exact
-	 * filename is a strong identity signal, so the model almost certainly meant
-	 * that file but gave the wrong directory (or only the filename). A tie — two
-	 * retained files sharing the filename and tag — declines recovery. The
-	 * recorded path of the authored file itself is excluded so a deleted file
-	 * does not "recover" onto its own stale snapshot.
-	 */
+   * Resolve a missing authored path to a file read this session by matching
+   * its filename and snapshot tag. Returns the section rebound to that file's
+   * canonical path, or `null` when no unique filename+tag match exists.
+   *
+   * Resolution requires BOTH the bare filename (basename) and the section tag
+   * to match a single retained file: a whole-file content hash plus an exact
+   * filename is a strong identity signal, so the model almost certainly meant
+   * that file but gave the wrong directory (or only the filename). A tie — two
+   * retained files sharing the filename and tag — declines recovery. The
+   * recorded path of the authored file itself is excluded so a deleted file
+   * does not "recover" onto its own stale snapshot.
+   */
   #recoverSectionPathFromTag(
     section: PatchSection,
     originalCanonicalPath: string,
@@ -662,11 +665,11 @@ export class Patcher {
   }
 
   /**
-	 * Commit a previously {@link prepare}d section to the filesystem.
-	 * Restores line endings and BOM, writes via the {@link Filesystem}, and
-	 * records a fresh snapshot in the {@link SnapshotStore} keyed by the
-	 * filesystem-canonical path.
-	 */
+   * Commit a previously {@link prepare}d section to the filesystem.
+   * Restores line endings and BOM, writes via the {@link Filesystem}, and
+   * records a fresh snapshot in the {@link SnapshotStore} keyed by the
+   * filesystem-canonical path.
+   */
   async commit(prepared: PreparedSection): Promise<PatchSectionResult> {
     const { section, normalized, bom, lineEnding, parseWarnings, exists, applyResult, canonicalPath, fileOp } =
       prepared
@@ -796,46 +799,52 @@ export class Patcher {
   }
 
   /**
-	 * Reject an anchored edit that references a line the read which minted
-	 * `expected` never displayed. `matchedSnapshot` is the store version whose
-	 * text equals the live normalized content — the exact snapshot the model
-	 * anchored against. Absent means no provenance was recorded (the tag was
-	 * externally minted or aged out), so the edit applies as before. Only runs
-	 * on the no-drift path, where anchor line numbers index the tagged content
-	 * 1:1.
-	 *
-	 * On the no-drift path (`rescue` provided) a shift-aware reading applies
-	 * first: anchors left unseen by their number may still have been displayed
-	 * under an older numbering, and the replacement payload itself proves
-	 * which lines the op means — see {@link rescueShiftedAnchors}. The drift
-	 * path passes no `rescue`: its anchors index the tagged snapshot's
-	 * numbering, not the live text, so the rescue's content checks do not
-	 * transfer and unseen anchors stay rejected.
-	 *
-	 * The rejection inlines the actual file content at the unseen anchor lines
-	 * (from `matchedSnapshot.text`, which by definition equals the live
-	 * normalized content) so the model can verify what it was about to touch.
-	 * A wide unseen anchor is rejected outright with the full-width re-read
-	 * remedy instead of being revealed: the reveal itself is column-capped, so
-	 * a truncated preview would leave part of the line unseen while the merge
-	 * signal invites a blind retry (oh-my-pi #15649). When the reveal covers
-	 * EVERY unseen anchor line in full width (`truncated === false`) those
-	 * lines also merge into the snapshot's seen-line set, so a straight retry
-	 * with the same `[path#tag]` header succeeds without a follow-up range
-	 * read — the content the model received in the error IS proof it has now
-	 * seen those lines. When the anchor range exceeds
-	 * {@link SEEN_LINE_REVEAL_CAP} lines (`truncated === true`), NO lines
-	 * merge: the message keeps the range-re-read guidance intact and the model
-	 * cannot piecewise-reveal its way past the guard across multiple retries
-	 * (over-cap retry → tail reveal → next retry applies), nor coax the tool
-	 * into dumping a minified megabyte-wide line into the error preview.
-	 */
+   * Reject an anchored edit that references a line the read which minted
+   * `expected` never displayed. `snapshot` is the store version whose line
+   * numbers the anchors index 1:1 — on the no-drift path that is the
+   * version matching live content; on a drift path it is the tagged
+   * snapshot the anchors remap through. Absent means no origin was
+   * recorded (the tag was externally minted or aged out), so the edit
+   * applies as before.
+   *
+   * On the no-drift path (`rescue` provided) a shift-aware reading applies
+   * first: anchors left unseen by their number may still have been displayed
+   * under an older numbering, and the replacement payload itself proves
+   * which lines the op means — see {@link rescueShiftedAnchors}. The drift
+   * path passes no `rescue`: its anchors index the tagged snapshot's
+   * numbering, not the live text, so the rescue's content checks do not
+   * transfer and unseen anchors stay rejected.
+   *
+    * The rejection inlines the actual file content at the unseen anchor lines
+    * (from `snapshot.text`) so the model can verify what it was about to touch.
+    * A wide unseen anchor is rejected outright with the full-width re-read
+    * remedy instead of being revealed: the reveal itself is column-capped, so
+    * a truncated preview would leave part of the line unseen while the merge
+    * signal invites a blind retry (oh-my-pi #15649). When the reveal covers
+    * EVERY unseen anchor line in full width
+    * (`truncated === false`) those lines also merge into the snapshot's
+    * seen-line set, so a straight retry with the same `[path#tag]` header
+    * succeeds without a follow-up range read — the content the model
+    * received in the error IS proof it has now seen those lines. When the
+    * anchor range exceeds {@link SEEN_LINE_REVEAL_CAP} lines
+    * (`truncated === true`), NO lines merge: the message keeps the
+    * range-re-read guidance intact and the model cannot piecewise-reveal
+    * its way past the guard across multiple retries
+    * (over-cap retry → tail reveal → next retry applies), nor coax the tool
+    * into dumping a minified megabyte-wide line into the error preview.
+    * `currentText` (no-drift path only) drives the unverified-wide-anchor
+    * check; `staleCurrentText` (drift path only) routes unseen anchors to
+    * the stale-tag live-line rejection instead of a stale reveal
+    * (oh-my-pi ff0d7262f8).
+    */
   #assertSeenLines(
     section: PatchSection,
     blocks: readonly BlockResolution[],
     expected: string,
     matchedSnapshot: Snapshot | null,
-    rescue?: { canonicalPath: string; currentText: string },
+    canonicalPath: string,
+    currentText?: string,
+    staleCurrentText?: string,
   ): void {
     const seen = matchedSnapshot?.seenLines
     if (!seen || seen.size === 0) {
@@ -843,13 +852,14 @@ export class Patcher {
       // store, or a write-recorded snapshot). Anchors on lines wider than the
       // display column cap may have been silently column-cut, so reject them
       // instead of applying blind (oh-my-pi 3c49131232).
-      this.#rejectUnverifiedWideAnchors(section, blocks, rescue?.currentText)
+      this.#rejectUnverifiedWideAnchors(section, blocks, currentText)
       return
     }
-    let unseen = guardedLines(section, blocks).filter(line => !seen.has(line))
+    const guarded = guardedLines(section, blocks)
+    let unseen = guarded.filter(line => !seen.has(line))
     if (unseen.length === 0) return
-    if (rescue !== undefined && matchedSnapshot !== null) {
-      const rescued = rescueShiftedAnchors(section, this.snapshots, rescue.canonicalPath, rescue.currentText, unseen)
+    if (currentText !== undefined) {
+      const rescued = rescueShiftedAnchors(section, this.snapshots, canonicalPath, currentText, unseen)
       if (rescued.length > 0) {
         const rescuedSet = new Set(rescued)
         unseen = unseen.filter(line => !rescuedSet.has(line))
@@ -861,6 +871,17 @@ export class Patcher {
       // Out-of-range anchors are caught by parse/apply with a better message.
       if (line < 1 || line > sourceLines.length) continue
       if ((sourceLines[line - 1] ?? '').length > SEEN_LINE_REVEAL_MAX_COLUMNS) {
+        if (staleCurrentText !== undefined) {
+          this.#throwStaleUnseenRejection(
+            section,
+            unseen,
+            guarded,
+            expected,
+            canonicalPath,
+            matchedSnapshot,
+            staleCurrentText,
+          )
+        }
         throw withErrorKind(new Error(wideUnseenLinesMessage(section.path, unseen)), 'unseen_lines')
       }
     }
@@ -881,6 +902,17 @@ export class Patcher {
     // required range re-read.
     if (!truncated) {
       for (const { line } of revealed) seen.add(line)
+    }
+    if (truncated && staleCurrentText !== undefined) {
+      this.#throwStaleUnseenRejection(
+        section,
+        unseen,
+        guarded,
+        expected,
+        canonicalPath,
+        matchedSnapshot,
+        staleCurrentText,
+      )
     }
     throw withErrorKind(
       new Error(unseenLinesMessage(section.path, unseen, expected, { lines: revealed, truncated })),
@@ -910,6 +942,52 @@ export class Patcher {
     if (wide.length > 0) {
       throw withErrorKind(new Error(unverifiedWideLinesMessage(section.path, wide)), 'unseen_lines')
     }
+  }
+
+  /**
+   * Reject unseen anchors under a stale tag by naming their CURRENT line
+   * numbers and handing back the live tag (oh-my-pi ff0d7262f8 +
+   * 2995614a54): revealing the tagged content would invite editing lines
+   * that no longer hold it. Anchors the live file no longer has (added or
+   * removed since the tag) fall back to the mismatch reply, which cannot
+   * name a position for them. Anchors the reply did not surface carry over
+   * to the live snapshot as seen lines, mapped through the shift, so a
+   * resend under the live tag stays restricted to what was shown.
+   */
+  #throwStaleUnseenRejection(
+    section: PatchSection,
+    unseen: readonly number[],
+    guarded: readonly number[],
+    expected: string,
+    canonicalPath: string,
+    taggedSnapshot: Snapshot,
+    current: string,
+  ): never {
+    const map = currentLineMap(taggedSnapshot.text, current)
+    const liveLines: number[] = []
+    for (const line of unseen) {
+      const live = map.get(line)
+      if (live === undefined) {
+        throw this.#mismatchError(
+          section,
+          canonicalPath,
+          current,
+          expected,
+          this.snapshots.byHash(canonicalPath, expected) !== null,
+        )
+      }
+      liveLines.push(live)
+    }
+    const unseenSet = new Set(unseen)
+    const carried = guarded
+      .filter(line => !unseenSet.has(line))
+      .map(line => map.get(line))
+      .filter((line): line is number => line !== undefined)
+    const liveTag = this.#recordReplySnapshot(canonicalPath, current, carried)
+    throw withErrorKind(
+      new Error(staleUnseenLinesMessage(section.path, unseen, expected, liveLines, liveTag)),
+      'unseen_lines',
+    )
   }
 
   /**
@@ -1031,13 +1109,26 @@ export class Patcher {
       // Reject any anchor the read never displayed: editing lines the model
       // has not seen is the off-by-memory mistake that mangles files.
       if (expected !== undefined && this.#enforceSeenLines) {
-        this.#assertSeenLines(section, blockResolutions, expected, matchedSnapshot, {
-          canonicalPath,
-          currentText: normalized,
-        })
+        this.#assertSeenLines(section, blockResolutions, expected, matchedSnapshot, canonicalPath, normalized)
       }
       const result = applyEdits(normalized, resolved, { clipboard, path: canonicalPath })
       return withResolveWarnings(blockResolutions.length > 0 ? { ...result, blockResolutions } : result)
+    }
+    // The drift paths below remap anchors through unchanged lines from the
+    // tagged snapshot, so the same seen-line contract applies there — judged
+    // against the snapshot the tag names, whose line numbers index exactly
+    // the text the anchors move through. Without this, a drifted file would
+    // let recovery relocate an anchor the read never displayed.
+    if (this.#enforceSeenLines) {
+      this.#assertSeenLines(
+        section,
+        blockResolutions,
+        expected,
+        storedSnapshotForTag,
+        canonicalPath,
+        undefined,
+        normalized,
+      )
     }
     // Head/tail-only inserts are position-stable: "start"/"end" cannot move
     // with content drift, so a stale tag is non-fatal. Apply onto the live

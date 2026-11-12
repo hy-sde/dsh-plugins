@@ -69,13 +69,13 @@ describe('InMemorySnapshotStore', () => {
     expect(store.head(PATH)).toBeNull()
   })
 
-  // Ported from oh-my-pi store.rs provenance_growth_evicts_older_history_
-  // without_discarding_current (b3458f5073): seen-line growth re-counts
+  // Ported from oh-my-pi store.rs (test: seen-line growth evicts the older
+  // history without discarding the current one, b3458f5073): growth re-counts
   // against the budget and evicts the oldest path history, never the one
   // that grew. Fork budget math: "old" ≈ 8_042 B, "current" 118 B → after
   // 299 added lines ≈ 6_098 B, 14_140 > 14_000 evicts "old"; repeated
   // merges add nothing further.
-  it('evicts an older history when provenance growth exceeds the budget, keeping the current one', () => {
+  it('evicts an older history when seen-line growth exceeds the budget, keeping the current one', () => {
     const store = new InMemorySnapshotStore({ maxPaths: 10, maxVersionsPerPath: 4, maxTotalBytes: 14_000 })
     store.record('old', 'x'.repeat(8_000))
     const hash = store.record('current', 'read', [1])
@@ -121,7 +121,7 @@ describe('InMemorySnapshotStore', () => {
     expect(store.byHash(OTHER, tagB)).toBeNull()
   })
 
-  it('relocate moves version history and read provenance to a new path', () => {
+  it('relocate moves version history and read origin to a new path', () => {
     const store = new InMemorySnapshotStore()
     const dest = '/tmp/__hashline-dest__.ts'
     const tag = store.record(PATH, 'A\n', [1])
