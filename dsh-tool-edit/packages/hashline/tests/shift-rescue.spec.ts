@@ -239,4 +239,59 @@ describe('Patcher shift-consistent anchor rescue', () => {
     expect(message).toMatch(/never displayed/)
     expect(fs.get(PATH)).toBe(v1)
   })
+
+  it('hints the uniform shift when a rejected anchor was displayed elsewhere', async () => {
+    // A pure cut has no payload to evidence the anchor against, so the shift
+    // rescue declines — but every unseen line's content was displayed by the
+    // pre-insert read at exactly one shifted offset. The rejection should say
+    // so: "juliet kilo lima four" moved 4 → 6 when two rows went in above it.
+    const fs = new InMemoryFilesystem([[PATH, V0]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag0 = snapshots.record(PATH, V0, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    const first = await patcher.apply(Patch.parse(`[${PATH}#${tag0}]\nPUT >1:\n+INSERTED ALPHA ROW A\n+INSERTED BRAVO ROW B`))
+    const tag1 = first.sections[0]?.fileHash
+    snapshots.record(PATH, fs.get(PATH) as string, [1, 2, 3])
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${tag1}]\nCUT 6-6`))
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toMatch(/never displayed/)
+    expect(message).toMatch(/displayed at line\(s\) 4/)
+    expect(message).toMatch(/shifted the numbering by \+2/)
+    const v1 = 'alpha bravo charlie one\nINSERTED ALPHA ROW A\nINSERTED BRAVO ROW B\ndelta echo foxtrot two\ngolf hotel india three\njuliet kilo lima four\nmike november oscar five\npapa quebec romeo six\n'
+    expect(fs.get(PATH)).toBe(v1)
+  })
+
+  it('adds no shift hint when the unseen lines tell no uniform-offset story', async () => {
+    // Merging rows 2-3 removes "golf…"; line 4's content ("mike…") was never
+    // displayed by any retained version (the first read saw only rows 1-3),
+    // so no version can explain it with one uniform offset — the plain
+    // rejection must carry no shift note. The patcher records content only;
+    // the tool layer records seen lines, so the test simulates that step
+    // (the carried unchanged row 1 plus the edit's own body row 2).
+    const fs = new InMemoryFilesystem([[PATH, V0]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag0 = snapshots.record(PATH, V0, [1, 2, 3])
+    const patcher = new Patcher({ fs, snapshots })
+
+    const first = await patcher.apply(Patch.parse(`[${PATH}#${tag0}]\nPUT 2.=3:\n+delta echo foxtrot two (merged)`))
+    const tag1 = first.sections[0]?.fileHash as string
+    snapshots.recordSeenLines(PATH, tag1, [1, 2])
+
+    let message: string | undefined
+    try {
+      await patcher.apply(Patch.parse(`[${PATH}#${tag1}]\nCUT 4-4`))
+    } catch (err) {
+      message = (err as Error).message
+    }
+    expect(message).toMatch(/never displayed/)
+    expect(message).not.toMatch(/shifted the numbering/)
+    const v1 = 'alpha bravo charlie one\ndelta echo foxtrot two (merged)\njuliet kilo lima four\nmike november oscar five\npapa quebec romeo six\n'
+    expect(fs.get(PATH)).toBe(v1)
+  })
 })

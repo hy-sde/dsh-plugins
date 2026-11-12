@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdits, Patch, parsePatch } from '../src/index.ts'
+import { applyEdits, Patch, parsePatch, bracketedOpInnerText } from '../src/index.ts'
 
 function applyPatch(text: string, diff: string): string {
   return applyEdits(text, parsePatch(diff).edits).text
@@ -336,5 +336,143 @@ describe('hashline apply — duplicate boundary payloads', () => {
       expect(patch.sections[0]?.diff).toBe('PUT 1-1:\n+after')
       expect(patch.sections[1]?.diff).toBe('PUT 1-1:\n+else')
     })
+  })
+})
+
+describe('hashline — fused one-line `PUT`/`CUT` recovery', () => {
+  it('recovers `PUT N.=M: TEXT` as a header plus its first body row', () => {
+    const result = parsePatch('PUT 2.=2: B')
+
+    expect(applyEdits(FILE, result.edits).text).toBe('a\nB\nc\nd\ne')
+    expect(result.warnings.some(w => /Recovered inline content/.test(w))).toBe(true)
+  })
+
+  it('recovers fused gap inserts and keeps deeper indentation verbatim', () => {
+    // One leading space after the colon is the `: ` separator; a deeper run
+    // is authored indentation (session evidence: `PUT <111:  deltaFiles: …`).
+    expect(applyPatch(FILE, 'PUT >2:  indented()')).toBe('a\nb\n  indented()\nc\nd\ne')
+    expect(applyPatch(FILE, 'PUT <1: TOP')).toBe('TOP\na\nb\nc\nd\ne')
+  })
+
+  it('treats a lone fused `-` row as a Markdown bullet, not a delete', () => {
+    const result = parsePatch('PUT 2.=2: - item one')
+
+    expect(applyEdits(FILE, result.edits).text).toBe('a\n- item one\nc\nd\ne')
+    expect(result.warnings.some(w => /bullet row/.test(w))).toBe(true)
+  })
+
+  it('discards fused unified-diff minus rows when plus rows follow', () => {
+    const result = parsePatch('PUT 2.=2: -old\n+B')
+
+    expect(applyEdits(FILE, result.edits).text).toBe('a\nB\nc\nd\ne')
+    expect(result.warnings.some(w => /Ignored unified-diff/.test(w))).toBe(true)
+  })
+
+  it('accepts POD-style fused content and refuses range-typo inlines', () => {
+    expect(applyPatch(FILE, 'PUT 5: =head1 NAME')).toBe('a\nb\nc\nd\n=head1 NAME')
+    // `PUT 17:=17` is a count-style typo for `PUT 17.=17` — the inline would
+    // be a range fragment, so it falls to the generic op-shape diagnostic.
+    expect(() => parsePatch('PUT 17:=17')).toThrow(/payload line has no preceding hunk header/)
+  })
+
+  it('rejects fused `CUT` bodies with targeted guidance', () => {
+    expect(() => parsePatch('CUT 2.=2: @old')).toThrow(/takes no body/)
+  })
+
+  it('flushes an open hunk when a fused `PUT` header arrives mid-body', () => {
+    expect(applyPatch(FILE, 'PUT 2-2:\n+B\nPUT >3: C')).toBe('a\nB\nc\nC\nd\ne')
+  })
+})
+
+describe('hashline — bracketed op headers', () => {
+  it('parses valid bracketed ops as hunk headers', () => {
+    expect(applyPatch(FILE, '[PUT 2.=2:]\n+B\n[PUT >2:]\n+MID\n[CUT 4]')).toBe('a\nB\nMID\nc\ne')
+  })
+
+  it('keeps bracketed ops in the section diff instead of minting a phantom section', () => {
+    // Regression (session 2a43966f): splitRawSections handed `[PUT 17:=17]`
+    // to the section-header parser, which accepted it as a file named
+    // "PUT 17:=17" and pointed the eventual error at an unrelated content row.
+    const patch = Patch.parse('[a.ts#1A2B]\n[PUT 2.=2]\n+B')
+
+    expect(patch.sections).toHaveLength(1)
+    expect(patch.sections[0]?.path).toBe('a.ts')
+    expect(patch.sections[0]?.diff).toBe('[PUT 2.=2]\n+B')
+  })
+
+  it('routes malformed bracketed ops to the op-shape diagnostic at top level', () => {
+    expect(() => parsePatch('[PUT 17:=17]\n+import type { X } from "y"')).toThrow(/malformed op/)
+    expect(() => parsePatch('[CUT 9.=25.]\n+x')).toThrow(/malformed op/)
+  })
+
+  it('never treats bracketed envelope markers as bracketed ops', () => {
+    // `[*** Begin Patch]` leads with `***`, not an op keyword — envelope
+    // handling is untouched (covered further by the envelope describe above).
+    expect(bracketedOpInnerText('[*** Begin Patch]')).toBeNull()
+    expect(bracketedOpInnerText('[CUT 20]')).toBe('CUT 20')
+    expect(bracketedOpInnerText('not bracketed')).toBeNull()
+  })
+
+  it('keeps keyword-prefixed section headers out of op parsing', () => {
+    // Regression (staged review): a section header whose path merely STARTS
+    // with an op keyword (`PUT.txt`, `REMOTE.md`, `MVVM.vue`) must stay a
+    // section header — the keyword must be op-shaped (followed by
+    // whitespace/colon/end), not just a prefix of the path.
+    expect(bracketedOpInnerText('[PUT.txt#1A2B]')).toBeNull()
+    expect(bracketedOpInnerText('[REMOTE.md#AB12]')).toBeNull()
+    expect(bracketedOpInnerText('[MVVM.vue#AB12]')).toBeNull()
+    expect(bracketedOpInnerText('[CUTTING.plan#1A2B]')).toBeNull()
+
+    const patch = Patch.parse('[PUT.txt#1A2B]\n+B')
+    expect(patch.sections).toHaveLength(1)
+    expect(patch.sections[0]?.path).toBe('PUT.txt')
+  })
+
+  it('keeps tagged headers for files literally named PUT/CUT as headers', () => {
+    // Regression (staged review): `[PUT#A1B2]` is a valid tagged section
+    // header for a file named "PUT" — the bracket branch must not demote it
+    // to raw just because the inner text leads with an op keyword.
+    const patch = Patch.parse('[PUT#A1B2]\n+B')
+    expect(patch.sections).toHaveLength(1)
+    expect(patch.sections[0]?.path).toBe('PUT')
+    expect(patch.sections[0]?.diff).toBe('+B')
+
+    // Spaced `PUT #A1B2` reads as a tagged header too: the register-put op
+    // requires a colon (`PUT #A1B2:`), so the colonless form has no op
+    // reading and the header wins — for either spelling.
+    const spaced = Patch.parse('[PUT #A1B2]\n+B')
+    expect(spaced.sections).toHaveLength(1)
+    expect(spaced.sections[0]?.path).toBe('PUT')
+  })
+  it('keeps `MV <path>#tag` tagged headers out of move-op parsing', () => {
+    // Regression (staged review round 2): a MOVE dest scan accepts any
+    // non-empty text, so `[MV notes.md#AB12]` parsed as a move to
+    // "notes.md#AB12" instead of a tagged header for the file "MV notes.md".
+    // A `#`+4-hex suffix is the tag signature — it wins for MOVE only;
+    // `[MV new.md]` (untagged) stays a move op.
+    expect(bracketedOpInnerText('[MV notes.md#AB12]')).toBe('MV notes.md#AB12')
+    const patch = Patch.parse('[MV notes.md#AB12]\n+B')
+    expect(patch.sections).toHaveLength(1)
+    expect(patch.sections[0]?.path).toBe('MV notes.md')
+
+    const untagged = Patch.parse('[a.ts#1A2B]\n[MV new.md]\n+x')
+    expect(untagged.sections).toHaveLength(1)
+    expect(untagged.sections[0]?.diff).toBe('[MV new.md]\n+x')
+  })
+
+  it('keeps colonless bracketed `PUT` bodies clipboard-strict', () => {
+    // A bracket wrapper does not relax the colon rule: `[PUT 2.=2]` still
+    // means a clipboard-backed span put, which takes no `+` body rows.
+
+    expect(() => parsePatch('[PUT 2.=2]\n+B')).toThrow(/clipboard-backed/)
+  })
+
+  it('rejects the whitespace variant of the fused range-typo inline', () => {
+    // `PUT 17:= 17` is the same count-style typo as `PUT 17:=17` — the
+    // whitespace between `=` and the digit must not turn the fragment into
+    // replacement content.
+    expect(() => parsePatch('[a.ts#1A2B]\nPUT 2:= 2\n+real body')).toThrow(
+      /payload line has no preceding hunk header/,
+    )
   })
 })

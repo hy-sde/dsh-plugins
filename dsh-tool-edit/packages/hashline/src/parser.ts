@@ -17,6 +17,9 @@ import {
   DIFF_OLD_ROWS_IGNORED_WARNING,
   EMPTY_INSERT,
   EMPTY_PUT_AUTO_CUT_WARNING,
+  genericPayloadErrorMessage,
+  INLINE_PUT_AUTO_SPLIT_WARNING,
+  inlineCutBodyMessage,
   invalidAbsoluteRangeMessage,
   literalOpRowWarning,
   MINUS_BULLET_AUTO_PIPED_WARNING,
@@ -30,7 +33,16 @@ import {
   SNAPSHOT_ROWS_AUTO_PUT_WARNING,
 } from './messages.ts'
 import { isReadMetadataLine, stripOneLeadingHashlinePrefix } from './prefixes.ts'
-import { type BlockTarget, cloneCursor, isHunkHeaderText, type ParsedRange, type Token, Tokenizer } from './tokenizer.ts'
+import {
+  type BlockTarget,
+  cloneCursor,
+  isHunkHeaderText,
+  isInlineCutWithBody,
+  type ParsedRange,
+  type Token,
+  Tokenizer,
+  tryParseInlinePutHeader,
+} from './tokenizer.ts'
 import type { Anchor, BlockSpan, Cursor, Edit, FileOp, PasteTarget } from './types.ts'
 
 /** Bounds parser amplification before the target file's line count is available. */
@@ -485,6 +497,16 @@ export class Executor {
         this.#handleBlank(text, lineNum)
         return
       }
+      // A fused `PUT <locator>: <inline>` row is a complete hunk on one line:
+      // flush the open hunk and open this one, mirroring how an explicit
+      // op-block line flushes mid-body.
+      const fusedPut = tryParseInlinePutHeader(text)
+      if (fusedPut !== null) {
+        this.#flushPending()
+        this.#beginInlinePutHunk(fusedPut.target, fusedPut.inline, lineNum)
+        return
+      }
+      if (isInlineCutWithBody(text)) throw new Error(`line ${lineNum}: ${inlineCutBodyMessage(text)}`)
       const noBodyOnRaw = bodylessTargetMessage(this.#pending.target, this.#pending.hadColon)
       if (noBodyOnRaw !== null) throw new Error(`line ${lineNum}: ${noBodyOnRaw}`)
       const row: PayloadRow = { kind: 'literal', text, lineNum, bare: true }
@@ -544,10 +566,37 @@ export class Executor {
       }
       return
     }
-    throw new Error(
-      `line ${lineNum}: payload line has no preceding hunk header. ` +
-				`Use \`PUT N${HL_RANGE_SEP}M:\`, \`CUT N${HL_RANGE_SEP}M\`, or \`PUT <N:\`/\`PUT >N:\` above the body. Got ${JSON.stringify(text)}.`,
-    )
+    if (isInlineCutWithBody(text)) throw new Error(`line ${lineNum}: ${inlineCutBodyMessage(text)}`)
+    const fusedPut = tryParseInlinePutHeader(text)
+    if (fusedPut !== null) {
+      this.#beginInlinePutHunk(fusedPut.target, fusedPut.inline, lineNum)
+      return
+    }
+    throw new Error(genericPayloadErrorMessage(lineNum, text))
+  }
+
+  /**
+   * Open a hunk recovered from a fused `PUT <locator>: <inline>` row: the
+   * inline text becomes the hunk's first body row. Minus-shaped inlines are
+   * flagged for #resolveMinusRows exactly like bare `-` rows; an inner
+   * op-shaped inline is kept as literal content and named.
+   */
+  #beginInlinePutHunk(target: BlockTarget, inline: string, lineNum: number): void {
+    if (target.kind === 'replace') validateRange(target.range, lineNum, 'replace', target.register)
+    this.#pending = {
+      target,
+      lineNum,
+      payloads: [],
+      hadColon: true,
+      deferredBlanks: [],
+    }
+    const row: PayloadRow = { kind: 'literal', text: inline, lineNum }
+    if (inline.trimStart().charCodeAt(0) === 45 /* - */) row.minus = true
+    else if (isHunkHeaderText(inline)) this.#warnings.push(literalOpRowWarning(lineNum, inline))
+    this.#pending.payloads.push(row)
+    if (!this.#warnings.includes(INLINE_PUT_AUTO_SPLIT_WARNING)) {
+      this.#warnings.push(INLINE_PUT_AUTO_SPLIT_WARNING)
+    }
   }
 
   /**

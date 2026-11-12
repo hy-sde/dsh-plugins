@@ -195,6 +195,40 @@ export const DIFF_OLD_ROWS_IGNORED_WARNING =
 export const MINUS_ROW_REJECTED =
   '`-` rows are not valid; the range already names the lines being changed. For Markdown bullets or other literal `-` lines, prefix the literal row with `+`: `+- item`.'
 
+/** A fused `PUT <locator>: <inline>` row was split into a header plus its first body row. */
+export const INLINE_PUT_AUTO_SPLIT_WARNING =
+  'Recovered inline content after a `PUT` header colon as the hunk\'s first body row. End the header at its `:` and put each body row on its own `+TEXT` line below it.'
+
+/**
+ * A `CUT <locator>: <inline>` fusion: CUT takes no body, so the colon and
+ * everything after it have no meaning and are not silently discarded.
+ */
+export function inlineCutBodyMessage(text: string): string {
+  return (
+    '`CUT` deletes the lines its locator names and takes no body — drop `:` and everything after it ' +
+    `(\`CUT N${HL_RANGE_SEP}M\`, \`CUT N*\`). To replace the range instead, use \`PUT N${HL_RANGE_SEP}M:\` with ` +
+    `\`+TEXT\` body rows. Got ${JSON.stringify(text)}.`
+  )
+}
+
+/**
+ * The generic no-pending-hunk payload error. When the offending line itself
+ * looks like a malformed op (bracketed or bare `PUT`/`CUT`), append focused
+ * guidance — these are almost always fused headers or count-style `N:=N`
+ * typos, and the generic form alone reads as if the op line were content.
+ */
+export function genericPayloadErrorMessage(lineNum: number, text: string): string {
+  let message =
+    `line ${lineNum}: payload line has no preceding hunk header. ` +
+    `Use \`PUT N${HL_RANGE_SEP}M:\`, \`CUT N${HL_RANGE_SEP}M\`, or \`PUT <N:\`/\`PUT >N:\` above the body. Got ${JSON.stringify(text)}.`
+  if (/^\s*\[?\s*(?:PUT|CUT)\b/.test(text)) {
+    message +=
+      ' This line looks like a malformed op: a hunk header is `PUT N.=M:` / `CUT N.=M` / `PUT <N:` / `PUT >N:` ' +
+      'ending at its colon (ranges join the endpoints with `.=`), and body rows (`+TEXT`) go on the lines below.'
+  }
+  return message
+}
+
 /** Optional source-aware suggestions appended to block-anchor diagnostics. */
 export interface BlockDiagnosticSuggestions {
   /** Closest following multi-line block that begins after the authored anchor. */
@@ -658,7 +692,25 @@ export function unseenLinesMessage(
     `${header} Actual file content at those lines:\n${preview}\n` +
 		'Verify the content matches what you intend to touch, then re-issue the edit with the same ' +
 		`${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header — a straight retry now succeeds without a re-read. ` +
-		'If the content does NOT match, fix your line numbers.'
+		'If the content does NOT match, fix your line numbers. Planning several edits to this file? Issue them as ' +
+		'hunks of ONE edit call — each successful single-hunk edit mints a fresh tag whose seen-line set starts ' +
+		'sparse, so serial single-hunk edits keep re-hitting this guard.'
+  )
+}
+
+/**
+ * Appended to the unseen-lines rejection when every unseen line's content was
+ * displayed by an earlier retained read of this file at uniformly shifted
+ * numbers — the model HAD the content; an edit above it moved all the numbers
+ * at once. The guard still rejects (shift-blind carry deliberately waves
+ * nothing through), but this turns the rejection into a one-step fix.
+ */
+export function anchorShiftHint(offset: number, unseenLines: readonly number[]): string {
+  const oldRanges = formatLineRanges(unseenLines.map(line => line - offset))
+  const shift = offset > 0 ? `+${offset}` : `${offset}`
+  return (
+    ` Note: this content was displayed at line(s) ${oldRanges} in an earlier read of this file — an edit above ` +
+		`it has since shifted the numbering by ${shift}. Re-issue with the shifted numbers, or re-read the file for a fresh tag.`
   )
 }
 

@@ -16,7 +16,7 @@ import { HL_FILE_HASH_EXAMPLES, HL_FILE_HASH_LENGTH, HL_FILE_HASH_SEP, HL_FILE_P
 import { ABORT_MARKER, BEGIN_PATCH_MARKER, CLIPBOARD_INTERLEAVED_SECTIONS, END_PATCH_MARKER } from './messages.ts'
 import { stripBom } from './normalize.ts'
 import { parsePatch, parsePatchStreaming } from './parser.ts'
-import { Tokenizer } from './tokenizer.ts'
+import { Tokenizer, bracketedOpInnerText } from './tokenizer.ts'
 import type { ApplyResult, BlockResolver, Clipboard, Edit, FileOp, SplitOptions } from './types.ts'
 
 // Pure classification — single shared tokenizer is safe.
@@ -309,6 +309,19 @@ function splitRawSections(input: string, options: SplitOptions): RawSection[] {
     // malformed headers still raise the strict "Input header must be …"
     // diagnostic (the tokenizer alone would silently classify them as
     // payload).
+    // A bracketed op (`[CUT 20]`, `[PUT >19:]`) leads with `[` like a section
+    // header, but it is a hunk header wrapped in brackets — parseHashlineHeaderLine
+    // would otherwise accept it as a file literally named "CUT 20" and mis-route
+    // the rows after it. Keep op-shaped bracket lines in the diff body; the
+    // tokenizer unbrackets valid ones into op-blocks and leaves malformed ones
+    // for the op-shape diagnostic. Lines the tokenizer classifies as a
+    // section header keep header precedence though — a tagged-header shape
+    // (`[MV notes.md#AB12]` for the file "MV notes.md") wins over the
+    // same-text op reading, exactly as classifyLine decides.
+    if (bracketedOpInnerText(trimmed) !== null && token.kind !== 'header') {
+      currentLines.push(line)
+      continue
+    }
     if (trimmed.startsWith(HL_FILE_PREFIX)) {
       const header = parseHashlineHeaderLine(line, options.cwd)
       if (header !== null) {

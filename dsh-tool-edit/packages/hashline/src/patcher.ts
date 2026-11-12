@@ -34,6 +34,7 @@ import { isNotFound } from './fs.ts'
 import { shiftedImages } from './line-diff.ts'
 import type { Patch, PatchSection } from './input.ts'
 import {
+  anchorShiftHint,
   anchoredContextLines,
   HEADTAIL_DRIFT_WARNING,
   unverifiedWideLinesMessage,
@@ -285,6 +286,41 @@ function imagesSeen(maps: readonly VersionMap[], line: number): boolean {
     const source = map.image[line - 1]
     return source !== null && source !== undefined && map.seen.has(source)
   })
+}
+
+/**
+ * Uniform offset by which an earlier retained read displayed every unseen
+ * line's content, when one exists — the signature of an edit above the region
+ * shifting all numbers at once. Scans retained versions newest-first and
+ * returns the first version whose seen lines image every unseen line at one
+ * nonzero offset; null when no single-offset story fits (mixed regions,
+ * never-displayed content).
+ */
+function uniformShiftHintOffset(unseen: readonly number[], taggedText: string, versions: readonly Snapshot[]): number | null {
+  if (unseen.length === 0) return null
+  for (const version of versions) {
+    const seen = version.seenLines
+    if (seen === undefined || seen.size === 0) continue
+    if (version.text === taggedText) continue
+    const image = shiftedImages(version.text, taggedText)
+    let uniform: number | null = null
+    let fits = true
+    for (const line of unseen) {
+      const source = image[line - 1]
+      if (source === null || source === undefined || !seen.has(source)) {
+        fits = false
+        break
+      }
+      const offset = line - source
+      if (uniform === null) uniform = offset
+      else if (uniform !== offset) {
+        fits = false
+        break
+      }
+    }
+    if (fits && uniform !== null && uniform !== 0) return uniform
+  }
+  return null
 }
 
 function isIdentChar(char: string | undefined): boolean {
@@ -914,10 +950,15 @@ export class Patcher {
         staleCurrentText,
       )
     }
-    throw withErrorKind(
-      new Error(unseenLinesMessage(section.path, unseen, expected, { lines: revealed, truncated })),
-      'unseen_lines',
-    )
+    let message = unseenLinesMessage(section.path, unseen, expected, { lines: revealed, truncated })
+    // A truncated reveal merges nothing into the seen set, so re-issuing with
+    // shifted numbers would deterministically hit the same rejection — only
+    // the re-read remedy applies there, which the base message leads with.
+    if (!truncated && matchedSnapshot !== null) {
+      const shift = uniformShiftHintOffset(unseen, matchedSnapshot.text, this.snapshots.versions(canonicalPath))
+      if (shift !== null) message += anchorShiftHint(shift, unseen)
+    }
+    throw withErrorKind(new Error(message), 'unseen_lines')
   }
 
   /**

@@ -42,6 +42,8 @@ const CHAR_STAR = 42
 const CHAR_DOLLAR = 36
 const CHAR_AT = 64
 const CHAR_UNDERSCORE = 95
+const CHAR_LEFT_BRACKET = 91
+const CHAR_RIGHT_BRACKET = 93
 
 const CHAR_UPPER_A = 65
 const CHAR_UPPER_F = 70
@@ -486,6 +488,85 @@ export function isHunkHeaderText(text: string): boolean {
   return isHunkLead && tryParseHunkHeader(text) !== null
 }
 
+/**
+ * Parse a fused one-line `PUT <locator>: <inline>` hunk — a header and its
+ * first body row written on the same line. The colon-terminated header grammar
+ * itself reads trailing text as a syntax error, and session logs show models
+ * fusing them constantly (`PUT 54: -`, `PUT <111:  deltaFiles: string[]`),
+ * so the parser recovers them as header + first payload row.
+ *
+ * Returns null unless a colon is present AND non-empty inline content follows
+ * it, so plain headers keep their existing single meaning. Inline content is
+ * taken from the raw colon position: a single leading space is the `: `
+ * separator and is stripped; a deeper leading run is authored indentation and
+ * stays verbatim.
+ */
+export function tryParseInlinePutHeader(line: string): { target: BlockTarget; inline: string } | null {
+  const end = trimEndIndex(line)
+  const start = skipWhitespace(line, 0, end)
+  if (start >= end) return null
+  const putEnd = scanKeyword(line, start, end, HL_PUT_KEYWORD)
+  if (putEnd === null) return null
+  const scan = scanPutTarget(line, putEnd, end)
+  if (scan === null || !scan.hadColon || scan.nextIndex >= end) return null
+  if ('register' in scan.target && scan.target.register !== undefined) return null
+  // Re-locate the header colon on the raw line: consumeOptionalColon skips the
+  // whitespace after `:`, which would shear the inline row's indentation.
+  const colonAt = line.indexOf(HL_HEADER_COLON, putEnd)
+  if (colonAt < 0 || colonAt >= scan.nextIndex) return null
+  const raw = line.slice(colonAt + HL_HEADER_COLON.length, end)
+  const inline = raw.startsWith(' ') && !raw.startsWith('  ') ? raw.slice(1) : raw
+  // `PUT 17:=17` (a count-style typo for the `17.=17` range): the would-be
+  // inline content is a range fragment, not text — leave it for the generic
+  // op-shape diagnostic instead of writing `=17` into the file. Whitespace
+  // between `=` and the digit still counts (`PUT 17:= 17`), because the
+  // range separator scanner is whitespace-lenient and models emit both.
+  if (/^\s*=\s*\d/.test(inline)) return null
+  return { target: scan.target, inline }
+}
+
+/**
+ * Whether the line is a `CUT <locator>: <inline>` fusion. CUT takes no body,
+ * so there is nothing sensible to recover — the parser rejects these with a
+ * targeted message instead of the generic payload error.
+ */
+export function isInlineCutWithBody(line: string): boolean {
+  const end = trimEndIndex(line)
+  const start = skipWhitespace(line, 0, end)
+  if (start >= end) return false
+  const cutEnd = scanKeyword(line, start, end, HL_CUT_KEYWORD)
+  if (cutEnd === null) return false
+  const scan = scanCutTarget(line, cutEnd, end)
+  return scan !== null && scan.hadColon && scan.nextIndex < end
+}
+
+/**
+ * Inner text of a bracketed op row (`[CUT 20]`, `[PUT >19:]`): the text
+ * between the outermost brackets when it leads with a hunk keyword. Null for
+ * everything else — including ordinary bracketed text like Markdown links —
+ * so only op-shaped `[…]` lines opt into hunk parsing. The keyword must be
+ * op-shaped (followed by whitespace, a colon, or the end of the inner text),
+ * so keyword-PREFIXED section headers (`[PUT.txt#1A2B]`, `[REMOTE.md#AB12]`,
+ * `[MVVM.vue#AB12]`) stay section headers.
+ */
+export function bracketedOpInnerText(line: string): string | null {
+  const end = trimEndIndex(line)
+  const start = skipWhitespace(line, 0, end)
+  if (start >= end) return null
+  if (line.charCodeAt(start) !== CHAR_LEFT_BRACKET) return null
+  if (line.charCodeAt(end - 1) !== CHAR_RIGHT_BRACKET) return null
+  const inner = line.slice(start + 1, end - 1)
+  const innerEnd = trimEndIndex(inner)
+  const innerStart = skipWhitespace(inner, 0, innerEnd)
+  if (innerStart >= innerEnd) return null
+  const isOpLead =
+    scanKeyword(inner, innerStart, innerEnd, HL_PUT_KEYWORD) !== null ||
+    scanKeyword(inner, innerStart, innerEnd, HL_CUT_KEYWORD) !== null ||
+    scanKeyword(inner, innerStart, innerEnd, HL_REM_KEYWORD) !== null ||
+    scanKeyword(inner, innerStart, innerEnd, HL_MOVE_KEYWORD) !== null
+  return isOpLead ? inner : null
+}
+
 function tryParseHeader(line: string): { path: string; fileHash?: string } | null {
   if (!line.startsWith(HL_FILE_PREFIX)) return null
   const end = trimEndIndex(line)
@@ -553,6 +634,40 @@ function classifyLine(line: string, lineNum: number): Token {
   if (markerLineEquals(line, END_PATCH_MARKER)) return { kind: 'envelope-end', lineNum }
   if (markerLineEquals(line, ABORT_MARKER)) return { kind: 'abort', lineNum }
   const firstCode = line.charCodeAt(0)
+  if (firstCode === CHAR_LEFT_BRACKET) {
+    // A bracketed op (`[CUT 20]`, `[PUT >19:]`) is a hunk header wrapped in
+    // brackets, not a `[path#tag]` section header — the header branch below
+    // would otherwise swallow it as a file literally named "CUT 20" (or as
+    // an untagged placeholder section). A valid inner op parses as an
+    // op-block; a malformed one (`[PUT 17:=17]`) returns raw for the generic
+    // op-shape diagnostic — unless the line is ALSO a well-formed TAGGED
+    // section header, which falls through to the header branch. Two tagged
+    // shapes win over ops: PUT/CUT/REM targets reject `#` outright (their
+    // hunk parse fails), and a MOVE whose dest ends in `#`+4-hex reads as a
+    // tag, not a destination — so `[MV notes.md#AB12]` (file "MV notes.md")
+    // stays a header while `[MV new.md]` stays a move op. Untagged
+    // fallbacks stay raw so a malformed op cannot mint a phantom section.
+    const inner = bracketedOpInnerText(line)
+    if (inner !== null) {
+      const hunk = tryParseHunkHeader(inner)
+      if (hunk !== null) {
+        if (hunk.target.kind !== 'move') {
+          return { kind: 'op-block', lineNum, target: hunk.target, hadColon: hunk.hadColon }
+        }
+        const header = tryParseHeader(line)
+        if (header === null || header.fileHash === undefined) {
+          return { kind: 'op-block', lineNum, target: hunk.target, hadColon: hunk.hadColon }
+        }
+        // Tagged-header-shaped move: fall through to the header branch.
+      } else {
+        const header = tryParseHeader(line)
+        if (header === null || header.fileHash === undefined) {
+          return { kind: 'raw', lineNum, text: line }
+        }
+        // Tagged-header-shaped: fall through to the header branch below.
+      }
+    }
+  }
   if (line.startsWith(HL_FILE_PREFIX)) {
     const header = tryParseHeader(line)
     if (header !== null) {
