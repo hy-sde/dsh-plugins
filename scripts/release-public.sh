@@ -76,9 +76,17 @@ if ! npm whoami --registry "$registry" >/dev/null 2>&1; then
   echo "release refused: run npm login for $registry first" >&2
   exit 1
 fi
-if ! npm org ls hy-sde-org --json --registry "$registry" >/dev/null 2>&1; then
-  echo "release refused: the npm user is not a member of the hy-sde organization" >&2
-  exit 1
+if ! org_output="$(npm org ls hy-sde-org --json --registry "$registry" 2>&1)"; then
+  # Granular npm tokens cannot read org rosters (403 "not perform that action
+  # with these credentials"); classic automation tokens can. whoami above
+  # already proved an authenticated user, so only fall through on the
+  # credentials-class 403 — any other failure still refuses.
+  if [[ "$org_output" == *"may not perform that action with these credentials"* ]]; then
+    echo "note: org roster unreadable with this token type (granular); membership not re-verified" >&2
+  else
+    echo "release refused: the npm user is not a member of the hy-sde organization" >&2
+    exit 1
+  fi
 fi
 
 set +e
