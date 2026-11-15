@@ -110,10 +110,9 @@ async function startChild(ctx: Context, parent: Agent, prompt = 'child task') {
   const started = await ctx.subagents.startActivation({
     provider: 'spawn',
     label: prompt,
-    request: {
-      prompt: [{ type: 'text', text: prompt }],
-      parent,
-    },
+    prompt: [{ type: 'text', text: prompt }],
+    parent,
+
     delivery: 'parent',
     signal: testSignal,
   })
@@ -213,11 +212,10 @@ describe('dsh-tool-subagent-report', () => {
     const started = await ctx.subagents.startActivation({
       provider: 'spawn',
       label: 'restricted child',
-      request: {
-        prompt: [{ type: 'text', text: 'restricted child' }],
-        parent,
-        agentPreset: 'restricted',
-      },
+prompt: [{ type: 'text', text: 'restricted child' }],
+parent,
+agentPreset: 'restricted',
+
       delivery: 'parent',
       signal: testSignal,
     })
@@ -535,10 +533,9 @@ describe('dsh-tool-subagent-report', () => {
     await expect(ctx.subagents.startActivation({
       provider: 'spawn',
       label: 'racing child',
-      request: {
-        prompt: [{ type: 'text', text: 'racing child' }],
-        parent,
-      },
+prompt: [{ type: 'text', text: 'racing child' }],
+parent,
+
       delivery: 'parent',
       signal: testSignal,
     })).rejects.toMatchObject({ code: 'ACTIVATION_SETUP_REVOKED' })
@@ -566,10 +563,9 @@ describe('dsh-tool-subagent-report', () => {
     await expect(ctx.subagents.startActivation({
       provider: 'spawn',
       label: 'revoked child',
-      request: {
-        prompt: [{ type: 'text', text: 'revoked child' }],
-        parent,
-      },
+prompt: [{ type: 'text', text: 'revoked child' }],
+parent,
+
       delivery: 'parent',
       signal: testSignal,
     })).rejects.toMatchObject({ code: 'ACTIVATION_SETUP_REVOKED' })

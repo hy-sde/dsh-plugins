@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { ToolCallId } from '@deepseek-ai/dsh-llm'
+import { ContentBlock, ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
@@ -68,7 +68,7 @@ function fakeSubagents(): {
   return {
     getProvider: () => ({ provider: 'spawn' }),
     startActivation: (options) => {
-      reviewerPrompts.push(options.request.prompt.filter(block => block.type === 'text').map(block => block.text).join('\n'))
+      reviewerPrompts.push(options.prompt.filter((block: ContentBlock) => block.type === 'text').map(block => block.text).join('\n'))
       if (erroringStart) {
         return Promise.resolve({
           result: Promise.resolve({ stopReason: 'error', diagnostic: 'model transport failed', output: [] }),

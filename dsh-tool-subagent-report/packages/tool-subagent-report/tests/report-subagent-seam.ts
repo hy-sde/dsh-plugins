@@ -5,7 +5,7 @@
  * Harness fork's report channel (`registerContinuableSetup`, `reportFrom`,
  * the `subagent-report` message source, and the keyed open-decisions
  * ledger). Rather than weaken any assertion, this suite mounts
- * a faithful local seam that implements exactly the fork contract declared in
+ * a faithful local seam that implements exactly the fork report contract declared in
  * `src/report-contract.ts` over the REAL published agent stack
  * (agent-loop, agents registry, sessions, tools, system prompt, LLM runtime),
  * so every child materialization, inbox ordering, and wake is produced by the
@@ -34,20 +34,9 @@ export interface SubagentReportMessageSource {
   readonly senderSessionId: SessionId
 }
 
-/** Durable attribution of the runtime's own settlement account for a child. */
-export interface SubagentSettledMessageSource {
-  readonly kind: 'subagent-settled'
-  readonly form: 'notice'
-  /** One-line account of how the child ended. */
-  readonly summary: string
-  /** Session id of the child that settled. */
-  readonly senderSessionId: SessionId
-}
-
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     'subagent-report': SubagentReportMessageSource
-    'subagent-settled': SubagentSettledMessageSource
   }
 }
 
@@ -59,18 +48,13 @@ interface Activation {
   disposing: Promise<void> | undefined
 }
 
-/** The delegation request shape the suite drives. */
-export interface SeamContinuableRequest {
-  readonly prompt: ContentBlock[]
-  readonly parent: Agent
-  readonly agentPreset?: string
-}
-
-/** The `startActivation` spec shape the suite drives. */
+/** The flat rc.3 `startActivation` spec shape the suite drives. */
 export interface SeamActivationStartSpec {
   readonly provider: string
   readonly label: string
-  readonly request: SeamContinuableRequest
+  readonly prompt: ContentBlock[]
+  readonly parent: Agent
+  readonly agentPreset?: string
   /** Accepted for API fidelity; resident seam children always report and settle to their parent. */
   readonly delivery: 'parent' | 'caller'
   readonly signal: AbortSignal
@@ -126,7 +110,7 @@ class SubagentReportSeam {
   /** Establish one durable activation child with real published materialization. */
   async startActivation(spec: SeamActivationStartSpec): Promise<{ childId: SessionId; messageId: MessageId }> {
     spec.signal.throwIfAborted()
-    const parent = spec.request.parent
+    const parent = spec.parent
     this.assertAdmitting(parent)
     const childId = SessionId(`seam-child-${++this.counter}`)
     const handle = await this.ctx.agents.create({
@@ -134,7 +118,7 @@ class SubagentReportSeam {
       meta: { parentSession: parent.id, origin: 'subagent' },
       agentOptions: { provider: 'mock', model: 'mock' },
       setup: (agentCtx) => {
-        const presets = spec.request.agentPreset !== undefined ? agentCtx.get('agentPresets') : undefined
+        const presets = spec.agentPreset !== undefined ? agentCtx.get('agentPresets') : undefined
         if (presets !== undefined) {
           presets.composeFrom(agentCtx, parent.ctx)
         } else {
@@ -147,7 +131,7 @@ class SubagentReportSeam {
     this.activations.set(childId, { childId, parentId: parent.id, handle, disposing: undefined })
     spec.signal.throwIfAborted()
     const message = createUserMessage({
-      content: spec.request.prompt,
+      content: spec.prompt,
       source: { kind: 'user' },
     })
     child.followup(message)
