@@ -12,7 +12,7 @@ Registers one tool (`browser`) and a `browser:tools` system-prompt section:
 - **close** — close one tab, `all` tabs, or with `kill` the spawned browser.
 - **Screenshots** — `screenshot: yes` writes a PNG (into `screenshotDir`, default `<cwd>/.dsh-browser`) and returns its path for the model to re-read.
 
-Backends mirror omp's `app` object: `app.path` spawns a stealth-patched browser, `app.patch` uses the CloakBrowser source-patched Chromium (optional `cloakbrowser` peer — C++-level fingerprint randomization), `app.cdp_url` attaches to an existing CDP endpoint, `app.relay` drives the user's own tabs through the local relay + extension.
+Backends mirror omp's `app` object: `app.path` spawns a stealth-patched browser, `app.patch` drives Chromium through patchright (optional `patchright` peer — a Playwright fork closing Playwright's own automation leaks), `app.cdp_url` attaches to an existing CDP endpoint, `app.relay` drives the user's own tabs through the local relay + extension.
 
 ## ARIA refs
 

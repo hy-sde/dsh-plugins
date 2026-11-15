@@ -1,10 +1,11 @@
 /**
  * The `ctx.browser` service: an agent-facing browser over Playwright Core CDP.
  *
- * Three backends, mirroring omp's browser tool:
+ * Four backends:
  * - **launch** — spawn a (stealth-patched) browser executable,
- * - **patch** — spawn the CloakBrowser Chromium (source-level C++
- *   fingerprint patches) via the optional `cloakbrowser` peer,
+ * - **patch** — spawn a patchright-driven Chromium (a Playwright fork that
+ *   closes Playwright's own automation leaks at the CDP client layer) via
+ *   the optional `patchright` peer,
  * - **attach** — connect to an existing CDP endpoint (`cdp_url`), and
  * - **relay** — connect to the local relay server whose companion Chrome
  *   extension drives the user's own tabs.
@@ -34,7 +35,7 @@ import {
 import { startRelayServer, type RelayServer } from './relay/server.ts'
 import { resolveRelayKind } from './relay/kind.ts'
 import { waitForRelayReady } from './relay/probe.ts'
-import { launchCloakBrowser, cloakBrowserPid } from './cloak.ts'
+import { launchPatchrightBrowser, patchrightBrowserPid } from './patchright.ts'
 import type { BrowserConfig, BrowserKind, PageObservation, ScreenshotResult } from './types.ts'
 
 export type { BrowserConfig, BrowserKind, BrowserKindTag, PageObservation, ObservationEntry, ScreenshotResult } from './types.ts'
@@ -96,7 +97,7 @@ const NAVIGATION_CONTEXT_LOSS_RE = /Execution context was destroyed|Cannot find 
 export class BrowserService extends Service {
   private readonly browserPath: string | undefined
   private readonly usePatch: boolean
-  private readonly patchOptions: { proxy?: string; geoip?: boolean; humanize?: boolean }
+  private readonly patchOptions: { proxy?: string; channel?: string }
   private readonly headless: boolean
   private readonly viewport: { width: number; height: number; deviceScaleFactor?: number }
   private readonly relayUrl: string
@@ -178,14 +179,21 @@ export class BrowserService extends Service {
     }
 
     if (kind.kind === 'patch') {
-      // CloakBrowser randomizes fingerprints per session at the C++ layer; the
-      // JS-level stealth scripts and UA override are deliberately NOT applied
-      // on this backend (they would fight the per-session randomization).
-      const browser = await launchCloakBrowser({ headless: this.headless, ...this.patchOptions })
+      // Patchright closes Playwright's own automation leaks at the CDP client
+      // layer (Runtime.enable, console/stack-trace leaks) but does not
+      // randomize fingerprints, so the JS-level stealth layer (launch args,
+      // UA/client-hints override, init scripts) IS applied on this backend —
+      // same hardening as the launch backend, on a leak-patched driver.
+      const browser = await launchPatchrightBrowser({
+        headless: this.headless,
+        args: [...STEALTH_LAUNCH_ARGS],
+        ignoreDefaultArgs: stealthIgnoreDefaultArgs(),
+        ...this.patchOptions,
+      })
       // The patch backend spawns its own Chromium with no launchServer handle;
       // record its pid like a launch's so a crashed host's patch browser is
       // reapable too (no-op when the peer exposes no process accessor).
-      const pid = cloakBrowserPid(browser)
+      const pid = patchrightBrowserPid(browser)
       if (pid !== undefined) {
         void recordOwnedBrowser(pid).catch(() => {})
       }
@@ -240,7 +248,7 @@ export class BrowserService extends Service {
     if (existing) return existing
     const entry = await this.connect(kind, cwd)
     const page = await entry.browser.newPage({ viewport: this.viewport })
-    if (entry.kind.kind === 'launch') await preparePage(page)
+    if (entry.kind.kind === 'launch' || entry.kind.kind === 'patch') await preparePage(page)
     const tab: TabEntry = { page, browserKey: this.browserKeyFor(kind, cwd), name }
     this.tabs.set(name, tab)
     return tab
@@ -288,7 +296,7 @@ export class BrowserService extends Service {
   }
 
   /**
-   * Scrape one URL in a dedicated browser (launch or CloakBrowser patch — never
+   * Scrape one URL in a dedicated browser (launch or patchright patch — never
    * relay/attach, which belong to other owners). Used by credential-free web
    * search engines as the challenge-fallthrough transport: optional home-page
    * seeding for cookies, then navigate, optionally wait for a ready selector,

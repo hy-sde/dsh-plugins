@@ -29,9 +29,9 @@ An agent's plain `fetch` dies at the first bot wall or fingerprint check,
 and the usual workarounds mean accounts, API keys, or brittle one-off glue.
 This plugin is the credential-free alternative: a real browser the agent
 steers, with the stealth work already done — 14 omp-puppeteer init scripts
-with stripped launch flags and spoofed UA/client-hints (`app.path`), the
-CloakBrowser Chromium's 71 source-level fingerprint patches for the hardest
-walls (`app.patch`), attach to a browser you already run (`app.cdp_url`),
+with stripped launch flags and spoofed UA/client-hints (`app.path`),
+patchright's automation-leak-patched Chromium for the hardest walls
+(`app.patch`), attach to a browser you already run (`app.cdp_url`),
 or drive your own Chrome tabs through the relay + companion extension
 (`app.relay`). Observations come back as Playwright ARIA snapshots with
 actionable `[ref=eN]` ids rather than scraped HTML, and tabs are namespaced
@@ -45,7 +45,8 @@ per session id, so concurrent sessions never steer each other's browser.
   (`@deepseek-ai/cordis` pins `~4.0.4`);
 - a Chrome-family browser: `app.cdp_url` attaches to a real CDP endpoint and
   `app.relay` drives your own Chrome via the companion MV3 extension; the
-  optional `app.patch` backend needs the `cloakbrowser` peer (`>=0.5.0`).
+  optional `app.patch` backend needs the `patchright` peer (`>=1.49.0`,
+  browser binary via `npx patchright install chromium`).
 
 Install the Harness CLI and pnpm before continuing:
 
@@ -58,8 +59,9 @@ dsh --version
 
 - **Four backends** — `app.path` spawns a stealth-patched browser binary
   (14 omp-puppeteer init scripts + stripped launch flags + spoofed
-  UA/client-hints), `app.patch` spawns the CloakBrowser Chromium (71
-  source-level C++ fingerprint patches, optional `cloakbrowser` peer),
+  UA/client-hints), `app.patch` drives Chromium through patchright (a
+  Playwright fork closing Playwright's own automation leaks, optional
+  `patchright` peer),
   `app.cdp_url` attaches to any real Chrome-family CDP
   endpoint, and `app.relay`/`DSH_BROWSER_RELAY=1` drives the user's own
   Chrome tabs through the in-process relay + companion MV3 extension.

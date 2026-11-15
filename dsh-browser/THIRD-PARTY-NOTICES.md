@@ -33,14 +33,14 @@ attribution in its header; this notice aggregates the provenance.
 - **Derived**: the `ctx.browser` service shape follows the harness service
   seam conventions (`Service`, inject, effect-scoped registration).
 
-## CloakBrowser (optional runtime integration)
+## Patchright (optional runtime integration)
 
-- **Project**: https://github.com/CloakHQ/cloakbrowser (MIT License)
-- **Copyright**: Copyright (c) 2026 CloakHQ
+- **Project**: https://github.com/Kaliiiiiiiiii-Vinyzu/patchright (Apache License 2.0)
+- **Copyright**: Copyright 2026 Kaliiiiiiiiii-Vinyzu
 - **Relationship**: not vendored and not compiled in — loaded at runtime as
-  the optional `cloakbrowser` peer behind the `app.patch` backend
-  (`src/cloak.ts`). dsh-browser contains no CloakBrowser code; users who want
-  the backend install `npm i cloakbrowser` themselves.
+  the optional `patchright` peer behind the `app.patch` backend
+  (`src/patchright.ts`). dsh-browser contains no Patchright code; users who
+  want the backend install `npm i patchright` themselves.
 
 License text (identical for all MIT-listed projects):
 

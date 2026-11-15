@@ -14,7 +14,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { BrowserService, isNavigationContextLossError, mayForgetClosedBrowser, retryOnceOnNavigationContextLoss, type BrowserKind } from '../src/service.ts'
-import { cloakBrowserPid } from '../src/cloak.ts'
+import { patchrightBrowserPid } from '../src/patchright.ts'
 import { forgetOwnedBrowser, recordOwnedBrowser, resetOrphanRegistryForTest } from '../src/orphan-registry.ts'
 
 const CHROME_CANDIDATES = [
@@ -26,8 +26,8 @@ const CHROME_CANDIDATES = [
 const CHROME = CHROME_CANDIDATES.find(existsSync)
 const LIVE = CHROME !== undefined
 
-/** Whether the optional `cloakbrowser` peer resolves (then the error-path test is skipped). */
-const hasCloakBrowserInstall: boolean = await import(/** @vite-ignore */ 'cloakbrowser')
+/** Whether the optional `patchright` peer resolves (then the error-path test is skipped). */
+const hasPatchrightInstall: boolean = await import(/** @vite-ignore */ 'patchright')
   .then(() => true)
   .catch(() => false)
 
@@ -150,22 +150,22 @@ describe('kind + wait resolution (pure)', () => {
     }
   })
 
-  it.skipIf(hasCloakBrowserInstall)('app.patch fails helpfully when the cloakbrowser peer is missing', async () => {
+  it.skipIf(hasPatchrightInstall)('app.patch fails helpfully when the patchright peer is missing', async () => {
     await expect(service.open('patch-tab', DATA_URL, { kind: { kind: 'patch' }, cwd: dir }))
-      .rejects.toThrow(/cloakbrowser/)
+      .rejects.toThrow(/patchright/)
   })
 })
 
 describe('patch backend pid recording (pure)', () => {
   it('duck-types the pid off the peer browser when exposed', () => {
-    expect(cloakBrowserPid({ process: () => ({ pid: 4242 }) })).toBe(4242)
+    expect(patchrightBrowserPid({ process: () => ({ pid: 4242 }) })).toBe(4242)
   })
 
   it('records nothing when the peer exposes no process accessor or a bogus pid', () => {
-    expect(cloakBrowserPid({})).toBeUndefined()
-    expect(cloakBrowserPid({ process: 'not-a-function' })).toBeUndefined()
-    expect(cloakBrowserPid({ process: () => ({ pid: Number.NaN }) })).toBeUndefined()
-    expect(cloakBrowserPid({ process: () => undefined })).toBeUndefined()
+    expect(patchrightBrowserPid({})).toBeUndefined()
+    expect(patchrightBrowserPid({ process: 'not-a-function' })).toBeUndefined()
+    expect(patchrightBrowserPid({ process: () => ({ pid: Number.NaN }) })).toBeUndefined()
+    expect(patchrightBrowserPid({ process: () => undefined })).toBeUndefined()
   })
 })
 

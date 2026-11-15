@@ -41,16 +41,14 @@ export interface ScreenshotResult {
 export interface BrowserConfig {
   /** Resolvable browser executable path; empty lets Playwright find one. */
   browserPath?: string
-  /** Prefer the CloakBrowser backend (`app.patch`) when no path/cdp_url/relay is requested. */
+  /** Prefer the patchright backend (`app.patch`) when no path/cdp_url/relay is requested. */
   usePatch?: boolean
-  /** CloakBrowser launch options (proxy / geoip / humanize passthrough). */
+  /** patchright launch options (proxy / channel passthrough). */
   patchOptions?: {
     /** Proxy URL passed to the Chromium (e.g. a residential proxy). */
     proxy?: string
-    /** Match timezone + locale to the proxy IP (needs `proxy`). */
-    geoip?: boolean
-    /** Human-like mouse, keyboard, scroll behaviour. */
-    humanize?: boolean
+    /** Browser distribution channel, e.g. `chrome` to drive installed Google Chrome instead of patchright's own Chromium build. */
+    channel?: string
   }
   /** Headless mode for launched browsers (default true). */
   headless?: boolean

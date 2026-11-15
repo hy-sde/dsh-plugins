@@ -6,7 +6,7 @@
  * `fetch` carrying coherent navigation headers (`browser-headers.ts`); when
  * that fails, returns a non-2xx, or the body smells like a bot challenge
  * (Cloudflare firewall, ALTCHA wall, "unusual traffic", …), the engines that
- * are browser-backed escalate to a real (stealth-patched / CloakBrowser)
+ * are browser-backed escalate to a real (stealth-patched / patchright)
  * browser via the injected {@link PageScraper}. The scraper lives in the
  * browser host service (`BrowserService.fetchPageHtml`) — never the tool —
  * and is optional: without one the engine simply stays fetch-only, so this
