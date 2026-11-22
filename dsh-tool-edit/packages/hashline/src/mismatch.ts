@@ -104,7 +104,7 @@ export class MismatchError extends Error {
     })
   }
 
-  static rejectionHeader(details: MismatchDetails): string[] {
+  static rejectionHeader(details: MismatchDetails, context: readonly string[] = []): string[] {
     const pathText = details.path ? ` for ${details.path}` : ''
     const hashRecognized = details.hashRecognized ?? true
     if (!hashRecognized) {
@@ -114,12 +114,16 @@ export class MismatchError extends Error {
       const origins = (details.tagOriginPaths ?? []).map(
         origin => `Hash ${HL_FILE_HASH_SEP}${details.expectedFileHash} was issued in this session for ${origin}.`,
       )
+      // A tag issued for another file (often the same rows in a sibling
+      // checkout) must not be resent here: that is the wrong-tree write the
+      // origin lines above guard against (oh-my-pi 4f1682bb6e).
+      const offerResend = context.length > 0 && (details.tagOriginPaths ?? []).length === 0
       return [
         details.expectedFileHash === ''
           ? `Edit rejected${pathText}: the header needs this file's current tag, ${HL_FILE_HASH_SEP}${details.actualFileHash}.`
           : `Edit rejected${pathText}: hash ${HL_FILE_HASH_SEP}${details.expectedFileHash} is not from this session.`,
         ...origins,
-        currentTagAdvice(details.actualFileHash),
+        currentTagAdvice(details.actualFileHash, offerResend),
       ]
     }
     return [
@@ -140,8 +144,10 @@ export class MismatchError extends Error {
   }
 
   static formatMessage(details: MismatchDetails): string {
-    const lines = MismatchError.rejectionHeader(details)
+    // Context rows are assembled before the header lines so the resend
+    // offer knows whether any anchored rows are shown (oh-my-pi 4f1682bb6e).
     const context = formatAnchoredContext(details.anchorLines ?? [], details.fileLines)
+    const lines = MismatchError.rejectionHeader(details, context)
     if (context.length === 0) return lines.join('\n')
     lines.push('', ...context)
     return lines.join('\n')

@@ -14,7 +14,7 @@ import { resolveBlockEdits } from './block.ts'
 import { hasClipboardEdit } from './clipboard.ts'
 import { HL_FILE_HASH_EXAMPLES, HL_FILE_HASH_LENGTH, HL_FILE_HASH_SEP, HL_FILE_PREFIX, HL_FILE_SUFFIX } from './format.ts'
 import { ABORT_MARKER, BEGIN_PATCH_MARKER, CLIPBOARD_INTERLEAVED_SECTIONS, END_PATCH_MARKER } from './messages.ts'
-import { stripBom } from './normalize.ts'
+import { stripBom, trimEndWhitespace } from './normalize.ts'
 import { parsePatch, parsePatchStreaming } from './parser.ts'
 import { Tokenizer, bracketedOpInnerText } from './tokenizer.ts'
 import type { ApplyResult, BlockResolver, Clipboard, Edit, FileOp, SplitOptions } from './types.ts'
@@ -175,7 +175,7 @@ interface RawSection {
  * surface immediately instead of being silently re-classified as payload).
  */
 function parseHashlineHeaderLine(line: string, cwd?: string): RawSection | null {
-  const trimmed = unbracketEnvelopeMarkers(line.trimEnd())
+  const trimmed = unbracketEnvelopeMarkers(trimEndWhitespace(line))
   if (!trimmed.startsWith(HL_FILE_PREFIX)) return null
 
   const token = TOKENIZER.tokenize(trimmed)
@@ -253,7 +253,7 @@ export function firstHeaderPath(input: string, cwd?: string): string | null {
   const withoutBom = stripBom(input).text
   for (const line of withoutBom.split('\n')) {
     try {
-      const header = parseHashlineHeaderLine(line.trimEnd(), cwd)
+      const header = parseHashlineHeaderLine(trimEndWhitespace(line), cwd)
       if (header !== null) return header.path
     } catch {
       // Not a header line; keep scanning.
@@ -270,7 +270,7 @@ function splitRawSections(input: string, options: SplitOptions): RawSection[] {
   if (parseHashlineHeaderLine(firstLine, options.cwd) === null) {
     // Catch unified-diff hunk-header contamination on the first line so
     // the model sees a focused error.
-    const firstTrimmed = firstLine.trimEnd()
+    const firstTrimmed = trimEndWhitespace(firstLine)
     if (/^@@\s+[-+]?\d+,\d+\s+[-+]?\d+,\d+\s+@@/.test(firstTrimmed)) {
       throw new Error(
         'unified-diff hunk header (`@@ -N,M +N,M @@`) is not valid in hashline. ' +
@@ -296,7 +296,7 @@ function splitRawSections(input: string, options: SplitOptions): RawSection[] {
   }
 
   for (const line of lines) {
-    const trimmed = line.trimEnd()
+    const trimmed = trimEndWhitespace(line)
     // Classify the unbracketed form so a bracketed sentinel row mid-patch
     // breaks/continues like the bare one instead of riding in the diff body
     // (oh-my-pi 6dec51c4dd tokenizes `unbracket_envelope_markers(clean)` in

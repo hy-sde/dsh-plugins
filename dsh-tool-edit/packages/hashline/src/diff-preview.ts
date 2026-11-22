@@ -4,8 +4,8 @@
  * current-file preview. Removed lines are counted for stats and post-edit
  * offset tracking, but omitted from the preview. Added and context lines are
  * anchored to their post-edit positions so a follow-up edit can reuse visible
- * concrete lines directly. Long contiguous added runs are summarized with a
- * `…` marker instead of echoing every inserted line.
+ * concrete lines directly. Long contiguous added runs and blank gap rows are
+ * summarized with a `…` marker instead of echoing every inserted line.
  *
  * This is intentionally decoupled from the diff producer: anything that
  * emits the `<sign><lineNum>|<content>` shape works.
@@ -16,20 +16,13 @@ import type { CompactDiffOptions, CompactDiffPreview } from './types.ts'
 const DEFAULT_ADDED_RUN_CONTEXT_LINES = 2
 
 const PREVIEW_ELISION_MARKER = '…'
-/** Blank row separating non-contiguous regions of a numbered diff. */
-const PREVIEW_GAP_ROW = ''
-const RAW_ELISION_MARKERS = new Set(['...', PREVIEW_ELISION_MARKER, `+${PREVIEW_ELISION_MARKER}`])
-
-function isPreviewSeparator(line: string | undefined): boolean {
-  return line === PREVIEW_ELISION_MARKER || line === PREVIEW_GAP_ROW
-}
+const RAW_ELISION_MARKERS = new Set(['', '...', PREVIEW_ELISION_MARKER, `+${PREVIEW_ELISION_MARKER}`])
 
 function appendPreviewLine(output: string[], line: string): void {
   const normalized = RAW_ELISION_MARKERS.has(line) ? PREVIEW_ELISION_MARKER : line
-  // Separators (elision markers, blank gap rows) never stack: omitted
-  // removed lines between two separators would otherwise leave them
-  // adjacent. A leading separator is dropped outright.
-  if (isPreviewSeparator(normalized) && (output.length === 0 || isPreviewSeparator(output[output.length - 1]))) {
+  // Elision markers never stack: omitted removed lines between two markers
+  // would otherwise leave them adjacent. A leading marker is dropped outright.
+  if (normalized === PREVIEW_ELISION_MARKER && (output.length === 0 || output[output.length - 1] === PREVIEW_ELISION_MARKER)) {
     return
   }
   output.push(normalized)
@@ -81,9 +74,13 @@ export function buildCompactDiffPreview(diff: string, options: CompactDiffOption
   let removedLines = 0
   const formatted: string[] = []
   const addedRun: string[] = []
+  // True while the current added run re-emits rows the fork's producer paired
+  // with a removed run (unchanged-but-renumbered middle): those keep the fork's
+  // 2-row collapse so elided renumbered rows never register as seen.
+  let addedRunPaired = false
 
   const flushAddedRun = (): void => {
-    appendAddedRun(formatted, addedRun, addedRunContext)
+    appendAddedRun(formatted, addedRun, addedRunPaired ? DEFAULT_ADDED_RUN_CONTEXT_LINES : addedRunContext)
     addedRun.length = 0
   }
 
@@ -109,9 +106,11 @@ export function buildCompactDiffPreview(diff: string, options: CompactDiffOption
       case '-':
         flushAddedRun()
         removedLines++
+        addedRunPaired = true
         break
       default: {
         flushAddedRun()
+        addedRunPaired = false
         const newLineNumber = parsed.lineNumber + addedLines - removedLines
         appendPreviewLine(formatted, `${newLineNumber}:${parsed.content}`)
         break
@@ -119,7 +118,7 @@ export function buildCompactDiffPreview(diff: string, options: CompactDiffOption
     }
   }
   flushAddedRun()
-  while (formatted.length > 0 && isPreviewSeparator(formatted[formatted.length - 1])) formatted.pop()
+  while (formatted.length > 0 && formatted[formatted.length - 1] === PREVIEW_ELISION_MARKER) formatted.pop()
 
   return { preview: formatted.join('\n'), addedLines, removedLines }
 }

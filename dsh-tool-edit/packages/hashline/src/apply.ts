@@ -3,10 +3,11 @@
  * post-edit lines plus any diagnostic warnings. Pure function: no FS, no
  * mutation of the input.
  *
- * Mis-set replacement range boundaries are repaired by bounded candidate
- * search. Exact line equality, indentation, tree-sitter structure, and a
- * narrow pure-closer shape gate constrain candidates; tree-sitter validates
- * the selected result.
+ * Mis-set replacement range boundaries are searched by bounded candidate
+ * search but never applied: when a candidate keeps the file parsing, the
+ * edit is rejected with the suggested fix instead. Exact line equality,
+ * indentation, tree-sitter structure, and a narrow pure-closer shape gate
+ * constrain candidates.
  * Ported from @oh-my-pi/hashline (https://github.com/can1357/oh-my-pi). MIT License. Copyright (c) 2025 Mario Zechner, Copyright (c) 2025-2026 Can Bölük.
  */
 
@@ -17,7 +18,8 @@ import {
   ambiguousBoundaryEchoMessage,
   ambiguousBoundaryPlacementMessage,
   blockInsertLandingShiftWarning,
-  boundaryVariantRepairWarning,
+  boundaryFixMessage,
+  type BoundaryFixDescription,
   editBrokeParseWarning,
   REPLACEMENT_INDENT_AUTO_SHIFT_WARNING,
   textualBoundaryEchoWarning,
@@ -340,6 +342,22 @@ function countDuplicateTrailingBoundaryLines(group: ReplacementGroup, fileLines:
   }
   return 0
 }
+/**
+ * Whether dropping `dropLeading`/`dropTrailing` echo rows would leave the
+ * selected range untouched: the kept payload rows exactly restate the range.
+ * The authored body is then a deliberate literal copy of the neighbour, not an
+ * echo (oh-my-pi 3817b44aaf).
+ */
+function dropIsNoop(
+  group: ReplacementGroup,
+  fileLines: readonly string[],
+  dropLeading: number,
+  dropTrailing: number,
+): boolean {
+  const kept = group.payload.slice(dropLeading, group.payload.length - dropTrailing)
+  const range = fileLines.slice(group.startLine - 1, group.endLine)
+  return kept.length === range.length && kept.every((row, index) => row === range[index])
+}
 interface TextualBoundaryAmbiguity {
   readonly startLine: number
   readonly endLine: number
@@ -351,6 +369,8 @@ interface TextualBoundaryNormalization {
   readonly edits: AppliedEdit[]
   readonly warnings: string[]
   readonly ambiguities: TextualBoundaryAmbiguity[]
+  /** Replacement groups kept as written because dropping their echo is a no-op. */
+  readonly literal: number[]
 }
 
 /**
@@ -364,6 +384,11 @@ interface TextualBoundaryNormalization {
  * intentional. An under-filled one-sided echo is recorded as ambiguous so the
  * syntax-probe search gets first chance to resolve it, then rejected rather
  * than silently dropping unique range content.
+ *
+ * A drop that would leave the range untouched is a no-op: the body restating
+ * the range is the literal edit, so it is kept as written and the group is
+ * recorded as {@link TextualBoundaryNormalization.literal} — the syntax-probe
+ * search must not re-interpret it back into the no-op.
  */
 function normalizeTextualBoundaryEchoes(
   edits: readonly AppliedEdit[],
@@ -372,6 +397,7 @@ function normalizeTextualBoundaryEchoes(
   const out: AppliedEdit[] = []
   const warnings: string[] = []
   const ambiguities: TextualBoundaryAmbiguity[] = []
+  const literal: number[] = []
   let i = 0
   while (i < edits.length) {
     const group = findReplacementGroup(edits, i)
@@ -420,6 +446,11 @@ function normalizeTextualBoundaryEchoes(
         })
       }
     }
+    if ((dropLeading > 0 || dropTrailing > 0) && dropIsNoop(group, fileLines, dropLeading, dropTrailing)) {
+      literal.push(group.startLine)
+      dropLeading = 0
+      dropTrailing = 0
+    }
     if (dropLeading > 0 || dropTrailing > 0) {
       out.push(...inserts.slice(dropLeading, inserts.length - dropTrailing), ...deletes)
       warnings.push(textualBoundaryEchoWarning(group.startLine, dropLeading, dropTrailing))
@@ -437,7 +468,7 @@ function normalizeTextualBoundaryEchoes(
     }
     i = (group.deleteIndices[group.deleteIndices.length - 1] ?? 0) + 1
   }
-  return { edits: out, warnings, ambiguities }
+  return { edits: out, warnings, ambiguities, literal }
 }
 
 interface KeepPlan {
@@ -452,6 +483,12 @@ interface GroupVariant {
   readonly kept: number
   /** Exact payload echoes removed from outside the selected range. */
   readonly dropped: number
+  /** Selected range row the variant keeps instead of replacing, if any. */
+  readonly keep?: number
+  /** Leading payload rows the variant drops (they repeat the line above). */
+  readonly dropLeading: number
+  /** Trailing payload rows the variant drops (they repeat the line below). */
+  readonly dropTrailing: number
 }
 
 interface GroupVariants {
@@ -695,9 +732,13 @@ function buildGroupVariants(
         if (keep.kept > 0 && group.deleteIndices.length > 1 && payload.length > group.deleteIndices.length) {
           continue
         }
+        const keepLine = keep.beforeLine ?? keep.afterLine
         variants.push({
           kept: keep.kept,
           dropped,
+          ...(keepLine === undefined ? {} : { keep: keepLine }),
+          dropLeading: leadingDrop,
+          dropTrailing: trailingDrop,
           edits: applyGroupVariant(
             inserts,
             deletes,
@@ -757,14 +798,19 @@ function compareBoundaryCombo(a: BoundaryCombo, b: BoundaryCombo): number {
  * Search boundary hypotheses across the whole patch. Parsing is the semantic
  * filter; the deterministic cost prefers fewer touched groups, retained rows,
  * then exact echo drops. Different texts tied at that full cost are not
- * guessed.
+ * guessed. Literal no-op echo groups ({@link TextualBoundaryNormalization.literal})
+ * never enter the search: a repair would turn the deliberate copy back into
+ * the no-op. A unique best candidate is never applied: the caller rejects
+ * the authored edit and reports the candidate as the suggested fix
+ * (oh-my-pi 69df14cfa8).
  */
 function repairBoundaryVariants(
   edits: readonly AppliedEdit[],
+  literal: readonly number[],
   fileLines: readonly string[],
   path: string | undefined,
   baselineParses: boolean,
-): { edits: AppliedEdit[]; warnings: string[] } | undefined {
+): { fixes: BoundaryFixDescription[] } | undefined {
   if (path === undefined) return undefined
 
   const groups: { group: ReplacementGroup; variants: GroupVariant[] }[] = []
@@ -773,10 +819,13 @@ function repairBoundaryVariants(
   while (i < edits.length) {
     const group = findReplacementGroup(edits, i)
     if (group) {
+      i = (group.deleteIndices[group.deleteIndices.length - 1] ?? 0) + 1
+      // A literal no-op group stays out of the search: repairing it would
+      // re-create the no-op its authored body was meant to avoid.
+      if (literal.includes(group.startLine)) continue
       const built = buildGroupVariants(group, edits, fileLines, path, baselineParses)
       if (built.ambiguous && ambiguousGroup === undefined) ambiguousGroup = group
       if (built.variants.length > 0) groups.push({ group, variants: built.variants })
-      i = (group.deleteIndices[group.deleteIndices.length - 1] ?? 0) + 1
     } else {
       i++
     }
@@ -847,12 +896,20 @@ function repairBoundaryVariants(
     return undefined
   }
 
-  const warnings: string[] = []
+  const fixes: BoundaryFixDescription[] = []
   groups.forEach((entry, index) => {
     const variant = bestCombo.variants[index]
-    if (variant) warnings.push(boundaryVariantRepairWarning(entry.group.startLine, variant.kept, variant.dropped))
+    if (variant) {
+      fixes.push({
+        start: entry.group.startLine,
+        end: entry.group.endLine,
+        ...(variant.keep === undefined ? {} : { keep: variant.keep }),
+        dropLeading: variant.dropLeading,
+        dropTrailing: variant.dropTrailing,
+      })
+    }
   })
-  return { edits: spliceBoundaryCombo(edits, groups, bestCombo), warnings }
+  return { fixes }
 }
 
 /** Replace each group's authored edits with its combo variant (or the authored
@@ -871,7 +928,8 @@ function spliceBoundaryCombo(
   })
   const out: AppliedEdit[] = []
   let i = 0
-  /* jscpd:ignore-start -- normalizeTextualBoundaryEchoes and spliceBoundaryCombo splice replacement groups with independently owned variant selection. */
+  /* jscpd:ignore-start -- normalizeTextualBoundaryEchoes and spliceBoundaryCombo
+     splice replacement groups, each with its own variant selection. */
   while (i < edits.length) {
     const group = findReplacementGroup(edits, i)
     if (!group) {
@@ -1247,11 +1305,12 @@ function materializeEdits(originalLines: readonly string[], edits: readonly Appl
  * Returns the post-edit text and the first changed line number (1-indexed).
  * Throws if an anchor is out of bounds.
  *
- * Mis-set replacement boundaries are repaired by {@link repairBoundaryVariants}
- * when `options.path` lets tree-sitter judge the result. A parsing authored
- * result is never second-guessed. For a broken result, only syntax-essential
- * edge retention with matching indentation and exact outside-row echo removal
- * are considered; every selected candidate must parse.
+ * Mis-set replacement boundaries are searched by {@link repairBoundaryVariants}
+ * when `options.path` lets tree-sitter judge the result, but a candidate is
+ * never applied: a unique best candidate rejects the edit with the suggested
+ * fix. A parsing authored result is never second-guessed. For a broken
+ * result, only syntax-essential edge retention with matching indentation and
+ * exact outside-row echo removal are considered; every candidate must parse.
  */
 export function applyEdits(text: string, edits: readonly Edit[], options: ApplyEditsOptions = {}): ApplyResult {
   if (edits.length === 0) return { text }
@@ -1315,12 +1374,11 @@ export function applyEdits(text: string, edits: readonly Edit[], options: ApplyE
     }
     return finish(authoredResult, leading)
   }
-  const repaired = repairBoundaryVariants(normalized.edits, fileLines, options.path, baselineParses)
+  // A boundary candidate that would keep the file parsing is never applied:
+  // it rejects the authored edit with the suggested fix (69df14cfa8).
+  const repaired = repairBoundaryVariants(normalized.edits, normalized.literal, fileLines, options.path, baselineParses)
   if (repaired) {
-    const repairedResult = materializeEdits(fileLines, repaired.edits)
-    if (parsesCleanly(options.path, repairedResult.text)) {
-      return finish(repairedResult, [...leading, ...repaired.warnings])
-    }
+    throw withErrorKind(new Error(boundaryFixMessage(repaired.fixes)), 'ambiguous_boundary')
   }
   if (ambiguity) {
     throw withErrorKind(

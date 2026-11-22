@@ -14,10 +14,10 @@
 import {
   type BlockResolution,
   buildCompactDiffPreview,
+  carriedSeenLines,
   type Clipboard,
   computeFileHash,
   commitClipboard,
-  diffLineRuns,
   forkClipboard,
   formatHeaderOnlyMessage,
   MismatchError as HashlineMismatchError,
@@ -32,6 +32,8 @@ import {
   startClipboardBatch,
   stripBom,
 } from '@hy-sde-org/dsh-hashline'
+import { errorKindOf, withErrorKind } from '@hy-sde-org/dsh-hashline'
+import * as path from 'node:path'
 import type { EditDiagnosticsResult } from '../lsp/writethrough.ts'
 import type { EditSession } from '../session.ts'
 import { generateDiffString } from '../diff.ts'
@@ -45,6 +47,12 @@ export interface ExecuteHashlineSingleOptions {
   session: EditSession
   input: string
   signal?: AbortSignal
+}
+
+/** Model-facing text of a prepare rejection: mismatches render their context rows. */
+function rejectionText(error: unknown): string {
+  if (error instanceof HashlineMismatchError) return error.displayMessage
+  return error instanceof Error ? error.message : String(error)
 }
 
 function noChangeDiagnostic(path: string): string {
@@ -80,6 +88,13 @@ function noChangeLoopDiagnostic(path: string, count: number): string {
 const SEEN_LINE_ROW_RE = /^[ *]?(\d+)(?:-(\d+))?:/
 
 /**
+ * Rendered inserted runs of up to 2×20+1 rows whole in an edit response, so
+ * the rows the model just wrote count as displayed for its next edit
+ * (oh-my-pi 5de4b03810).
+ */
+const RESPONSE_ADDED_RUN_CONTEXT_LINES = 20
+
+/**
  * Extract the 1-indexed lines a rendered hashline result displays as
  * `N:content` rows (plus range ends `N-M:`) so they can be registered as
  * seen provenance on the snapshot the result tag names. Mirrors oh-my-pi's
@@ -99,45 +114,13 @@ export function seenLinesFromBody(text: string): number[] {
   return seen
 }
 
-/**
- * Prior-snapshot lines that keep both their number and content in `after`:
- * every unchanged run the edit did not shift (the leading run, plus runs
- * below line-neutral hunks), filtered by what `prior` displayed. A missing
- * or unrestricted prior snapshot let the edit anchor anywhere, so every
- * such run carries over. Shifted lines never carry: their old numbers name
- * other content.
- */
-export function carriedSeenLines(before: string, after: string, prior: ReadonlySet<number> | undefined): number[] {
-  const seen = prior !== undefined && prior.size > 0 ? prior : undefined
-  const carried: number[] = []
-  let oldLine = 1
-  let newLine = 1
-  for (const run of diffLineRuns(before, after)) {
-    if (run.added) {
-      newLine += run.count
-      continue
-    }
-    if (run.removed) {
-      oldLine += run.count
-      continue
-    }
-    if (oldLine === newLine) {
-      for (let i = 0; i < run.count; i++) {
-        const line = oldLine + i
-        if (seen === undefined || seen.has(line)) carried.push(line)
-      }
-    }
-    oldLine += run.count
-    newLine += run.count
-  }
-  return carried
-}
+export { carriedSeenLines }
 
 /**
  * Register the lines a rendered section result leaves anchorable on the
  * snapshot version its tag names (the post-edit content the patcher just
  * recorded): rows the model read before an update that the edit kept at
- * their line with their content ({@link carriedSeenLines}), plus the
+ * their line with their content ({@link SnapshotStore.recordEdit} carry), plus the
  * numbered rows the result itself displays. Upstream terminates a
  * successful edit's response with this same registration, making both
  * anchorable for a follow-up edit against the NEW tag; a line hidden under
@@ -154,13 +137,10 @@ function recordRenderedSeenLines(
   // preview rows are numbered against `after` — marking them seen would mint
   // bogus provenance, so only carried lines register.
   const drifted = recorded !== result.after
-  const seen: number[] = []
   // Only updates carry: a create has no prior text to prove lines against.
-  if (result.op === 'update') {
-    const prior = snapshots.byContent(result.canonicalPath, result.before)?.seenLines
-    seen.push(...carriedSeenLines(result.before, recorded, prior))
-  }
-  if (!drifted) seen.push(...seenLinesFromBody(text))
+  if (result.op === 'update') snapshots.recordEdit(result.canonicalPath, result.before, recorded)
+  if (drifted) return
+  const seen = seenLinesFromBody(text)
   if (seen.length === 0) return
   // A moved file carries its provenance to the destination: the patcher
   // already rewrote `canonicalPath` to the destination canonical path and
@@ -220,7 +200,22 @@ function formatBlockResolution(resolution: BlockResolution): string {
   return `${op} → resolved ${span} (${lines} line${lines === 1 ? '' : 's'})${suffix}`
 }
 
-function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsResult | undefined): RenderedSection {
+/**
+ * Render the move destination for the reply: the authored form when the dest
+ * lands in the source's directory, the absolute form otherwise — dest
+ * resolves from the session cwd, not from the source's directory, so a move
+ * out of that directory must not be misread (oh-my-pi 69df14cfa8).
+ */
+function moveDisplay(fs: EditFilesystem, sourcePath: string, dest: string): string {
+  const destAbsolute = fs.canonicalPath(dest)
+  return path.dirname(fs.canonicalPath(sourcePath)) === path.dirname(destAbsolute) ? dest : destAbsolute
+}
+
+function renderSection(
+  result: PatchSectionResult,
+  fs: EditFilesystem,
+  diagnostics?: EditDiagnosticsResult,
+): RenderedSection {
   if (result.op === 'delete') {
     return {
       text: `Deleted ${result.path}`,
@@ -236,14 +231,17 @@ function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsR
   }
 
   const diff = generateDiffString(result.before, result.after, undefined, { path: result.path })
-  const preview = buildCompactDiffPreview(diff.diff)
+  const preview = buildCompactDiffPreview(diff.diff, {
+    maxAddedRunContext: RESPONSE_ADDED_RUN_CONTEXT_LINES,
+  })
   const warningsBlock = result.warnings.length > 0 ? `\n\nWarnings:\n${result.warnings.join('\n')}` : ''
   const previewBlock = preview.preview ? `\n${preview.preview}` : ''
   const blockBlock =
     result.blockResolutions && result.blockResolutions.length > 0
       ? `\n${result.blockResolutions.map(formatBlockResolution).join('\n')}`
       : ''
-  const moveBlock = result.moveDest ? `\nMoved to ${result.moveDest}` : ''
+  const moveBlock =
+    result.moveDest === undefined ? '' : `\nMoved to ${moveDisplay(fs, result.sourcePath ?? result.path, result.moveDest)}`
   const firstChangedLine = result.firstChangedLine ?? diff.firstChangedLine
 
   const text = `${result.header}${blockBlock}${moveBlock}${previewBlock}${warningsBlock}`
@@ -253,7 +251,7 @@ function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsR
     details: {
       op: result.op,
       path: result.moveDest ?? result.path,
-      ...(result.moveDest ? { sourcePath: result.path, move: result.moveDest } : {}),
+      ...(result.moveDest ? { sourcePath: result.sourcePath ?? result.path, move: result.moveDest } : {}),
       diff: diff.diff,
       ...(firstChangedLine === undefined ? {} : { firstChangedLine }),
       ...(diagnostics ? { diagnostics } : {}),
@@ -282,10 +280,15 @@ async function headerOnlyError(options: ExecuteHashlineSingleOptions): Promise<E
   try {
     raw = await fs.readText(path)
   } catch (error) {
-    if (isNotFound(error)) return new Error(`File not found: ${path}. Use the write tool to create new files.`)
+    if (isNotFound(error)) {
+      return withErrorKind(new Error(`File not found: ${path}. Use the write tool to create new files.`), 'file_not_found')
+    }
     throw error
   }
-  return new Error(formatHeaderOnlyMessage(path, computeFileHash(normalizeToLF(stripBom(raw).text))))
+  return withErrorKind(
+    new Error(formatHeaderOnlyMessage(path, computeFileHash(normalizeToLF(stripBom(raw).text)))),
+    'header_only',
+  )
 }
 
 /**
@@ -327,37 +330,60 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     if (sectionResult.op === 'noop') {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath, inputHash)
       if (escalate) {
-        throw new Error(noChangeLoopDiagnostic(sectionResult.path, count))
+        throw withErrorKind(new Error(noChangeLoopDiagnostic(sectionResult.path, count)), 'no_change')
       }
-      const rendered = renderSection(sectionResult, undefined)
+      const rendered = renderSection(sectionResult, fs, undefined)
       recordRenderedSeenLines(snapshots, sectionResult, rendered.text)
       return { text: rendered.text, sections: [rendered.details] }
     }
     resetNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath)
-    const rendered = renderSection(sectionResult, fs.consumeDiagnostics(sectionResult.path))
+    const rendered = renderSection(sectionResult, fs, fs.consumeDiagnostics(sectionResult.path))
     recordRenderedSeenLines(snapshots, sectionResult, rendered.text)
     return { text: rendered.text, sections: [rendered.details] }
   }
 
-  // Multi-section: prepare every section up front so we fail fast before
-  // any write hits the filesystem. One batch-local register spans the batch,
-  // so `CUT` in one section feeds a register-backed `PUT` in a later one.
+  // Multi-section: prepare every section up front so no write hits the
+  // filesystem before all sections are staged. One batch-local register
+  // spans the batch, so `CUT` in one section feeds a register-backed `PUT`
+  // in a later one.
   const prepared: PreparedSection[] = []
   // Register state after each section's prepare. Commits are non-atomic: a
   // mid-batch write failure leaves earlier sections on disk, so the session
   // register must reflect exactly the landed prefix.
   const sectionStates: Clipboard[] = []
+  // A seen-line rejection does not end the walk (oh-my-pi d4ef7acbb6): the
+  // remaining sections are still prepared, so one reply reveals every file's
+  // unseen lines and the identical resend applies to all of them. A later
+  // section's own rejection joins the reply under its path
+  // (oh-my-pi 8731786ac6); other failures after a reply are left for the
+  // resend to report — a paste whose cut sat in a rejected section only
+  // fails because the cut never ran.
+  const replies: string[] = []
   for (const section of patch.sections) {
-    prepared.push(await patcher.prepare(section, clipboard))
-    sectionStates.push(forkClipboard(clipboard))
+    try {
+      prepared.push(await patcher.prepare(section, clipboard))
+      sectionStates.push(forkClipboard(clipboard))
+    } catch (error) {
+      if (errorKindOf(error) === 'unseen_lines') {
+        replies.push(rejectionText(error))
+        continue
+      }
+      if (replies.length === 0) throw error
+      if (errorKindOf(error) !== undefined) {
+        replies.push(`[${section.path}]: ${rejectionText(error)}`)
+      }
+    }
+  }
+  if (replies.length > 0) {
+    throw withErrorKind(new Error(replies.join('\n\n')), 'unseen_lines')
   }
   assertUniqueCanonicalPaths(prepared)
   for (const entry of prepared) {
     if (entry.isNoop) {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, entry.canonicalPath, inputHash)
       throw escalate
-        ? new Error(noChangeLoopDiagnostic(entry.section.path, count))
-        : new Error(noChangeDiagnostic(entry.section.path))
+        ? withErrorKind(new Error(noChangeLoopDiagnostic(entry.section.path, count)), 'no_change')
+        : withErrorKind(new Error(noChangeDiagnostic(entry.section.path)), 'no_change')
     }
   }
   // Then commit each one. A no-op apply mid-batch is treated as a hard
@@ -369,11 +395,11 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     if (sectionResult.op === 'noop') {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath, inputHash)
       throw escalate
-        ? new Error(noChangeLoopDiagnostic(sectionResult.path, count))
-        : new Error(noChangeDiagnostic(sectionResult.path))
+        ? withErrorKind(new Error(noChangeLoopDiagnostic(sectionResult.path, count)), 'no_change')
+        : withErrorKind(new Error(noChangeDiagnostic(sectionResult.path)), 'no_change')
     }
     resetNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath)
-    const entry = renderSection(sectionResult, fs.consumeDiagnostics(sectionResult.path))
+    const entry = renderSection(sectionResult, fs, fs.consumeDiagnostics(sectionResult.path))
     recordRenderedSeenLines(snapshots, sectionResult, entry.text)
     rendered.push(entry)
   }

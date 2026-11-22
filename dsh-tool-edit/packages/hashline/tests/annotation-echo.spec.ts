@@ -115,3 +115,48 @@ describe('single-line annotation echoes (the #[napi] doc-restoration incident)',
     expect(warnings).toHaveLength(0)
   })
 })
+
+// Upstream keeps_a_boundary_repeat_when_dropping_it_would_be_a_no_op
+// (oh-my-pi 3817b44aaf): when dropping the echo would leave the range
+// untouched, the body restating the range is the deliberate literal copy —
+// dropping it silently turned the edit into a no-op reported as a repair.
+describe('boundary repeat whose drop is a no-op', () => {
+  it('keeps the repeat literal on each side of the range', () => {
+    const text = ['alpha', 'beta', 'gamma', 'omega'].join('\n')
+    const cases: { diff: string; expected: string }[] = [
+      {
+        diff: ['PUT 2-3:', '+alpha', '+beta', '+gamma'].join('\n'),
+        expected: ['alpha', 'alpha', 'beta', 'gamma', 'omega'].join('\n'),
+      },
+      {
+        diff: ['PUT 2-3:', '+beta', '+gamma', '+omega'].join('\n'),
+        expected: ['alpha', 'beta', 'gamma', 'omega', 'omega'].join('\n'),
+      },
+      {
+        diff: ['PUT 2-3:', '+alpha', '+beta', '+gamma', '+omega'].join('\n'),
+        expected: ['alpha', 'alpha', 'beta', 'gamma', 'omega', 'omega'].join('\n'),
+      },
+    ]
+    for (const { diff, expected } of cases) {
+      const { text: result, warnings } = apply(text, diff)
+      expect(result).toBe(expected)
+      expect(warnings).toHaveLength(0)
+    }
+  })
+
+  it('keeps an annotation repeat literal on a one-row range', () => {
+    const file = ['#[test]', 'fn a() {}'].join('\n')
+    const { text, warnings } = apply(file, ['PUT 2-2:', '+#[test]', '+fn a() {}'].join('\n'))
+    expect(text).toBe(['#[test]', '#[test]', 'fn a() {}'].join('\n'))
+    expect(warnings).toHaveLength(0)
+  })
+
+  // The literal result no longer parses; the syntax-probe search must not
+  // turn it back into the no-op the body was authored to avoid.
+  it('keeps a repeat literal even when the result stops parsing', () => {
+    const file = ['function f() {', '  a();', '  b();', '}'].join('\n')
+    const { text, warnings } = apply(file, ['PUT 2-3:', '+function f() {', '+  a();', '+  b();'].join('\n'))
+    expect(text).toBe(['function f() {', 'function f() {', '  a();', '  b();', '}'].join('\n'))
+    expect(warnings).toHaveLength(0)
+  })
+})

@@ -17,14 +17,29 @@ export function detectLineEnding(content: string): LineEnding {
   return crlfIdx < lfIdx ? '\r\n' : '\n'
 }
 
-/** Normalize every line ending to LF. */
+/**
+ * Normalize every CRLF pair to LF. A lone CR (progress-bar logs) stays
+ * content, as grep, `wc -l` and editors count lines (oh-my-pi 69df14cfa8).
+ */
 export function normalizeToLF(text: string): string {
-  return text.replace(/\r\n?/g, '\n')
+  return text.replace(/\r\n/g, '\n')
 }
 
 /** Re-encode LF text with the requested line ending. */
 export function restoreLineEndings(text: string, ending: LineEnding): string {
   return ending === '\r\n' ? text.replace(/\n/g, '\r\n') : text
+}
+
+const TRAILING_WHITESPACE = /\p{White_Space}+$/u
+
+/**
+ * Trim trailing Unicode White_Space — Rust `str::trim_end` semantics, the
+ * set the patch parser accepts after section headers. `String.prototype
+ * .trimEnd` diverges both ways: it misses U+0085 and trims U+FEFF
+ * (oh-my-pi 5e53baff0f).
+ */
+export function trimEndWhitespace(line: string): string {
+  return line.replace(TRAILING_WHITESPACE, '')
 }
 
 export interface BomResult {

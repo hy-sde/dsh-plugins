@@ -155,7 +155,7 @@ export interface CompactDiffPreview {
 
 /** Optional knobs for {@link buildCompactDiffPreview}. */
 export interface CompactDiffOptions {
-  /** Added lines kept on each side of a long added-run elision (default 2). */
+  /** Unpaired added lines kept on each side of a long insertion elision (default 2; runs paired with removed rows stay at 2). */
   maxAddedRunContext?: number
   /** Back-compat alias for {@link maxAddedRunContext}. */
   maxUnchangedRun?: number

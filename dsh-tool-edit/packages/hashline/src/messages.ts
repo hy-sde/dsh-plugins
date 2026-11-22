@@ -8,6 +8,8 @@ import {
   HL_FILE_HASH_SEP,
   HL_FILE_PREFIX,
   HL_FILE_SUFFIX,
+  HL_GAP_BEFORE,
+  HL_HEADER_COLON,
   HL_PAYLOAD_REPLACE,
   HL_RANGE_SEP,
 } from './format.ts'
@@ -377,23 +379,6 @@ export function textualBoundaryEchoWarning(startLine: number, leading: number, t
 }
 
 /**
- * A replacement range's boundary disposition was corrected by the
- * syntax-probe-judged search: syntax-essential source boundary rows were
- * retained, or exact body echoes of surviving outside rows were removed. The
- * authored result did not parse and the selected result does.
- */
-export function boundaryVariantRepairWarning(startLine: number, kept: number, dropped: number): string {
-  const keptPart = kept === 0 ? '' : `retained ${kept} syntax-essential source boundary row(s) selected by the range`
-  const droppedPart = dropped === 0 ? '' : `dropped ${dropped} body row(s) duplicated just outside the range`
-  const action = [keptPart, droppedPart].filter(Boolean).join(' and ')
-  return (
-    `Auto-repaired replacement boundaries at line ${startLine}: ${action}. ` +
-		'The result was verified by the syntax probe — re-issue with the range covering exactly the changed ' +
-		'lines and the body as their complete final content.'
-  )
-}
-
-/**
  * The applied result no longer parses while the pre-edit content did: the
  * patch introduced a syntax error. Advisory, never a rejection — the applier
  * honors the authored edit — but the breakage is machine-confirmed by
@@ -544,22 +529,35 @@ export function writeDriftWarning(path: string): string {
 }
 
 /**
- * Advice appended to rejections that name the file's current hash: the model
- * should re-read and copy a real [path#tag] header instead of guessing.
+ * Advice appended to unknown-tag rejections that name the file's current
+ * hash. The tag may be real (a restart or store eviction forgets issued
+ * tags), so when anchored rows are shown the advice offers a resend under
+ * the current tag instead of sending the model back to output it already
+ * copied from; otherwise it asks for a re-read (oh-my-pi 4f1682bb6e).
  */
-export function currentTagAdvice(actualFileHash: string): string {
+export function currentTagAdvice(actualFileHash: string, offerResend: boolean): string {
+  if (offerResend) {
+    return (
+      `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. If the rows below are the ones you mean, resend the edit under ` +
+      `${HL_FILE_HASH_SEP}${actualFileHash}; otherwise re-read the file with \`read\` and copy its ` +
+      `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header verbatim.`
+    )
+  }
   return (
-    `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. Re-read the file with \`read\` to copy a current ` +
-    `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header — never invent the tag and never reuse one from a prior session.`
+    `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. Re-read the file with \`read\` and copy its ` +
+    `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header verbatim.`
   )
 }
 
 /**
  * A patch carried a header but no ops under it. Shared by the apply
- * (zero-sections) and preview/diff paths so both stay in lockstep.
+ * (zero-sections) and preview/diff paths so both stay in lockstep. No rows
+ * are shown, so the rejection names the current tag without re-read advice —
+ * ops on rows the model has not seen still hit the seen-line guard
+ * (oh-my-pi af1f27cf19).
  */
 export function formatHeaderOnlyMessage(path: string, actualFileHash: string): string {
-  return `Edit rejected for ${path}: no ops follow the header; put them under this file's current tag, ${HL_FILE_HASH_SEP}${actualFileHash}.\n${currentTagAdvice(actualFileHash)}`
+  return `Edit rejected for ${path}: no ops follow the header; put them under this file's current tag, ${HL_FILE_HASH_SEP}${actualFileHash}.`
 }
 
 /**
@@ -574,6 +572,96 @@ export function pathRecoveredFromTagMessage(authoredPath: string, resolvedPath: 
     `Path "${authoredPath}" does not exist; matched its filename and snapshot tag ` +
 		`${HL_FILE_HASH_SEP}${tag} to ${resolvedPath} (read earlier this session). Anchor future edits on ` +
 		`${HL_FILE_PREFIX}${resolvedPath}${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX}.`
+  )
+}
+
+/**
+ * A section named a missing path whose filename and snapshot tag match
+ * exactly one file read earlier this session, but the filesystem's
+ * {@link Filesystem.allowTagPathRecovery} policy refused the rebind (the
+ * candidate lies outside the host's writable scope). The reply names the
+ * candidate so the model re-issues the edit under its real path
+ * (oh-my-pi 69df14cfa8).
+ */
+export function tagPathMissingMessage(authoredPath: string, issuedForPath: string, tag: string): string {
+  return (
+    `File not found: ${authoredPath}. Hash ${HL_FILE_HASH_SEP}${tag} was issued in this session for ` +
+		`${issuedForPath}; if that is the file you mean, re-issue the edit under ` +
+		`${HL_FILE_PREFIX}${issuedForPath}${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX}. Nothing was applied.`
+  )
+}
+
+/**
+ * A file matched the section's tag but the store holds no version of that
+ * path under it: the tag was issued for other paths. Tags hash content
+ * only, so identical content (a sibling checkout, a copied fixture) shares
+ * a tag and the header most likely resolved to the wrong file (oh-my-pi
+ * 69df14cfa8).
+ */
+export function otherFileTagMessage(
+  authoredPath: string,
+  resolvedPath: string,
+  tag: string,
+  originPaths: readonly string[],
+): string {
+  return (
+    `Edit rejected for ${authoredPath}: the header resolves to ${resolvedPath}, but hash ${HL_FILE_HASH_SEP}${tag} was ` +
+    `issued in this session for ${originPaths.join(', ')} (identical content shares a tag). Nothing was applied. ` +
+    `To edit the file you read, put its full path in the header; to edit ${resolvedPath}, read it first.`
+  )
+}
+
+/**
+ * One replacement's parse-restoring change, suggested by a rejection.
+ */
+export interface BoundaryFixDescription {
+  start: number
+  end: number
+  /** A selected range row the fix keeps instead of replacing. */
+  keep?: number
+  /** Leading body rows the fix drops: they repeat the lines just above. */
+  dropLeading: number
+  /** Trailing body rows the fix drops: they repeat the lines just below. */
+  dropTrailing: number
+}
+
+/**
+ * Rejection for a patch that breaks a file a boundary change would keep
+ * parsing. The boundary change keeps a selected row or drops body rows that
+ * repeat a neighbour; nothing is applied, and the body is never rewritten
+ * (oh-my-pi 69df14cfa8). `errorLine` is omitted when the host has no
+ * first-error position for the broken parse.
+ */
+export function boundaryFixMessage(fixes: readonly BoundaryFixDescription[], errorLine?: number): string {
+  const at = errorLine === undefined ? '' : ` (first syntax error near line ${errorLine})`
+  const clauses = fixes
+    .map((fix) => {
+      const { start, end } = fix
+      const parts: string[] = []
+      if (fix.keep !== undefined) {
+        const line = fix.keep
+        const form =
+          start === end
+            ? `PUT ${HL_GAP_BEFORE}${start}${HL_HEADER_COLON}`
+            : line === start
+              ? `PUT ${start + 1}${HL_RANGE_SEP}${end}${HL_HEADER_COLON}`
+              : line === end
+                ? `PUT ${start}${HL_RANGE_SEP}${end - 1}${HL_HEADER_COLON}`
+                : undefined
+        parts.push(form === undefined ? `line ${line} stays after the body` : `line ${line} stays (use \`${form}\`)`)
+      }
+      if (fix.dropLeading > 0) {
+        parts.push(`its first ${fix.dropLeading} body row(s), which repeat the line(s) just above the range, are dropped`)
+      }
+      if (fix.dropTrailing > 0) {
+        parts.push(`its last ${fix.dropTrailing} body row(s), which repeat the line(s) just below the range, are dropped`)
+      }
+      return `for \`PUT ${start}${HL_RANGE_SEP}${end}${HL_HEADER_COLON}\` ${parts.join(' and ')}`
+    })
+    .join('; ')
+  return (
+    `Edit rejected: the file parses now but would not after this edit as written${at}. It parses if, ${clauses}. ` +
+    'Nothing was applied. If that is what you meant, re-issue it that way; otherwise correct the body so the result parses.'
   )
 }
 

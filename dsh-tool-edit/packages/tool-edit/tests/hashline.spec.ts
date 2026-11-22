@@ -118,6 +118,38 @@ describe('tool-edit (hashline mode)', () => {
     expect(await readFile(sample, 'utf8')).toBe('one\ninserted\ntwo\nthree\n')
   })
 
+  it('renders an out-of-directory move destination absolutely', async () => {
+    const { ctx, root, owner } = await setup()
+    const sample = join(root, 'notes.md')
+    const before = 'note one\nnote two\n'
+    await writeFile(sample, before)
+
+    // The dest resolves from the session cwd (root), not from the source's
+    // directory, so a move out of that directory names the absolute path
+    // (oh-my-pi 69df14cfa8).
+    const input = `[${sample}#${computeFileHash(before)}]\nMV sub/notes.md\n`
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(false)
+    const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
+    expect(modelText).toContain(`Moved to ${join(root, 'sub', 'notes.md')}`)
+    expect(await readFile(join(root, 'sub', 'notes.md'), 'utf8')).toBe(before)
+    await expect(readFile(sample, 'utf8')).rejects.toThrow()
+  })
+
+  it('renders a same-directory move destination as authored', async () => {
+    const { ctx, root, owner } = await setup()
+    const sample = join(root, 'notes.md')
+    const before = 'note one\nnote two\n'
+    await writeFile(sample, before)
+
+    const input = `[${sample}#${computeFileHash(before)}]\nMV notes-moved.md\n`
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(false)
+    const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
+    expect(modelText).toContain('Moved to notes-moved.md')
+    expect(await readFile(join(root, 'notes-moved.md'), 'utf8')).toBe(before)
+  })
+
   it('rejects a stale tag without touching the file', async () => {
     const { ctx, root, owner } = await setup()
     const sample = join(root, 'stale.txt')
@@ -173,6 +205,10 @@ describe('tool-edit (hashline mode)', () => {
     const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
     expect(modelText).toContain('no ops follow the header')
     expect(modelText).toContain(`#${computeFileHash(before)}`)
+    // Header-only rejections show no rows, so the reply carries no re-read
+    // advice (oh-my-pi af1f27cf19) — ops on unseen rows still hit the
+    // seen-line guard.
+    expect(modelText).not.toContain('re-read')
     expect(await readFile(sample, 'utf8')).toBe(before)
   })
 
@@ -408,6 +444,114 @@ describe('tool-edit (hashline mode) × default seen-line enforcement', () => {
     })
     expect(result.isError).toBe(false)
     expect(await readFile(sample, 'utf8')).toBe(DRAW_SOURCE.replace('0.230', '0.240'))
+  })
+
+  /** 30 numbered lines; `kind` swaps `let`→`var` so the two files differ. */
+  function numberedSource(kind: 'let' | 'var'): string {
+    return Array.from({ length: 30 }, (_, i) => `${kind} v${String(i + 1).padStart(4, '0')} = ${i + 1};`).join('\n')
+  }
+
+  it('joins every file’s unseen-line reveal into one rejection so the identical resend applies (oh-my-pi d4ef7acbb6)', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const two = join(root, 'two.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    const twoSource = `${numberedSource('var')}\n`
+    await writeFile(one, oneSource)
+    await writeFile(two, twoSource)
+
+    // Reads displayed lines 1-10 only; the edits anchor on unseen lines 20 and 25.
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+    const twoTag = store.record(two, twoSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${two}#${twoTag}]`,
+      'PUT 25.=25:',
+      '+var v0025 = 250;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('  25:var v0025 = 25;')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
+    expect(await readFile(two, 'utf8')).toBe(twoSource)
+
+    // A line the reply did not surface stays unseen.
+    const later = await call(ctx, owner, { input: `[${two}#${twoTag}]\nPUT 26.=26:\n+var v0026 = 260;\n` })
+    expect(later.isError).toBe(true)
+    expect(modelText(later)).toContain('never displayed')
+
+    // The identical resend now applies to both files.
+    const resent = await call(ctx, owner, { input })
+    expect(resent.isError).toBe(false)
+    expect(await readFile(one, 'utf8')).toBe(`${numberedSource('let').replace('let v0020 = 20;', 'let v0020 = 200;')}\n`)
+    expect(await readFile(two, 'utf8')).toBe(`${numberedSource('var').replace('var v0025 = 25;', 'var v0025 = 250;')}\n`)
+  })
+
+  it('joins a later section’s tag rejection under its path in the unseen-line reply (oh-my-pi 8731786ac6)', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const two = join(root, 'two.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    const twoSource = `${numberedSource('var')}\n`
+    await writeFile(one, oneSource)
+    await writeFile(two, twoSource)
+
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${two}#BAD0]`,
+      'PUT 5.=5:',
+      '+var v0005 = 500;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('[two.ts]: ')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
+    expect(await readFile(two, 'utf8')).toBe(twoSource)
+  })
+
+  it('joins a later section’s missing-file rejection into the unseen-line reply', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const absent = join(root, 'absent.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    await writeFile(one, oneSource)
+
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${absent}#BAD0]`,
+      'PUT 2.=2:',
+      '+var v0002 = 200;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('[absent.ts]: File not found')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
   })
 })
 
@@ -679,5 +823,84 @@ describe('tool-edit (hashline mode) × carried read provenance', () => {
     expect(carriedSeenLines(before, after, undefined)).toEqual([2, 3, 4, 5, 6])
     // Pure shift: nothing keeps its number, nothing carries.
     expect(carriedSeenLines('x\na\nb\nc\nd\ne\n', before, new Set([1, 2, 3, 4, 5]))).toEqual([])
+  })
+})
+
+describe('tool-edit (hashline mode) × carried seen lines across outside changes (oh-my-pi 5de4b03810)', () => {
+  /**
+   * Composition with seen-line enforcement, as the GUI mounts it. The
+   * plugins workspace has no dsh-tool-fs, so the fork's `read` calls are
+   * simulated by recording the displayed rows in the shared session
+   * snapshot store (mirrors the fork's `seenLineStack`).
+   */
+  async function seenLineStack() {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-tool-edit-carry-'))
+    roots.push(root)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(LocalFileSystem, { cwd: root })
+    const fiber = await ctx.plugin(ToolEdit, { enforceSeenLines: true })
+    return { ctx, root, fiber, owner: agent(ctx, root) }
+  }
+
+  function modelText(result: { content: { type: string; text?: string }[] }): string {
+    return result.content.filter(b => b.type === 'text').map(b => b.text).join('')
+  }
+
+  /** Hashline header `[path#TAG]` tag from a rendered read/edit result. */
+  function tagFrom(text: string): string | undefined {
+    return /\[[^\]#]+#([0-9A-F]{4})\]/.exec(text)?.[1]
+  }
+
+  it('renders the rows an edit wrote whole and keeps them anchorable for the next edit', async () => {
+    const { ctx, root, owner } = await seenLineStack()
+    const sample = join(root, 'h.txt')
+    const text = `${Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+    await writeFile(sample, text)
+    const store = getSessionSnapshotStore(owner.session)
+    const tag = store.record(sample, text, Array.from({ length: 6 }, (_, i) => i + 1))
+    expect(tag).toBe(computeFileHash(text))
+
+    // The eight-row inserted run renders whole under the raised added-run
+    // context (2×20+1), so row 7 is displayed by the response that wrote it.
+    const rows = Array.from({ length: 8 }, (_, i) => `+new ${String.fromCharCode(97 + i)}`).join('\n')
+    const first = await call(ctx, owner, { input: `[${sample}#${tag}]\nPUT >3:\n${rows}\n` })
+    expect(first.isError).toBe(false)
+    const firstText = modelText(first)
+    expect(firstText).toContain('\n7:new d\n')
+    const edited = text.replace('line 4\n', 'new a\nnew b\nnew c\nnew d\nnew e\nnew f\nnew g\nnew h\nline 4\n')
+    expect(tagFrom(firstText)).toBe(computeFileHash(edited))
+
+    // ...and the model can edit that row under the response tag with no re-read.
+    const second = await call(ctx, owner, { input: `[${sample}#${tagFrom(firstText)}]\nPUT 7.=7:\n+new D\n` })
+    expect(second.isError).toBe(false)
+    expect(await readFile(sample, 'utf8')).toBe(edited.replace('new d\n', 'new D\n'))
+  })
+
+  it('keeps lines seen where an outside change kept their number and content', async () => {
+    const { ctx, root, owner } = await seenLineStack()
+    const sample = join(root, 'f.txt')
+    const text = `${Array.from({ length: 60 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+    await writeFile(sample, text)
+    const store = getSessionSnapshotStore(owner.session)
+    store.record(sample, text, Array.from({ length: 60 }, (_, i) => i + 1))
+
+    // An outside write changes only line 50; a partial re-read of that
+    // region records the changed content with just its own displayed rows.
+    const changed = text.replace('line 50\n', 'line FIFTY\n')
+    await writeFile(sample, changed)
+    const rereadTag = store.record(sample, changed, [48, 49, 50, 51, 52])
+    expect(rereadTag).toBe(computeFileHash(changed))
+
+    // Line 5 kept its number and content across the outside change, so the
+    // store carries it into the changed snapshot and the edit applies.
+    const result = await call(ctx, owner, { input: `[${sample}#${rereadTag}]\nPUT 5.=5:\n+line FIVE\n` })
+    expect(result.isError).toBe(false)
+    expect(await readFile(sample, 'utf8')).toBe(changed.replace('line 5\n', 'line FIVE\n'))
   })
 })

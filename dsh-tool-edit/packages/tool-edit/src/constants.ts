@@ -61,7 +61,9 @@ Mode "apply_patch" — Codex-style envelope:
 Omit hunks only for a content-preserving move. Old/context lines must match
 complete file lines, allowing only whitespace and Unicode punctuation
 normalization, not substrings or similar text.
-File references relative, never absolute. New-file lines MUST start \`+\`.
+Relative paths resolve against the session cwd (a shell \`cd\` does not
+change it); use absolute paths for files outside it. New-file lines MUST
+start \`+\`.
 
 <parameters>
 replace mode: { path: string, old_string: string, new_string: string, replace_all?: boolean }

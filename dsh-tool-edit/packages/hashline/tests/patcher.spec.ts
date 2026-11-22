@@ -138,7 +138,9 @@ describe('Patcher snapshot tag integrity', () => {
       expect(error).toBeInstanceOf(MismatchError)
       const message = (error as MismatchError).displayMessage
       expect(message).toMatch(new RegExp(`hash #${bogus} is not from this session`))
-      expect(message).toMatch(/never invent the tag/)
+      // The patch anchors on line 1, so its rows are shown and the advice
+      // offers a resend under the current tag (oh-my-pi 4f1682bb6e).
+      expect(message).toMatch(/If the rows below are the ones you mean, resend the edit under #[0-9A-F]{4};/)
       // Still surfaces the current hash so the model can pivot to a re-read.
       expect(message).toMatch(/current file hashes to #[0-9A-F]{4}/)
       // No recorded version carries the tag, so no origin path is named.
@@ -166,6 +168,48 @@ describe('Patcher snapshot tag integrity', () => {
       expect(message).toMatch(new RegExp(`Hash #${foreignTag} was issued in this session for other\\.ts\\.`))
     }
     expect(fs.get(PATH)).toBe('current\n')
+  })
+
+  // An unknown tag may be real (a restart or store eviction forgets issued
+  // tags), so when the anchored rows are shown the advice offers a resend
+  // under the current tag — but never when the tag belongs to another file
+  // (oh-my-pi 4f1682bb6e).
+  it('offers the current tag for the rows shown when an unknown tag has no origin paths', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      anchorLines: [2],
+      hashRecognized: false,
+    }).displayMessage
+    expect(message).toMatch(/\*2:/)
+    expect(message).toMatch(/If the rows below are the ones you mean, resend the edit under #CAFE;/)
+    expect(message).toMatch(/otherwise re-read the file with `read` and copy its \[path#tag\] header verbatim/)
+  })
+
+  it('never offers a resend when the unknown tag was issued for another file', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      anchorLines: [2],
+      hashRecognized: false,
+      tagOriginPaths: ['other.ts'],
+    }).displayMessage
+    expect(message).toMatch(/Hash #BEEF was issued in this session for other\.ts\./)
+    expect(message).not.toMatch(/resend the edit under/)
+    expect(message).toMatch(/Re-read the file with `read` and copy its \[path#tag\] header verbatim/)
+  })
+
+  it('does not offer a resend when no anchored rows are shown', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      hashRecognized: false,
+    }).displayMessage
+    expect(message).not.toMatch(/resend the edit under/)
+    expect(message).toMatch(/Re-read the file with `read` and copy its \[path#tag\] header verbatim/)
   })
 
   // A 16-bit snapshot tag can collide across two different file states. Tag
@@ -482,6 +526,38 @@ describe('Patcher seen-line origin', () => {
     const result = await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 5-5:\n+L5-MODEL`))
     expect(result.sections[0]?.op).toBe('update')
     expect(fs.get(PATH)).toBe('l1\nl2\ninserted\nl3\nl4\nL5-MODEL\n')
+  })
+
+  it('stays rejected on rows restored to their read numbers after inserts and cuts', async () => {
+    // Two rows go in past line 5 and the first row is cut, so rows from old
+    // line 6 on sit back at the numbers the read showed — but a model that
+    // tracked only the insert numbers them two higher. Inserts and cuts
+    // carry no payload that distinguishes the two readings, so ops on those
+    // rows stay rejected under the reply-minted tag (oh-my-pi 4f1682bb6e).
+    for (const op of ['CUT 22', 'PUT <22:\n+// before', 'PUT >22:\n+// after']) {
+      const base = `${Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+      const fs = new InMemoryFilesystem([[PATH, base]])
+      const snapshots = new InMemorySnapshotStore()
+      const tag0 = snapshots.record(PATH, base, Array.from({ length: 30 }, (_, i) => i + 1))
+      const patcher = new Patcher({ fs, snapshots })
+
+      const insert = await patcher.apply(Patch.parse(`[${PATH}#${tag0}]\nPUT >5:\n+// ins a\n+// ins b`))
+      const insertTag = insert.sections[0]?.fileHash
+      if (insertTag === undefined) throw new Error('insert produced no section tag')
+      // Rows the replies displayed with the default 2-row context: the
+      // insert reply shows rows 1-9 plus 31-32, the cut reply 1-2 plus
+      // 30-31. Row 22 is in neither, under either numbering.
+      snapshots.recordSeenLines(PATH, insertTag, [1, 2, 3, 4, 5, 6, 7, 8, 9, 31, 32])
+
+      const cut = await patcher.apply(Patch.parse(`[${PATH}#${insertTag}]\nCUT 1.=1`))
+      const cutTag = cut.sections[0]?.fileHash
+      if (cutTag === undefined) throw new Error('cut produced no section tag')
+      snapshots.recordSeenLines(PATH, cutTag, [1, 2, 30, 31])
+
+      const before = fs.get(PATH)
+      await expect(patcher.apply(Patch.parse(`[${PATH}#${cutTag}]\n${op}`))).rejects.toThrow(/never displayed/)
+      expect(fs.get(PATH)).toBe(before)
+    }
   })
 
   it('truncates the reveal at the cap and directs the tail back to a range re-read', async () => {
@@ -822,6 +898,45 @@ describe('Patcher tag-based path recovery', () => {
 
     await expect(patcher.apply(Patch.parse(`[file.ts#${tag}]\nPUT 2-2:\n+TWO`))).rejects.toThrow(/File not found/)
     expect(fs.get(NESTED)).toBe(CONTENT)
+  })
+
+  it('names the issued-for path when tag recovery is refused', async () => {
+    class NoRecoveryFs extends InMemoryFilesystem {
+      override allowTagPathRecovery(): boolean {
+        return false
+      }
+    }
+    const fs = new NoRecoveryFs([[NESTED, CONTENT]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record(NESTED, CONTENT)
+    const patcher = new Patcher({ fs, snapshots })
+
+    // The unique candidate exists but the policy refuses recovery: the reply
+    // names the path whose tag was issued (oh-my-pi 69df14cfa8).
+    const expected = `File not found: file.ts. Hash #${tag} was issued in this session for ${NESTED}`
+    await expect(patcher.apply(Patch.parse(`[file.ts#${tag}]\nPUT 2-2:\n+TWO`))).rejects.toThrow(
+      new RegExp(expected.replaceAll('.', '\\.')),
+    )
+    expect(fs.get(NESTED)).toBe(CONTENT)
+  })
+
+  it('rejects an identical file that never held the tag', async () => {
+    const shared = 'const shared = 1;\n'
+    const fs = new InMemoryFilesystem([
+      ['wt/x.ts', shared],
+      ['x.ts', shared],
+    ])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record('wt/x.ts', shared)
+    const patcher = new Patcher({ fs, snapshots })
+
+    // The live file hashes to the tag but this path never held it: identical
+    // content shares a tag, so the header resolved to the wrong file
+    // (oh-my-pi 69df14cfa8).
+    await expect(patcher.apply(Patch.parse(`[x.ts#${tag}]\nPUT 1.=1:\n+const shared = 2;`))).rejects.toThrow(
+      new RegExp(`hash #${tag} was issued in this session for wt/x\\.ts`),
+    )
+    expect(fs.get('x.ts')).toBe(shared)
   })
 
   it('runs the write gate on the recovered path, not the authored bare path', async () => {
