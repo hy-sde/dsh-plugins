@@ -1,8 +1,14 @@
 # Plugin publication tracker (audited 2026-09-08; full 0.1.6-alpha.2 release published 2026-09-15;
 # 0.1.6-alpha.2 release published 2026-09-20 (40 @hy-sde-org/dsh-* packages, via av-injected NODE_AUTH_TOKEN)
 #
-## PENDING PUBLICATION: 7 members bumped 0.2.2-rc.3 -> 0.2.2-rc.4 locally (2026-11-21,
-##   fork sweep 2026-11-20 backport wave: 21 commits across dsh-fs-archive (rar4 delta
+## PENDING PUBLICATION: all 43 @hy-sde-org/dsh-* members bumped locally to 0.2.2-rc.5
+##   (2026-11-22, harness 0.2.2-rc.5-parity wave: 36 members 0.2.2-rc.3 → 0.2.2-rc.5 plus
+##   the 7 backport-wave members 0.2.2-rc.4 → 0.2.2-rc.5 — their rc.4 bump was never
+##   published; @deepseek-ai/dsh-* peers/deps → ^0.2.2-rc.5 (286 ranges), minimumReleaseAgeExclude
+##   || 0.2.2-rc.5 appended (60 entries), zod override stays 4.6.6 (@deepseek-ai/dsh-llm rc.5
+##   still deps zod 4.6.6), dsh-web-search-public package-lock regenerated to rc.5. Contents
+##   riding this publish beyond version bumps — the 2026-11-21 backport wave (21 commits):
+##   across dsh-fs-archive (rar4 delta
 ##   channel-count guard), dsh-code-runtime-kernels (python 3.9 probe floor + PYTHONUTF8
 ##   + dead-cwd fallback + linecache cell sources incl. ipykernel), dsh-browser (relay
 ##   auto-attach child ownership + 5 bridge catch-ups to fork parity + printing-off
