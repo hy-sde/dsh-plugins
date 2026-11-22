@@ -267,6 +267,12 @@ function splitParens(tokens: RawToken[]): RawToken[] {
 
 function isoDate(year: number, month: number, day: number): string | undefined {
   if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return undefined
+  // Reject calendar-impossible dates (2023-02-29): Date.parse would roll the
+  // bound over to the next valid day (V8 MakeDay) instead of rejecting it.
+  const probe = new Date(Date.UTC(year, month - 1, day))
+  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
+    return undefined
+  }
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 

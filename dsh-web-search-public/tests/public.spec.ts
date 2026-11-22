@@ -813,6 +813,24 @@ describe('PublicSearchProvider', () => {
     })
   })
 
+  it('keeps date-incapable engines running when an impossible date degrades to a term', async () => {
+    let incapableCalls = 0
+    const incapable: PublicEngine = {
+      id: 'mojeek',
+      querySyntax: MOJEEK_QUERY_SYNTAX,
+      async search(): Promise<WebSearchSource[]> {
+        incapableCalls += 1
+        return [{ url: 'https://mojeek.test/', title: 'Guide' }]
+      },
+    }
+
+    const result = await provider([incapable]).search({ query: 'guide before:2023-02-29' })
+
+    // The typo'd date degrades to a plain term instead of a bound, so the
+    // engine without dateRange support is not skipped.
+    expect(incapableCalls).toBe(1)
+    expect(result).toEqual({ sources: [{ url: 'https://mojeek.test/', title: 'Guide' }], truncated: false })
+  })
 
   it('cancels a queued search when its request aborts', async () => {
     const gates: Array<() => void> = []

@@ -6,6 +6,7 @@ import {
   formatScraperQuery,
   GOOGLE_QUERY_SYNTAX,
   MOJEEK_QUERY_SYNTAX,
+  parseDateValue,
   parseSearchQuery,
   unsupportedQueryConstraints,
 } from '../src/query.ts'
@@ -29,6 +30,24 @@ describe('public search query controls', () => {
 
     expect(parsed.before).toBeUndefined()
     expect(parsed.text).toBe(raw)
+  })
+
+  it('rejects calendar-impossible dates so the directive degrades to a plain term', () => {
+    // Date.parse('2023-02-29') silently ROLLS OVER to 2023-03-01 (V8 MakeDay),
+    // shifting the bound instead of rejecting it — probe the calendar instead.
+    expect(parseDateValue('2023-02-29')).toBeUndefined()
+    expect(parseDateValue('2024-02-31')).toBeUndefined()
+    expect(parseDateValue('2024-04-31')).toBeUndefined()
+    expect(parseDateValue('2024-02-29')).toBe('2024-02-29')
+    // The degraded directive is a plain term — no date bound, so engines
+    // without dateRange support are not skipped for a typo'd date.
+    const parsed = parseSearchQuery('guide before:2023-02-29 site:docs.test')
+    expect(parsed.before).toBeUndefined()
+    expect(parsed.terms.map(term => term.text)).toContain('before:2023-02-29')
+    expect(parsed.sites).toEqual(['docs.test'])
+    expect(parsed.hasConstraints).toBe(true)
+    expect(unsupportedQueryConstraints(parsed, DUCKDUCKGO_QUERY_SYNTAX)).toEqual([])
+    expect(unsupportedQueryConstraints(parsed, MOJEEK_QUERY_SYNTAX)).toEqual([])
   })
 
   it('identifies constraints an engine cannot enforce from result metadata', () => {
