@@ -17,9 +17,12 @@ export function detectLineEnding(content: string): LineEnding {
   return crlfIdx < lfIdx ? '\r\n' : '\n'
 }
 
-/** Normalize every line ending to LF. */
+/**
+ * Normalize every CRLF pair to LF. A lone CR (progress-bar logs) stays
+ * content, as grep, `wc -l` and editors count lines (oh-my-pi 69df14cfa8).
+ */
 export function normalizeToLF(text: string): string {
-  return text.replace(/\r\n?/g, '\n')
+  return text.replace(/\r\n/g, '\n')
 }
 
 /** Re-encode LF text with the requested line ending. */

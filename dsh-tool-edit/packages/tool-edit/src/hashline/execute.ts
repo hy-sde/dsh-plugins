@@ -33,6 +33,7 @@ import {
   stripBom,
 } from '@hy-sde-org/dsh-hashline'
 import { withErrorKind } from '@hy-sde-org/dsh-hashline'
+import * as path from 'node:path'
 import type { EditDiagnosticsResult } from '../lsp/writethrough.ts'
 import type { EditSession } from '../session.ts'
 import { generateDiffString } from '../diff.ts'
@@ -221,7 +222,22 @@ function formatBlockResolution(resolution: BlockResolution): string {
   return `${op} → resolved ${span} (${lines} line${lines === 1 ? '' : 's'})${suffix}`
 }
 
-function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsResult | undefined): RenderedSection {
+/**
+ * Render the move destination for the reply: the authored form when the dest
+ * lands in the source's directory, the absolute form otherwise — dest
+ * resolves from the session cwd, not from the source's directory, so a move
+ * out of that directory must not be misread (oh-my-pi 69df14cfa8).
+ */
+function moveDisplay(fs: EditFilesystem, sourcePath: string, dest: string): string {
+  const destAbsolute = fs.canonicalPath(dest)
+  return path.dirname(fs.canonicalPath(sourcePath)) === path.dirname(destAbsolute) ? dest : destAbsolute
+}
+
+function renderSection(
+  result: PatchSectionResult,
+  fs: EditFilesystem,
+  diagnostics?: EditDiagnosticsResult,
+): RenderedSection {
   if (result.op === 'delete') {
     return {
       text: `Deleted ${result.path}`,
@@ -244,7 +260,8 @@ function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsR
     result.blockResolutions && result.blockResolutions.length > 0
       ? `\n${result.blockResolutions.map(formatBlockResolution).join('\n')}`
       : ''
-  const moveBlock = result.moveDest ? `\nMoved to ${result.moveDest}` : ''
+  const moveBlock =
+    result.moveDest === undefined ? '' : `\nMoved to ${moveDisplay(fs, result.sourcePath ?? result.path, result.moveDest)}`
   const firstChangedLine = result.firstChangedLine ?? diff.firstChangedLine
 
   const text = `${result.header}${blockBlock}${moveBlock}${previewBlock}${warningsBlock}`
@@ -254,7 +271,7 @@ function renderSection(result: PatchSectionResult, diagnostics: EditDiagnosticsR
     details: {
       op: result.op,
       path: result.moveDest ?? result.path,
-      ...(result.moveDest ? { sourcePath: result.path, move: result.moveDest } : {}),
+      ...(result.moveDest ? { sourcePath: result.sourcePath ?? result.path, move: result.moveDest } : {}),
       diff: diff.diff,
       ...(firstChangedLine === undefined ? {} : { firstChangedLine }),
       ...(diagnostics ? { diagnostics } : {}),
@@ -335,12 +352,12 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
       if (escalate) {
         throw withErrorKind(new Error(noChangeLoopDiagnostic(sectionResult.path, count)), 'no_change')
       }
-      const rendered = renderSection(sectionResult, undefined)
+      const rendered = renderSection(sectionResult, fs, undefined)
       recordRenderedSeenLines(snapshots, sectionResult, rendered.text)
       return { text: rendered.text, sections: [rendered.details] }
     }
     resetNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath)
-    const rendered = renderSection(sectionResult, fs.consumeDiagnostics(sectionResult.path))
+    const rendered = renderSection(sectionResult, fs, fs.consumeDiagnostics(sectionResult.path))
     recordRenderedSeenLines(snapshots, sectionResult, rendered.text)
     return { text: rendered.text, sections: [rendered.details] }
   }
@@ -379,7 +396,7 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
         : withErrorKind(new Error(noChangeDiagnostic(sectionResult.path)), 'no_change')
     }
     resetNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath)
-    const entry = renderSection(sectionResult, fs.consumeDiagnostics(sectionResult.path))
+    const entry = renderSection(sectionResult, fs, fs.consumeDiagnostics(sectionResult.path))
     recordRenderedSeenLines(snapshots, sectionResult, entry.text)
     rendered.push(entry)
   }

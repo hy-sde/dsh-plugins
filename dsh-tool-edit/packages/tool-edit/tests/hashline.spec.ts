@@ -118,6 +118,38 @@ describe('tool-edit (hashline mode)', () => {
     expect(await readFile(sample, 'utf8')).toBe('one\ninserted\ntwo\nthree\n')
   })
 
+  it('renders an out-of-directory move destination absolutely', async () => {
+    const { ctx, root, owner } = await setup()
+    const sample = join(root, 'notes.md')
+    const before = 'note one\nnote two\n'
+    await writeFile(sample, before)
+
+    // The dest resolves from the session cwd (root), not from the source's
+    // directory, so a move out of that directory names the absolute path
+    // (oh-my-pi 69df14cfa8).
+    const input = `[${sample}#${computeFileHash(before)}]\nMV sub/notes.md\n`
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(false)
+    const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
+    expect(modelText).toContain(`Moved to ${join(root, 'sub', 'notes.md')}`)
+    expect(await readFile(join(root, 'sub', 'notes.md'), 'utf8')).toBe(before)
+    await expect(readFile(sample, 'utf8')).rejects.toThrow()
+  })
+
+  it('renders a same-directory move destination as authored', async () => {
+    const { ctx, root, owner } = await setup()
+    const sample = join(root, 'notes.md')
+    const before = 'note one\nnote two\n'
+    await writeFile(sample, before)
+
+    const input = `[${sample}#${computeFileHash(before)}]\nMV notes-moved.md\n`
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(false)
+    const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
+    expect(modelText).toContain('Moved to notes-moved.md')
+    expect(await readFile(join(root, 'notes-moved.md'), 'utf8')).toBe(before)
+  })
+
   it('rejects a stale tag without touching the file', async () => {
     const { ctx, root, owner } = await setup()
     const sample = join(root, 'stale.txt')

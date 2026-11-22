@@ -132,6 +132,8 @@ export interface PatchSectionResult {
   warnings: string[]
   /** Destination path when this section includes `MV DEST`. */
   moveDest?: string
+  /** Authored source path when this section moved the file (oh-my-pi 69df14cfa8). */
+  sourcePath?: string
   /**
    * Resolved spans for block ops, present when the apply matched the tagged
    * content. Undefined for patches with no block ops and for drift recovery.
@@ -767,6 +769,7 @@ export class Patcher {
         ...(applyResult.firstChangedLine === undefined ? {} : { firstChangedLine: applyResult.firstChangedLine }),
         ...(applyResult.blockResolutions === undefined ? {} : { blockResolutions: applyResult.blockResolutions }),
         moveDest,
+        sourcePath: section.path,
         warnings,
       }
     }

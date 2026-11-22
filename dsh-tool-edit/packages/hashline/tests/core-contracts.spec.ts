@@ -6,6 +6,7 @@ import {
   formatHashlineHeader,
   InMemoryFilesystem,
   InMemorySnapshotStore,
+  normalizeToLF,
   Patch,
   Patcher,
   type PatchSection,
@@ -80,6 +81,12 @@ describe('hashline normalization', () => {
   it('preserves the first newline style when restoring mixed-ending files', () => {
     expect(detectLineEnding('a\r\nb\nc')).toBe('\r\n')
     expect(detectLineEnding('a\nb\r\nc')).toBe('\n')
+  })
+
+  it('keeps lone CR as content and only collapses CRLF pairs', () => {
+    expect(normalizeToLF('a\r\nb\rc\n')).toBe('a\nb\rc\n')
+    expect(normalizeToLF('\r\r\n界\r')).toBe('\r\n界\r')
+    expect(normalizeToLF('plain\nlines')).toBe('plain\nlines')
   })
 })
 
