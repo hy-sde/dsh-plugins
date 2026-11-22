@@ -900,6 +900,45 @@ describe('Patcher tag-based path recovery', () => {
     expect(fs.get(NESTED)).toBe(CONTENT)
   })
 
+  it('names the issued-for path when tag recovery is refused', async () => {
+    class NoRecoveryFs extends InMemoryFilesystem {
+      override allowTagPathRecovery(): boolean {
+        return false
+      }
+    }
+    const fs = new NoRecoveryFs([[NESTED, CONTENT]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record(NESTED, CONTENT)
+    const patcher = new Patcher({ fs, snapshots })
+
+    // The unique candidate exists but the policy refuses recovery: the reply
+    // names the path whose tag was issued (oh-my-pi 69df14cfa8).
+    const expected = `File not found: file.ts. Hash #${tag} was issued in this session for ${NESTED}`
+    await expect(patcher.apply(Patch.parse(`[file.ts#${tag}]\nPUT 2-2:\n+TWO`))).rejects.toThrow(
+      new RegExp(expected.replaceAll('.', '\\.')),
+    )
+    expect(fs.get(NESTED)).toBe(CONTENT)
+  })
+
+  it('rejects an identical file that never held the tag', async () => {
+    const shared = 'const shared = 1;\n'
+    const fs = new InMemoryFilesystem([
+      ['wt/x.ts', shared],
+      ['x.ts', shared],
+    ])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record('wt/x.ts', shared)
+    const patcher = new Patcher({ fs, snapshots })
+
+    // The live file hashes to the tag but this path never held it: identical
+    // content shares a tag, so the header resolved to the wrong file
+    // (oh-my-pi 69df14cfa8).
+    await expect(patcher.apply(Patch.parse(`[x.ts#${tag}]\nPUT 1.=1:\n+const shared = 2;`))).rejects.toThrow(
+      new RegExp(`hash #${tag} was issued in this session for wt/x\\.ts`),
+    )
+    expect(fs.get('x.ts')).toBe(shared)
+  })
+
   it('runs the write gate on the recovered path, not the authored bare path', async () => {
     // A gate that refuses the bare authored path but allows the recovered full
     // path. Mirrors plan mode rejecting a bare cwd path before tag recovery

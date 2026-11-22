@@ -39,6 +39,8 @@ import {
   HEADTAIL_DRIFT_WARNING,
   unverifiedWideLinesMessage,
   pathRecoveredFromTagMessage,
+  otherFileTagMessage,
+  tagPathMissingMessage,
   type RevealedLine,
   staleUnseenLinesMessage,
   unseenLinesMessage,
@@ -600,7 +602,15 @@ export class Patcher {
     // literal — possibly read-only — path it was authored as.
     if (!read.exists) {
       const recovered = this.#recoverSectionPathFromTag(target, canonicalPath)
-      if (recovered && this.fs.allowTagPathRecovery(target.path, recovered.section.path)) {
+      if (recovered) {
+        if (!this.fs.allowTagPathRecovery(target.path, recovered.section.path)) {
+          // The unique candidate exists but the policy refuses recovery, so
+          // report its path instead of silently editing nothing (oh-my-pi 69df14cfa8).
+          throw withErrorKind(
+            new Error(tagPathMissingMessage(target.path, recovered.section.path, target.fileHash as string)),
+            'file_not_found',
+          )
+        }
         parseWarnings.push(
           pathRecoveredFromTagMessage(target.path, recovered.section.path, target.fileHash as string),
         )
@@ -616,7 +626,7 @@ export class Patcher {
     await this.fs.preflightWrite(target.path, { ...(fileOp === undefined ? {} : { fileOp }) })
 
     if (!read.exists) {
-      throw new Error(`File not found: ${target.path}. Use the write tool to create new files.`)
+      throw withErrorKind(new Error(`File not found: ${target.path}. Use the write tool to create new files.`), 'file_not_found')
     }
 
     // A section with no current tag (untagged header or a placeholder like
@@ -1110,6 +1120,19 @@ export class Patcher {
     const storedSnapshotForTag = expected === undefined ? null : this.snapshots.byHash(canonicalPath, expected)
     const liveMatches = expected !== undefined && computeFileHash(normalized) === expected
     const matchedSnapshot = liveMatches ? this.snapshots.byContent(canonicalPath, normalized) : null
+    // A tag is content-derived: a live file that hashes to it but was never
+    // read under that tag (identical sibling file) is almost certainly the
+    // wrong target, and silently editing it would corrupt a file the section
+    // never addressed (oh-my-pi 69df14cfa8).
+    if (expected !== undefined && liveMatches && !this.snapshots.hasHash(canonicalPath, expected)) {
+      const origins = this.#tagOriginPaths(expected, canonicalPath)
+      if (origins.length > 0) {
+        throw withErrorKind(
+          new Error(otherFileTagMessage(section.path, canonicalPath, expected, origins)),
+          'other_file_tag',
+        )
+      }
+    }
 
     // Resolve `replace_block N:` edits to concrete ranges before recovery
     // runs. Block anchors are expressed against the snapshot the section tag

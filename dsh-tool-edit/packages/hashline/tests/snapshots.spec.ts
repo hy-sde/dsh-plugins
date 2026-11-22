@@ -217,6 +217,14 @@ describe('InMemorySnapshotStore', () => {
     expect([...(seen ?? [])].sort((a, b) => a - b)).toEqual([...expected].sort((a, b) => a - b))
   })
 
+  it('hasHash answers per path even when identical content shares a tag', () => {
+    const store = new InMemorySnapshotStore()
+    const shared = 'const shared = 1;\n'
+    const tag = store.record('wt/x.ts', shared)
+    expect(store.hasHash('wt/x.ts', tag)).toBe(true)
+    expect(store.hasHash('x.ts', tag)).toBe(false)
+  })
+
   // 4-hex tags are the low 16 bits of a non-cryptographic hash, so two
   // genuinely different file states can collide (birthday collisions at
   // ~256 distinct texts). The store must retain them as DISTINCT versions

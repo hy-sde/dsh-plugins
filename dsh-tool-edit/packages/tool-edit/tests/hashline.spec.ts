@@ -445,6 +445,114 @@ describe('tool-edit (hashline mode) × default seen-line enforcement', () => {
     expect(result.isError).toBe(false)
     expect(await readFile(sample, 'utf8')).toBe(DRAW_SOURCE.replace('0.230', '0.240'))
   })
+
+  /** 30 numbered lines; `kind` swaps `let`→`var` so the two files differ. */
+  function numberedSource(kind: 'let' | 'var'): string {
+    return Array.from({ length: 30 }, (_, i) => `${kind} v${String(i + 1).padStart(4, '0')} = ${i + 1};`).join('\n')
+  }
+
+  it('joins every file’s unseen-line reveal into one rejection so the identical resend applies (oh-my-pi d4ef7acbb6)', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const two = join(root, 'two.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    const twoSource = `${numberedSource('var')}\n`
+    await writeFile(one, oneSource)
+    await writeFile(two, twoSource)
+
+    // Reads displayed lines 1-10 only; the edits anchor on unseen lines 20 and 25.
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+    const twoTag = store.record(two, twoSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${two}#${twoTag}]`,
+      'PUT 25.=25:',
+      '+var v0025 = 250;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('  25:var v0025 = 25;')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
+    expect(await readFile(two, 'utf8')).toBe(twoSource)
+
+    // A line the reply did not surface stays unseen.
+    const later = await call(ctx, owner, { input: `[${two}#${twoTag}]\nPUT 26.=26:\n+var v0026 = 260;\n` })
+    expect(later.isError).toBe(true)
+    expect(modelText(later)).toContain('never displayed')
+
+    // The identical resend now applies to both files.
+    const resent = await call(ctx, owner, { input })
+    expect(resent.isError).toBe(false)
+    expect(await readFile(one, 'utf8')).toBe(`${numberedSource('let').replace('let v0020 = 20;', 'let v0020 = 200;')}\n`)
+    expect(await readFile(two, 'utf8')).toBe(`${numberedSource('var').replace('var v0025 = 25;', 'var v0025 = 250;')}\n`)
+  })
+
+  it('joins a later section’s tag rejection under its path in the unseen-line reply (oh-my-pi 8731786ac6)', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const two = join(root, 'two.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    const twoSource = `${numberedSource('var')}\n`
+    await writeFile(one, oneSource)
+    await writeFile(two, twoSource)
+
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${two}#BAD0]`,
+      'PUT 5.=5:',
+      '+var v0005 = 500;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('[two.ts]: ')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
+    expect(await readFile(two, 'utf8')).toBe(twoSource)
+  })
+
+  it('joins a later section’s missing-file rejection into the unseen-line reply', async () => {
+    const { ctx, root, owner } = await defaultStack()
+    const one = join(root, 'one.ts')
+    const absent = join(root, 'absent.ts')
+    const oneSource = `${numberedSource('let')}\n`
+    await writeFile(one, oneSource)
+
+    const store = getSessionSnapshotStore(owner.session)
+    const seen = Array.from({ length: 10 }, (_, i) => i + 1)
+    const oneTag = store.record(one, oneSource, seen)
+
+    const input = [
+      `[${one}#${oneTag}]`,
+      'PUT 20.=20:',
+      '+let v0020 = 200;',
+      `[${absent}#BAD0]`,
+      'PUT 2.=2:',
+      '+var v0002 = 200;',
+      '',
+    ].join('\n')
+    const result = await call(ctx, owner, { input })
+    expect(result.isError).toBe(true)
+    const text = modelText(result)
+    expect(text).toContain('  20:let v0020 = 20;')
+    expect(text).toContain('[absent.ts]: File not found')
+    expect(await readFile(one, 'utf8')).toBe(oneSource)
+  })
 })
 
 describe('tool-edit (hashline mode) × column-cut wide lines (upstream #15649)', () => {

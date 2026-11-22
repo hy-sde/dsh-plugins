@@ -105,6 +105,17 @@ export abstract class SnapshotStore {
   versions(_path: string): Snapshot[] {
     return []
   }
+  /**
+	 * Whether the store holds any retained version of `path` whose tag equals
+	 * `hash`. Tags hash content only, so identical files share a tag; the
+	 * patcher uses this to tell "the live file matches a tag this session
+	 * issued for it" from "a tag some other path was issued" (oh-my-pi
+	 * 69df14cfa8). The base answers from {@link versions}; stores without
+	 * per-path history report false, which disables the wrong-file rejection.
+	 */
+  hasHash(path: string, hash: string): boolean {
+    return this.versions(path).some(version => version.hash === hash)
+  }
 
   /**
    * Record the full normalized text of `path` and return its content tag.

@@ -32,7 +32,7 @@ import {
   startClipboardBatch,
   stripBom,
 } from '@hy-sde-org/dsh-hashline'
-import { withErrorKind } from '@hy-sde-org/dsh-hashline'
+import { errorKindOf, withErrorKind } from '@hy-sde-org/dsh-hashline'
 import * as path from 'node:path'
 import type { EditDiagnosticsResult } from '../lsp/writethrough.ts'
 import type { EditSession } from '../session.ts'
@@ -47,6 +47,12 @@ export interface ExecuteHashlineSingleOptions {
   session: EditSession
   input: string
   signal?: AbortSignal
+}
+
+/** Model-facing text of a prepare rejection: mismatches render their context rows. */
+function rejectionText(error: unknown): string {
+  if (error instanceof HashlineMismatchError) return error.displayMessage
+  return error instanceof Error ? error.message : String(error)
 }
 
 function noChangeDiagnostic(path: string): string {
@@ -336,17 +342,40 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     return { text: rendered.text, sections: [rendered.details] }
   }
 
-  // Multi-section: prepare every section up front so we fail fast before
-  // any write hits the filesystem. One batch-local register spans the batch,
-  // so `CUT` in one section feeds a register-backed `PUT` in a later one.
+  // Multi-section: prepare every section up front so no write hits the
+  // filesystem before all sections are staged. One batch-local register
+  // spans the batch, so `CUT` in one section feeds a register-backed `PUT`
+  // in a later one.
   const prepared: PreparedSection[] = []
   // Register state after each section's prepare. Commits are non-atomic: a
   // mid-batch write failure leaves earlier sections on disk, so the session
   // register must reflect exactly the landed prefix.
   const sectionStates: Clipboard[] = []
+  // A seen-line rejection does not end the walk (oh-my-pi d4ef7acbb6): the
+  // remaining sections are still prepared, so one reply reveals every file's
+  // unseen lines and the identical resend applies to all of them. A later
+  // section's own rejection joins the reply under its path
+  // (oh-my-pi 8731786ac6); other failures after a reply are left for the
+  // resend to report — a paste whose cut sat in a rejected section only
+  // fails because the cut never ran.
+  const replies: string[] = []
   for (const section of patch.sections) {
-    prepared.push(await patcher.prepare(section, clipboard))
-    sectionStates.push(forkClipboard(clipboard))
+    try {
+      prepared.push(await patcher.prepare(section, clipboard))
+      sectionStates.push(forkClipboard(clipboard))
+    } catch (error) {
+      if (errorKindOf(error) === 'unseen_lines') {
+        replies.push(rejectionText(error))
+        continue
+      }
+      if (replies.length === 0) throw error
+      if (errorKindOf(error) !== undefined) {
+        replies.push(`[${section.path}]: ${rejectionText(error)}`)
+      }
+    }
+  }
+  if (replies.length > 0) {
+    throw withErrorKind(new Error(replies.join('\n\n')), 'unseen_lines')
   }
   assertUniqueCanonicalPaths(prepared)
   for (const entry of prepared) {

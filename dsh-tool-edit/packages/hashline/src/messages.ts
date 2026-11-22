@@ -590,6 +590,42 @@ export function pathRecoveredFromTagMessage(authoredPath: string, resolvedPath: 
   )
 }
 
+/**
+ * A section named a missing path whose filename and snapshot tag match
+ * exactly one file read earlier this session, but the filesystem's
+ * {@link Filesystem.allowTagPathRecovery} policy refused the rebind (the
+ * candidate lies outside the host's writable scope). The reply names the
+ * candidate so the model re-issues the edit under its real path
+ * (oh-my-pi 69df14cfa8).
+ */
+export function tagPathMissingMessage(authoredPath: string, issuedForPath: string, tag: string): string {
+  return (
+    `File not found: ${authoredPath}. Hash ${HL_FILE_HASH_SEP}${tag} was issued in this session for ` +
+		`${issuedForPath}; if that is the file you mean, re-issue the edit under ` +
+		`${HL_FILE_PREFIX}${issuedForPath}${HL_FILE_HASH_SEP}TAG${HL_FILE_SUFFIX}. Nothing was applied.`
+  )
+}
+
+/**
+ * A file matched the section's tag but the store holds no version of that
+ * path under it: the tag was issued for other paths. Tags hash content
+ * only, so identical content (a sibling checkout, a copied fixture) shares
+ * a tag and the header most likely resolved to the wrong file (oh-my-pi
+ * 69df14cfa8).
+ */
+export function otherFileTagMessage(
+  authoredPath: string,
+  resolvedPath: string,
+  tag: string,
+  originPaths: readonly string[],
+): string {
+  return (
+    `Edit rejected for ${authoredPath}: the header resolves to ${resolvedPath}, but hash ${HL_FILE_HASH_SEP}${tag} was ` +
+    `issued in this session for ${originPaths.join(', ')} (identical content shares a tag). Nothing was applied. ` +
+    `To edit the file you read, put its full path in the header; to edit ${resolvedPath}, read it first.`
+  )
+}
+
 /** Compress a line list into a sorted `1-4, 7, 10-12` range string. */
 function formatLineRanges(lines: readonly number[]): string {
   const sorted = [...new Set(lines)].sort((a, b) => a - b)
