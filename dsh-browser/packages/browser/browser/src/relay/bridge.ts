@@ -1259,7 +1259,13 @@ export class RelayBridge {
       reject(new RpcTimeoutError(`extension rpc '${req.op}' timed out after ${timeoutMs}ms`))
     }, timeoutMs)
     this.#pendingRpc.set(id, { resolve, reject, timer })
-    ext.send(JSON.stringify({ t: 'rpc', id, ...req } satisfies RelayToExtMessage))
+    // Only in a tab a downstream connection claims may the extension empty another extension's
+    // frames to get past Chrome's refusal; the user's other tabs keep their menus.
+    const sent =
+      req.op === 'attach' || req.op === 'send'
+        ? { ...req, clearForeignFrames: this.#claimed(req.tabId) }
+        : req
+    ext.send(JSON.stringify({ t: 'rpc', id, ...sent } satisfies RelayToExtMessage))
     return promise
   }
 }
