@@ -70,6 +70,8 @@ class CdpConnection {
   readonly claims = new Set<number>()
   /** Real child session id → the session it was announced on; its events and detach go there. */
   readonly childParents = new Map<string, string>()
+  /** Real children this connection attached itself (`Target.attachToTarget`); their ownership survives an auto-attach opt-out. */
+  readonly explicitChildren = new Set<string>()
 
   constructor(
     readonly id: number,
@@ -234,6 +236,13 @@ export class RelayBridge {
   >()
   /** Real child session id → owning tab, learned from `Target.attachedToTarget` events. */
   #realSessionTabs = new Map<string, number>()
+  /**
+   * Each tab's last auto-attach transition, keyed by tab id: the extension
+   * starts RPCs independently, so overlapping transitions on one tab must
+   * settle in order, or a failed one's rollback would restore a state another
+   * transition had already changed.
+   */
+  #autoAttachTransitions = new Map<number, Promise<void>>()
   /** `Date.now()` when the last ready extension socket closed; null while one is ready or none ever was. */
   #extensionGoneSince: number | null = null
   #log: (message: string, data?: Record<string, unknown>) => void
@@ -440,7 +449,14 @@ export class RelayBridge {
     this.#conns.delete(connId)
     const touched = new Set<number>()
     for (const ref of conn.sessions.values()) touched.add(ref.tabId)
+    // Collect the departing holder's armed tabs before its sessions go, then
+    // disarm Chrome once they no longer count toward {@link #autoAttaches}.
+    const armedTabs = new Set<number>()
+    for (const ref of conn.sessions.values()) {
+      if (ref.autoAttach) armedTabs.add(ref.tabId)
+    }
     conn.sessions.clear()
+    for (const tabId of armedTabs) this.#releaseAutoAttach(tabId)
     // Tabs this client claimed leave the omp group unless another claimant
     // remains — session holders don't count: the long-lived registry
     // connection holds sessions on every tab without driving any of them.
@@ -484,27 +500,52 @@ export class RelayBridge {
     }
     if (ref?.kind === 'page') {
       if (msg.method === 'Target.setAutoAttach') {
-        // Armed while in flight (Chrome reports existing children before it
-        // answers); a failed request restores the previous state.
-        const previous = ref.autoAttach
-        ref.autoAttach = msg.params?.autoAttach === true
-        const announce = () => {
-          const parent = conn.childTargetSessionForTab(ref.tabId)
-          if (parent && conn.sessions.get(sessionId) === ref) this.#announceChildren(conn, ref.tabId, undefined, parent)
-        }
-        if (!(await this.#forwardToTab(conn, msg, ref.tabId, undefined, ref.autoAttach ? announce : undefined))) {
-          ref.autoAttach = previous
-        }
+        // Serialized per tab: the extension starts RPCs independently, so two
+        // transitions must not interleave — see {@link #serializeAutoAttach}.
+        await this.#serializeAutoAttach(ref.tabId, async () => {
+          // The session may have been released while this transition queued
+          // behind an earlier one on the tab.
+          if (conn.sessions.get(sessionId) !== ref) {
+            this.#replyError(conn, msg, `Unknown session id ${sessionId}`)
+            return
+          }
+          // Armed while in flight (Chrome reports existing children before it
+          // answers); a failed request restores the previous state.
+          const previous = ref.autoAttach
+          ref.autoAttach = msg.params?.autoAttach === true
+          const announce = () => {
+            const parent = conn.childTargetSessionForTab(ref.tabId)
+            if (parent) this.#announceChildren(conn, ref.tabId, undefined, parent)
+          }
+          if (!ref.autoAttach && this.#autoAttaches(ref.tabId)) {
+            // One debugger attachment backs every connection: with another
+            // holder still armed, keep Chrome armed and report success to
+            // this connection only.
+            this.#reply(conn, msg, {})
+          } else if (!(await this.#forwardToTab(conn, msg, ref.tabId, undefined, ref.autoAttach ? announce : undefined))) {
+            ref.autoAttach = previous
+            // A holder that departed while its arm was in flight must still
+            // reconcile Chrome after the failed enable rolls back.
+            if (previous && conn.sessions.get(sessionId) !== ref) this.#releaseAutoAttach(ref.tabId)
+            return
+          }
+          // With no armed session left on this connection, its automatic
+          // children are gone for it — announce their detaches locally.
+          const tab = this.#tabs.get(ref.tabId)
+          if (tab && !conn.childTargetSessionForTab(ref.tabId)) this.#forgetConnectionChildren(conn, tab, true)
+        })
         return
       }
       await this.#forwardToTab(conn, msg, ref.tabId, undefined)
       return
     }
     const realTab = this.#realSessionTabs.get(sessionId)
-    if (realTab !== undefined) {
+    // Only a connection that was told about the child may drive it: Chrome's
+    // session ids are unguessable, so anything else is a stale or foreign id.
+    if (realTab !== undefined && conn.childParents.has(sessionId)) {
       const announce =
-        msg.method === 'Target.setAutoAttach' && msg.params?.autoAttach === true && conn.childParents.has(sessionId)
-          ? () => this.#announceChildren(conn, realTab, sessionId, sessionId)
+        msg.method === 'Target.setAutoAttach' && msg.params?.autoAttach === true
+          ? () => { this.#announceChildren(conn, realTab, sessionId, sessionId) }
           : undefined
       await this.#forwardToTab(conn, msg, realTab, sessionId, announce)
       return
@@ -552,8 +593,15 @@ export class RelayBridge {
     }
     try {
       const result = await this.#send(tabId, msg.method, msg.params, realSessionId)
+      const response = (result as Record<string, unknown> | undefined) ?? {}
+      // An explicit attach grants ownership even when this connection did not
+      // arm auto-attach: it drives the child directly.
+      if (msg.method === 'Target.attachToTarget' && msg.sessionId && typeof response.sessionId === 'string') {
+        conn.childParents.set(response.sessionId, msg.sessionId)
+        conn.explicitChildren.add(response.sessionId)
+      }
       beforeReply?.()
-      this.#reply(conn, msg, (result as Record<string, unknown> | undefined) ?? {})
+      this.#reply(conn, msg, response)
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -850,8 +898,13 @@ export class RelayBridge {
       for (const conn of this.#conns.values()) {
         if (!conn.childParents.has(sourceSessionId)) continue
         conn.socket.send(payload)
-        if (nested && method === 'Target.attachedToTarget') conn.childParents.set(nested, sourceSessionId)
-        else if (nested && method === 'Target.detachedFromTarget') conn.childParents.delete(nested)
+        if (nested && method === 'Target.attachedToTarget') {
+          // First teller owns the child; a later report does not re-own it.
+          if (!conn.childParents.has(nested)) conn.childParents.set(nested, sourceSessionId)
+        } else if (nested && method === 'Target.detachedFromTarget') {
+          conn.childParents.delete(nested)
+          conn.explicitChildren.delete(nested)
+        }
       }
       return
     }
@@ -868,10 +921,11 @@ export class RelayBridge {
         let parent: string | undefined
         if (method === 'Target.attachedToTarget') {
           parent = conn.childTargetSessionForTab(tabId)
-          if (parent) conn.childParents.set(child, parent)
+          if (parent && !conn.childParents.has(child)) conn.childParents.set(child, parent)
         } else {
           parent = conn.childParents.get(child)
           conn.childParents.delete(child)
+          conn.explicitChildren.delete(child)
         }
         if (parent) conn.socket.send(JSON.stringify({ sessionId: parent, method, params }))
       }
@@ -1085,6 +1139,11 @@ export class RelayBridge {
     const ref = conn.sessions.get(sessionId)
     if (!ref) return
     conn.sessions.delete(sessionId)
+    if (ref.autoAttach) this.#releaseAutoAttach(ref.tabId)
+    const tab = this.#tabs.get(ref.tabId)
+    if (ref.kind === 'page' && tab && !conn.childTargetSessionForTab(ref.tabId)) {
+      this.#forgetConnectionChildren(conn, tab, true)
+    }
     const targetId = ref.kind === 'tab' ? tabTargetId(ref.tabId) : pageTargetId(ref.tabId)
     this.#emit(conn, 'Target.detachedFromTarget', { sessionId, targetId }, parentSessionId)
     // An explicit release of the last session must drop the attachment too,
@@ -1099,16 +1158,75 @@ export class RelayBridge {
    * before the children reported under it.
    */
   #forgetChildren(tab: TabState): void {
-    for (const child of [...tab.realSessions.keys()].reverse()) {
-      this.#realSessionTabs.delete(child)
-      for (const conn of this.#conns.values()) {
-        const parent = conn.childParents.get(child)
-        if (parent === undefined) continue
-        conn.childParents.delete(child)
-        this.#emit(conn, 'Target.detachedFromTarget', { sessionId: child }, parent)
-      }
-    }
+    for (const conn of this.#conns.values()) this.#forgetConnectionChildren(conn, tab)
+    for (const child of tab.realSessions.keys()) this.#realSessionTabs.delete(child)
     tab.realSessions.clear()
+  }
+
+  /**
+   * Tell one connection that its known real children of the tab are gone —
+   * nested children first, while their parent is still known. `automaticOnly`
+   * spares subtrees the connection attached itself: its explicit children
+   * outlive an auto-attach opt-out or a page release.
+   */
+  #forgetConnectionChildren(conn: CdpConnection, tab: TabState, automaticOnly = false): void {
+    for (const child of [...tab.realSessions.keys()].reverse()) {
+      const parent = conn.childParents.get(child)
+      if (parent === undefined) continue
+      if (automaticOnly) {
+        // Skip anything whose topmost owner is explicit: a connection that
+        // attached a child itself keeps it, and keeps its descendants.
+        let ancestor = child
+        while (!conn.explicitChildren.has(ancestor)) {
+          const next = conn.childParents.get(ancestor)
+          if (next === undefined) break
+          ancestor = next
+        }
+        if (conn.explicitChildren.has(ancestor)) continue
+      }
+      conn.childParents.delete(child)
+      conn.explicitChildren.delete(child)
+      this.#emit(conn, 'Target.detachedFromTarget', { sessionId: child }, parent)
+    }
+  }
+
+  /** Whether any connection, on the tab's one debugger attachment, still arms auto-attach. */
+  #autoAttaches(tabId: number): boolean {
+    for (const conn of this.#conns.values()) {
+      if (conn.childTargetSessionForTab(tabId)) return true
+    }
+    return false
+  }
+
+  /** Disarm auto-attach once no connection still arms it; a departed holder must not leave it on. */
+  #releaseAutoAttach(tabId: number): void {
+    void this.#serializeAutoAttach(tabId, async () => {
+      if (this.#autoAttaches(tabId)) return
+      const tab = this.#tabs.get(tabId)
+      if (!tab?.attached) return
+      await this.#send(tabId, 'Target.setAutoAttach', {
+        autoAttach: false,
+        waitForDebuggerOnStart: false,
+        flatten: true,
+      }).catch(() => {})
+    })
+  }
+
+  /**
+   * Run one tab's auto-attach transitions one at a time: the extension starts
+   * RPCs independently, so overlapping transitions must settle in order, or a
+   * failed one's rollback would restore a state another transition had
+   * already changed on the tab.
+   */
+  #serializeAutoAttach(tabId: number, run: () => Promise<void>): Promise<void> {
+    const pending = this.#autoAttachTransitions.get(tabId)
+    const result = pending ? pending.then(run) : run()
+    const tail = result.catch(() => {})
+    this.#autoAttachTransitions.set(tabId, tail)
+    void tail.then(() => {
+      if (this.#autoAttachTransitions.get(tabId) === tail) this.#autoAttachTransitions.delete(tabId)
+    })
+    return result
   }
 
   /**
