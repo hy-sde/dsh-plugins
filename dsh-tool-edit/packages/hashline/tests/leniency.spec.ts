@@ -54,6 +54,23 @@ describe('hashline section headers', () => {
     expect(() => Patch.parse('[Update File: src/a.ts#1A2B:812]\nPUT 1-1:\n+after')).toThrow(/Input header must be/)
   })
 
+  it('tolerates trailing Unicode White_Space after section headers and ops', () => {
+    // Rust trim_end semantics (oh-my-pi 5e53baff0f): any trailing Unicode
+    // White_Space is ignored, including NEL which String.trimEnd misses.
+    for (const suffix of [' ', '\t', '\u0085', '\u00a0', '\u3000']) {
+      const section = Patch.parseSingle(`[src/a.ts#1A2B]${suffix}\nPUT 1-1:${suffix}\n+after`)
+      expect(section.path).toBe('src/a.ts')
+      expect(section.fileHash).toBe('1A2B')
+      expect(section.applyTo('before').text).toBe('after')
+    }
+  })
+
+  it('does not strip a trailing U+FEFF from a header (not Unicode White_Space)', () => {
+    // String.prototype.trimEnd trims U+FEFF but Rust trim_end does not, so
+    // the row is no longer a well-formed header at all.
+    expect(() => Patch.parse('[src/a.ts#1A2B]\u{feff}\nPUT 1-1:\n+after')).toThrow(/Input header must be/)
+  })
+
   it('parses malformed snapshot tags as placeholders', () => {
     // Short non-4-hex tags parse as placeholders (oh-my-pi 6dec51c4dd):
     // untagged section, rejected at apply time with the current-tag reply.

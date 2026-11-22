@@ -38,6 +38,19 @@ const CHAR_EQUALS = 61
 const CHAR_ELLIPSIS = 0x2026
 const CHAR_LESS_THAN = 60
 const CHAR_GREATER_THAN = 62
+// Unicode White_Space members outside the ASCII C0 range, matching Rust
+// `char::is_whitespace` / `str::trim_end` (oh-my-pi 5e53baff0f). All are
+// single UTF-16 code units.
+const CHAR_NEXT_LINE = 0x85
+const CHAR_NO_BREAK_SPACE = 0xa0
+const CHAR_OGHAM_SPACE_MARK = 0x1680
+const CHAR_EN_QUAD = 0x2000
+const CHAR_HAIR_SPACE = 0x200a
+const CHAR_LINE_SEPARATOR = 0x2028
+const CHAR_PARAGRAPH_SEPARATOR = 0x2029
+const CHAR_NARROW_NO_BREAK_SPACE = 0x202f
+const CHAR_MEDIUM_MATHEMATICAL_SPACE = 0x205f
+const CHAR_IDEOGRAPHIC_SPACE = 0x3000
 const CHAR_STAR = 42
 const CHAR_DOLLAR = 36
 const CHAR_AT = 64
@@ -70,8 +83,23 @@ function isHexDigitCode(code: number): boolean {
   )
 }
 
+/** Unicode White_Space property — the set Rust `char::is_whitespace` (and
+ * therefore `str::trim_end`) uses, which ASCII-only checks under-approximate
+ * (oh-my-pi 5e53baff0f). */
 function isWhitespaceCode(code: number): boolean {
-  return code === CHAR_SPACE || (code >= CHAR_TAB && code <= CHAR_CARRIAGE_RETURN)
+  return (
+    code === CHAR_SPACE ||
+    (code >= CHAR_TAB && code <= CHAR_CARRIAGE_RETURN) ||
+    code === CHAR_NEXT_LINE ||
+    code === CHAR_NO_BREAK_SPACE ||
+    code === CHAR_OGHAM_SPACE_MARK ||
+    (code >= CHAR_EN_QUAD && code <= CHAR_HAIR_SPACE) ||
+    code === CHAR_LINE_SEPARATOR ||
+    code === CHAR_PARAGRAPH_SEPARATOR ||
+    code === CHAR_NARROW_NO_BREAK_SPACE ||
+    code === CHAR_MEDIUM_MATHEMATICAL_SPACE ||
+    code === CHAR_IDEOGRAPHIC_SPACE
+  )
 }
 
 function skipWhitespace(line: string, index: number, end = line.length): number {

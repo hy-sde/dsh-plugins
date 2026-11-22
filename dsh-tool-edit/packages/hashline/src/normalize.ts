@@ -27,6 +27,18 @@ export function restoreLineEndings(text: string, ending: LineEnding): string {
   return ending === '\r\n' ? text.replace(/\n/g, '\r\n') : text
 }
 
+const TRAILING_WHITESPACE = /\p{White_Space}+$/u
+
+/**
+ * Trim trailing Unicode White_Space — Rust `str::trim_end` semantics, the
+ * set the patch parser accepts after section headers. `String.prototype
+ * .trimEnd` diverges both ways: it misses U+0085 and trims U+FEFF
+ * (oh-my-pi 5e53baff0f).
+ */
+export function trimEndWhitespace(line: string): string {
+  return line.replace(TRAILING_WHITESPACE, '')
+}
+
 export interface BomResult {
   /** Either the empty string or the BOM sequence (currently UTF-8 BOM). */
   bom: string
