@@ -148,8 +148,18 @@ class TabState {
 const INELIGIBLE_URL = /^(chrome|devtools|edge|view-source|chrome-extension|chrome-untrusted|chrome-search):/i
 
 const RPC_TIMEOUT_MS = 20_000
+/**
+ * Deadline for page-bound work that legitimately outlives the default: an
+ * `awaitPromise` evaluate that waits on the page, or a navigation the client
+ * owns a timeout for. Matches Playwright's 180s protocol timeout, so the
+ * relay's deadline never cuts a command Playwright would still wait for.
+ */
+const PAGE_BOUND_RPC_TIMEOUT_MS = 180_000
 const CDP_ERROR_METHOD_NOT_FOUND = -32601
 const CDP_ERROR_SERVER = -32000
+
+/** A relay RPC the bridge gave up on at its own deadline; Chrome never answered it. */
+class RpcTimeoutError extends Error {}
 
 function tabTargetId(tabId: number): string {
   return `TAB${tabId}`
@@ -512,13 +522,7 @@ export class RelayBridge {
       return true
     }
     try {
-      const result = await this.#rpc({
-        op: 'send',
-        tabId,
-        ...(realSessionId !== undefined ? { sessionId: realSessionId } : {}),
-        method: msg.method,
-        ...(msg.params !== undefined ? { params: msg.params } : {}),
-      })
+      const result = await this.#send(tabId, msg.method, msg.params, realSessionId)
       beforeReply?.()
       this.#reply(conn, msg, (result as Record<string, unknown> | undefined) ?? {})
       return true
@@ -1143,6 +1147,34 @@ export class RelayBridge {
   #emit(conn: CdpConnection, method: string, params: Record<string, unknown>, sessionId?: string): void {
     conn.socket.send(JSON.stringify({ sessionId, method, params }))
   }
+  /**
+   * Forward one CDP command to a tab under a deadline that fits the command:
+   * page-bound work (`awaitPromise` evaluates, `Runtime.awaitPromise`,
+   * `Page.navigate`) gets {@link PAGE_BOUND_RPC_TIMEOUT_MS}, everything else
+   * {@link RPC_TIMEOUT_MS}. A deadline miss rejects with an error naming the
+   * method and tab; other failures pass through unchanged.
+   */
+  async #send(
+    tabId: number,
+    method: string,
+    params?: Record<string, unknown>,
+    sessionId?: string,
+  ): Promise<unknown> {
+    const pageBound = params?.awaitPromise === true || method === 'Runtime.awaitPromise' || method === 'Page.navigate'
+    const timeoutMs = pageBound ? PAGE_BOUND_RPC_TIMEOUT_MS : RPC_TIMEOUT_MS
+    try {
+      return await this.#rpc({
+        op: 'send',
+        tabId,
+        ...(sessionId !== undefined ? { sessionId } : {}),
+        method,
+        ...(params !== undefined ? { params } : {}),
+      }, timeoutMs)
+    } catch (err) {
+      if (!(err instanceof RpcTimeoutError)) throw err
+      throw new Error(`${method} on tab ${tabId}: Chrome sent no answer within ${timeoutMs}ms`, { cause: err })
+    }
+  }
 
   #rpc(req: RelayRpcRequest, timeoutMs = RPC_TIMEOUT_MS): Promise<unknown> {
     const ext = this.#ext
@@ -1151,7 +1183,7 @@ export class RelayBridge {
     const { promise, resolve, reject } = Promise.withResolvers<unknown>()
     const timer = setTimeout(() => {
       this.#pendingRpc.delete(id)
-      reject(new Error(`extension rpc '${req.op}' timed out after ${timeoutMs}ms`))
+      reject(new RpcTimeoutError(`extension rpc '${req.op}' timed out after ${timeoutMs}ms`))
     }, timeoutMs)
     this.#pendingRpc.set(id, { resolve, reject, timer })
     ext.send(JSON.stringify({ t: 'rpc', id, ...req } satisfies RelayToExtMessage))
