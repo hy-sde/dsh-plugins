@@ -138,7 +138,9 @@ describe('Patcher snapshot tag integrity', () => {
       expect(error).toBeInstanceOf(MismatchError)
       const message = (error as MismatchError).displayMessage
       expect(message).toMatch(new RegExp(`hash #${bogus} is not from this session`))
-      expect(message).toMatch(/never invent the tag/)
+      // The patch anchors on line 1, so its rows are shown and the advice
+      // offers a resend under the current tag (oh-my-pi 4f1682bb6e).
+      expect(message).toMatch(/If the rows below are the ones you mean, resend the edit under #[0-9A-F]{4};/)
       // Still surfaces the current hash so the model can pivot to a re-read.
       expect(message).toMatch(/current file hashes to #[0-9A-F]{4}/)
       // No recorded version carries the tag, so no origin path is named.
@@ -166,6 +168,48 @@ describe('Patcher snapshot tag integrity', () => {
       expect(message).toMatch(new RegExp(`Hash #${foreignTag} was issued in this session for other\\.ts\\.`))
     }
     expect(fs.get(PATH)).toBe('current\n')
+  })
+
+  // An unknown tag may be real (a restart or store eviction forgets issued
+  // tags), so when the anchored rows are shown the advice offers a resend
+  // under the current tag — but never when the tag belongs to another file
+  // (oh-my-pi 4f1682bb6e).
+  it('offers the current tag for the rows shown when an unknown tag has no origin paths', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      anchorLines: [2],
+      hashRecognized: false,
+    }).displayMessage
+    expect(message).toMatch(/\*2:/)
+    expect(message).toMatch(/If the rows below are the ones you mean, resend the edit under #CAFE;/)
+    expect(message).toMatch(/otherwise re-read the file with `read` and copy its \[path#tag\] header verbatim/)
+  })
+
+  it('never offers a resend when the unknown tag was issued for another file', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      anchorLines: [2],
+      hashRecognized: false,
+      tagOriginPaths: ['other.ts'],
+    }).displayMessage
+    expect(message).toMatch(/Hash #BEEF was issued in this session for other\.ts\./)
+    expect(message).not.toMatch(/resend the edit under/)
+    expect(message).toMatch(/Re-read the file with `read` and copy its \[path#tag\] header verbatim/)
+  })
+
+  it('does not offer a resend when no anchored rows are shown', () => {
+    const message = new MismatchError({
+      expectedFileHash: 'BEEF',
+      actualFileHash: 'CAFE',
+      fileLines: ['alpha', 'beta', 'gamma'],
+      hashRecognized: false,
+    }).displayMessage
+    expect(message).not.toMatch(/resend the edit under/)
+    expect(message).toMatch(/Re-read the file with `read` and copy its \[path#tag\] header verbatim/)
   })
 
   // A 16-bit snapshot tag can collide across two different file states. Tag

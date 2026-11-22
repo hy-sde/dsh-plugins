@@ -205,6 +205,10 @@ describe('tool-edit (hashline mode)', () => {
     const modelText = result.content.filter(b => b.type === 'text').map(b => b.text ?? '').join('')
     expect(modelText).toContain('no ops follow the header')
     expect(modelText).toContain(`#${computeFileHash(before)}`)
+    // Header-only rejections show no rows, so the reply carries no re-read
+    // advice (oh-my-pi af1f27cf19) — ops on unseen rows still hit the
+    // seen-line guard.
+    expect(modelText).not.toContain('re-read')
     expect(await readFile(sample, 'utf8')).toBe(before)
   })
 

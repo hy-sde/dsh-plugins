@@ -544,22 +544,35 @@ export function writeDriftWarning(path: string): string {
 }
 
 /**
- * Advice appended to rejections that name the file's current hash: the model
- * should re-read and copy a real [path#tag] header instead of guessing.
+ * Advice appended to unknown-tag rejections that name the file's current
+ * hash. The tag may be real (a restart or store eviction forgets issued
+ * tags), so when anchored rows are shown the advice offers a resend under
+ * the current tag instead of sending the model back to output it already
+ * copied from; otherwise it asks for a re-read (oh-my-pi 4f1682bb6e).
  */
-export function currentTagAdvice(actualFileHash: string): string {
+export function currentTagAdvice(actualFileHash: string, offerResend: boolean): string {
+  if (offerResend) {
+    return (
+      `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. If the rows below are the ones you mean, resend the edit under ` +
+      `${HL_FILE_HASH_SEP}${actualFileHash}; otherwise re-read the file with \`read\` and copy its ` +
+      `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header verbatim.`
+    )
+  }
   return (
-    `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. Re-read the file with \`read\` to copy a current ` +
-    `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header — never invent the tag and never reuse one from a prior session.`
+    `The current file hashes to ${HL_FILE_HASH_SEP}${actualFileHash}. Re-read the file with \`read\` and copy its ` +
+    `${HL_FILE_PREFIX}path${HL_FILE_HASH_SEP}tag${HL_FILE_SUFFIX} header verbatim.`
   )
 }
 
 /**
  * A patch carried a header but no ops under it. Shared by the apply
- * (zero-sections) and preview/diff paths so both stay in lockstep.
+ * (zero-sections) and preview/diff paths so both stay in lockstep. No rows
+ * are shown, so the rejection names the current tag without re-read advice —
+ * ops on rows the model has not seen still hit the seen-line guard
+ * (oh-my-pi af1f27cf19).
  */
 export function formatHeaderOnlyMessage(path: string, actualFileHash: string): string {
-  return `Edit rejected for ${path}: no ops follow the header; put them under this file's current tag, ${HL_FILE_HASH_SEP}${actualFileHash}.\n${currentTagAdvice(actualFileHash)}`
+  return `Edit rejected for ${path}: no ops follow the header; put them under this file's current tag, ${HL_FILE_HASH_SEP}${actualFileHash}.`
 }
 
 /**
