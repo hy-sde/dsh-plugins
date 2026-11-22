@@ -114,8 +114,8 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
       + 'Chromium — a Playwright fork with automation-leak patches (app.patch; needs the optional `patchright` peer), '
       + 'attach to an existing '
       + 'CDP endpoint (app.cdp_url), or relay into the user\'s own Chrome tabs via the local dsh browser relay + companion '
-      + 'extension (app.relay). ARIA snapshots carry [ref=eN] ids that stay valid until the next snapshot; click/type via '
-      + 'CSS selectors keep working. Screenshots are written to disk as PNG paths the model can re-read. Returned observation '
+      + 'extension (app.relay). ARIA snapshots carry [ref=eN] ids that stay valid until the next snapshot; drive interactions '
+      + 'through `run` JavaScript evaluation. Screenshots are written to disk as PNG paths the model can re-read. Returned observation '
       + 'is the current title, url and ref tree, so prefer it over re-reading when no screenshot is needed.',
     parameters: {
       action: {
