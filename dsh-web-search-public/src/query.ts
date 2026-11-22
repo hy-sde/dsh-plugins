@@ -492,7 +492,10 @@ export function parseSearchQuery(raw: string): StructuredQuery {
       let value = (match[3] as string).trim()
       if (value.length === 0) {
         const next = tokens[index + 1]
-        if (next !== undefined && (next.quoted || !isReservedToken(next.text))) {
+        // A sign-prefixed token is an exclusion/inclusion term, not the value
+        // (`site: -example.com` reads as "site: then exclude example.com");
+        // adopting it verbatim would make the strict positive dim empty the result.
+        if (next !== undefined && (next.quoted || (!isReservedToken(next.text) && !/^[-+]/.test(next.text)))) {
           value = next.text.trim()
           index += 1
         }

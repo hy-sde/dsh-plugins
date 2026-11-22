@@ -50,6 +50,20 @@ describe('public search query controls', () => {
     expect(unsupportedQueryConstraints(parsed, MOJEEK_QUERY_SYNTAX)).toEqual([])
   })
 
+  it('does not adopt a sign-prefixed token as an empty directive value', () => {
+    // `site: -example.com` reads as "site: then exclude example.com"; adopting
+    // the sign-prefixed token verbatim would strict-empty the merge and render
+    // `site:-example.com` into engine queries.
+    const parsed = parseSearchQuery('docs site: -example.com')
+    expect(parsed.sites).toEqual([])
+    expect(parsed.hasConstraints).toBe(false)
+    expect(formatQuery(parsed, DUCKDUCKGO_QUERY_SYNTAX)).toBe('docs -example.com')
+    const quoted = parseSearchQuery('site: -"exact phrase"')
+    expect(quoted.sites).toEqual([])
+    // Quoted values still adopt as directive values.
+    expect(parseSearchQuery('site: "docs.test"').sites).toEqual(['docs.test'])
+  })
+
   it('identifies constraints an engine cannot enforce from result metadata', () => {
     const parsed = parseSearchQuery('agent -intext:deprecated after:2026-01-01')
 

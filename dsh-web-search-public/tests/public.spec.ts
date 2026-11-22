@@ -620,6 +620,18 @@ describe('PublicSearchProvider', () => {
     })
   })
 
+  it('keeps a sign-prefixed token after an empty directive from strict-emptying the merge', async () => {
+    const engine = stubEngine('startpage', {
+      sources: [{ url: 'https://available.test/guide', title: 'Guide' }],
+    })
+
+    // `docs site: -example.com` parses without a site scope — the sign-prefixed
+    // token stays an exclusion term, so the merge is not strict-emptied.
+    const result = await provider([engine.engine]).search({ query: 'docs site: -example.com' })
+
+    expect(result).toEqual({ sources: [{ url: 'https://available.test/guide', title: 'Guide' }], truncated: false })
+  })
+
   it('explains degraded coverage when accepted empties mix with engine failures', async () => {
     const walled = stubEngine('startpage', { error: new EngineSearchFailure('challenge', 'challenge wall') })
     const empty = stubEngine('duckduckgo', { sources: [] })
