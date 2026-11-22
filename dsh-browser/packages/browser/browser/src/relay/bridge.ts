@@ -112,6 +112,15 @@ class TabState {
   attaching: Promise<boolean> | null = null
   /** Detach RPC still landing; a new attach must wait it out or the late detach undoes it. */
   detaching: Promise<void> | null = null
+
+  /**
+   * Settled by the tab's next extension-reported detach — the report a
+   * detach-killed command waits for before its failure reply. Replaced once
+   * settled so the next detach gets its own settlement.
+   */
+  chromeDetach = Promise.withResolvers<void>()
+  /** Reason the tab's last extension-reported detach named; undefined until then. */
+  detachReason: string | undefined
   /** True after the relay put this tab in the omp group; `ompGroupId` holds that group. */
   grouped = false
   /** Group RPC in flight — suppresses duplicate requests from load-time tabUpdated bursts. */
@@ -158,8 +167,28 @@ const PAGE_BOUND_RPC_TIMEOUT_MS = 180_000
 const CDP_ERROR_METHOD_NOT_FOUND = -32601
 const CDP_ERROR_SERVER = -32000
 
+/** Chrome's answer to a command in flight when it ends the debugger attachment. */
+const DETACHED_COMMAND_ERROR = /Detached while handling command/
+/**
+ * How long a root-session command Chrome killed with its in-flight detach
+ * answer waits for the extension's own detach report before the failure
+ * reply; bounded so a detach Chrome never reports still replies.
+ */
+const CHROME_DETACH_REPORT_MS = 1_000
+/**
+ * Deadline for the page command that lets Chrome's detach report overtake a
+ * child-session failure reply: Chrome ends a cross-site frame's session the
+ * moment it detaches the debugger, ahead of the report.
+ */
+const DETACH_REPORT_PROBE_MS = 500
+
 /** A relay RPC the bridge gave up on at its own deadline; Chrome never answered it. */
 class RpcTimeoutError extends Error {}
+
+/** Resolves after `ms`; deadline for waits that have no in-flight rpc to time out. */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
 
 function tabTargetId(tabId: number): string {
   return `TAB${tabId}`
@@ -527,9 +556,45 @@ export class RelayBridge {
       this.#reply(conn, msg, (result as Record<string, unknown> | undefined) ?? {})
       return true
     } catch (err) {
-      this.#replyError(conn, msg, err instanceof Error ? err.message : String(err))
+      const message = err instanceof Error ? err.message : String(err)
+      const tab = this.#tabs.get(tabId)
+      await this.#overtakeDetachReport(tab, realSessionId, message)
+      this.#replyError(conn, msg, this.#detachReport(tab, message))
       return false
     }
+  }
+
+  /**
+   * Give Chrome's detach report a chance to overtake a command failure, so the
+   * downstream client learns why the session died before the error reply:
+   * Chrome answers a command in flight with {@link DETACHED_COMMAND_ERROR}
+   * ahead of the extension's detach report. A root-session failure waits for
+   * that report ({@link CHROME_DETACH_REPORT_MS}); a child-session failure
+   * sends one page command Chrome answers only after reporting the detach
+   * ({@link DETACH_REPORT_PROBE_MS}).
+   */
+  async #overtakeDetachReport(tab: TabState | undefined, realSessionId: string | undefined, message: string): Promise<void> {
+    if (!tab?.attached || !DETACHED_COMMAND_ERROR.test(message)) return
+    if (realSessionId === undefined) {
+      await Promise.race([tab.chromeDetach.promise, sleep(CHROME_DETACH_REPORT_MS)])
+      return
+    }
+    try {
+      await this.#rpc({ op: 'send', tabId: tab.tabId, method: 'Target.getTargetInfo' }, DETACH_REPORT_PROBE_MS)
+    } catch {
+      // The probe itself failing is fine: its deadline fired or the tab is gone.
+    }
+  }
+
+  /**
+   * The text a failed command replies with: Chrome's in-flight detach answer
+   * names nothing, so once the tab's detach is reported the reply says what
+   * happened to the tab instead.
+   */
+  #detachReport(tab: TabState | undefined, message: string): string {
+    if (!tab || tab.attached || tab.detachReason === undefined) return message
+    if (!DETACHED_COMMAND_ERROR.test(message)) return message
+    return `Chrome detached the debugger from tab ${tab.tabId} (${tab.detachReason}) during this command`
   }
 
   /**
@@ -827,7 +892,11 @@ export class RelayBridge {
     tab.attached = false
     tab.attaching = null
     tab.banned = true
-    // The user dismissed the debugger infobar (or the attach was torn
+    tab.detachReason = reason
+    // A detach-killed command may be holding for this report; swap in a fresh
+    // settlement so the tab's next detach gets its own.
+    tab.chromeDetach.resolve()
+    tab.chromeDetach = Promise.withResolvers<void>()
     // down): release the tab's omp-group membership too.
     this.#syncTabGrouping(tab)
     this.#retractTab(tab)
