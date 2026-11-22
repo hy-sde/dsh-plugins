@@ -528,6 +528,38 @@ describe('Patcher seen-line origin', () => {
     expect(fs.get(PATH)).toBe('l1\nl2\ninserted\nl3\nl4\nL5-MODEL\n')
   })
 
+  it('stays rejected on rows restored to their read numbers after inserts and cuts', async () => {
+    // Two rows go in past line 5 and the first row is cut, so rows from old
+    // line 6 on sit back at the numbers the read showed — but a model that
+    // tracked only the insert numbers them two higher. Inserts and cuts
+    // carry no payload that distinguishes the two readings, so ops on those
+    // rows stay rejected under the reply-minted tag (oh-my-pi 4f1682bb6e).
+    for (const op of ['CUT 22', 'PUT <22:\n+// before', 'PUT >22:\n+// after']) {
+      const base = `${Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+      const fs = new InMemoryFilesystem([[PATH, base]])
+      const snapshots = new InMemorySnapshotStore()
+      const tag0 = snapshots.record(PATH, base, Array.from({ length: 30 }, (_, i) => i + 1))
+      const patcher = new Patcher({ fs, snapshots })
+
+      const insert = await patcher.apply(Patch.parse(`[${PATH}#${tag0}]\nPUT >5:\n+// ins a\n+// ins b`))
+      const insertTag = insert.sections[0]?.fileHash
+      if (insertTag === undefined) throw new Error('insert produced no section tag')
+      // Rows the replies displayed with the default 2-row context: the
+      // insert reply shows rows 1-9 plus 31-32, the cut reply 1-2 plus
+      // 30-31. Row 22 is in neither, under either numbering.
+      snapshots.recordSeenLines(PATH, insertTag, [1, 2, 3, 4, 5, 6, 7, 8, 9, 31, 32])
+
+      const cut = await patcher.apply(Patch.parse(`[${PATH}#${insertTag}]\nCUT 1.=1`))
+      const cutTag = cut.sections[0]?.fileHash
+      if (cutTag === undefined) throw new Error('cut produced no section tag')
+      snapshots.recordSeenLines(PATH, cutTag, [1, 2, 30, 31])
+
+      const before = fs.get(PATH)
+      await expect(patcher.apply(Patch.parse(`[${PATH}#${cutTag}]\n${op}`))).rejects.toThrow(/never displayed/)
+      expect(fs.get(PATH)).toBe(before)
+    }
+  })
+
   it('truncates the reveal at the cap and directs the tail back to a range re-read', async () => {
     const bigContent = `${Array.from({ length: 200 }, (_, i) => `l${i + 1}`).join('\n')}\n`
     const fs = new InMemoryFilesystem([[PATH, bigContent]])

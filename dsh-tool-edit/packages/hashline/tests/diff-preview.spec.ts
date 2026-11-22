@@ -35,15 +35,16 @@ describe('buildCompactDiffPreview', () => {
     expect(preview.preview).toBe(['1:alpha', '…', '20:omega'].join('\n'))
   })
 
-  it('dedupes blank gap rows left adjacent by omitted removed lines and trims edge separators', () => {
+  it('normalizes blank gap rows to elision markers and trims edge separators', () => {
     const diff = ['', ' 1|alpha', '', '-5|beta', '', ' 9|gamma', '', '-12|omitted'].join('\n')
 
     const preview = buildCompactDiffPreview(diff)
 
     // `-5|beta` is omitted from the preview, leaving its two surrounding
-    // gap rows adjacent; only one survives. The leading separator and the
-    // one stranded at the end (after `-12` is dropped) are trimmed.
-    expect(preview.preview).toBe(['1:alpha', '', '8:gamma'].join('\n'))
+    // gap rows adjacent; they normalize to one elision marker. The leading
+    // marker and the one stranded at the end (after `-12` is dropped) are
+    // trimmed.
+    expect(preview.preview).toBe(['1:alpha', '…', '8:gamma'].join('\n'))
     expect(preview.removedLines).toBe(2)
   })
 })

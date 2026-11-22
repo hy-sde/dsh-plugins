@@ -145,6 +145,78 @@ describe('InMemorySnapshotStore', () => {
     expect(store.findByHash(tag === '0000' ? 'FFFF' : '0000')).toEqual([])
   })
 
+  it('carries only the unshifted unchanged seen lines across an outside change', () => {
+    const store = new InMemorySnapshotStore()
+    const base = Array.from({ length: 60 }, (_, i) => `line ${i + 1}`).join('\n')
+    const fullSeen = Array.from({ length: 60 }, (_, i) => i + 1)
+    const partialSeen = Array.from({ length: 9 }, (_, i) => i + 47)
+    store.record(PATH, base, fullSeen)
+
+    // Same-shape rewrite of line 50: every seen line the change left at its
+    // number with its content carries, so the model stays blind only to the
+    // row it cannot trust anymore.
+    const sameShape = base.replace('line 50', 'line FIFTY')
+    store.record(PATH, sameShape, partialSeen)
+    const sameShapeSeen = store.head(PATH)?.seenLines
+    expect(sameShapeSeen).not.toBeUndefined()
+    expect(sameShapeSeen).toContain(5)
+    expect(sameShapeSeen).toContain(60)
+
+    // Prepending a line shifts every old number: nothing carries, and the
+    // partial read itself counts as the seen restriction.
+    store.record(PATH, base, fullSeen)
+    store.record(PATH, `new top\n${base}`, partialSeen)
+    const prependedSeen = store.head(PATH)?.seenLines
+    expect(prependedSeen).not.toBeUndefined()
+    expect(prependedSeen).not.toContain(5)
+    expect(prependedSeen).toContain(50)
+
+    // Rewriting line 5 breaks its number-content match: it does not carry.
+    store.record(PATH, base, fullSeen)
+    store.record(PATH, base.replace('line 5\n', 'line FIVE\n'), partialSeen)
+    const rewrittenSeen = store.head(PATH)?.seenLines
+    expect(rewrittenSeen).not.toBeUndefined()
+    expect(rewrittenSeen).not.toContain(5)
+  })
+
+  it('holds carried lines back until the version gains a displayed line', () => {
+    const store = new InMemorySnapshotStore()
+    const base = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join('\n')
+    store.record(PATH, base, [5])
+    const changed = base.replace('line 9\n', 'line NINE\n')
+    const tag = store.record(PATH, changed, [])
+    // Carrying must not restrict: an explicitly empty seen set stays empty
+    // even though the carry proved line 5 unchanged at its number.
+    expect([...(store.head(PATH)?.seenLines ?? [])]).toEqual([])
+    store.recordSeenLines(PATH, tag, [9])
+    expect([...(store.head(PATH)?.seenLines ?? [])].sort((a, b) => a - b)).toEqual([5, 9])
+  })
+
+  it('carries only the unchanged head and tail past the diff bound', () => {
+    const store = new InMemorySnapshotStore()
+    const count = 3 * 1024
+    const lines = Array.from({ length: count }, (_, i) => `line ${i + 1}`)
+    const base = lines.join('\n')
+    store.record(PATH, base)
+    const changed = lines
+      .map((line, i) => {
+        const n = i + 1
+        return n > 100 && n <= count - 100 && n % 2 === 0 ? `${n}!` : line
+      })
+      .join('\n')
+    // The scattered rewrites exceed the bounded-diff limit: the carry falls
+    // back to the unchanged head rows (plus, for equal-length texts, tail
+    // rows). Line 0 cannot carry (ranges start at 1) and survives only via
+    // the recorded seen lines.
+    store.record(PATH, changed, [0])
+    const seen = store.head(PATH)?.seenLines
+    expect(seen).toBeDefined()
+    const expected = new Set<number>([0])
+    for (let line = 1; line <= 101; line++) expected.add(line)
+    for (let line = count - 99; line <= count; line++) expected.add(line)
+    expect([...(seen ?? [])].sort((a, b) => a - b)).toEqual([...expected].sort((a, b) => a - b))
+  })
+
   // 4-hex tags are the low 16 bits of a non-cryptographic hash, so two
   // genuinely different file states can collide (birthday collisions at
   // ~256 distinct texts). The store must retain them as DISTINCT versions

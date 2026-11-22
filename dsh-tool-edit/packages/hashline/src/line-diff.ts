@@ -16,11 +16,11 @@ export interface LineDiffRun {
 
 type DiffOp = { op: 'equal'; count: number } | { op: 'insert'; count: number } | { op: 'delete'; count: number }
 
-function myersDiff(a: readonly string[], b: readonly string[]): DiffOp[] {
+function myersDiffWithin(a: readonly string[], b: readonly string[], maxEdits: number): DiffOp[] | undefined {
   const n = a.length
   const m = b.length
-  const max = n + m
-  if (max === 0) return []
+  const max = Math.min(maxEdits, n + m)
+  if (max === 0) return n === 0 && m === 0 ? [] : undefined
   const offset = max
   const v = new Int32Array(2 * max + 1)
   const trace: Int32Array[] = []
@@ -49,6 +49,7 @@ function myersDiff(a: readonly string[], b: readonly string[]): DiffOp[] {
       }
     }
   }
+  if (foundD === -1) return undefined
 
   const ops: DiffOp[] = []
   let x = n
@@ -94,6 +95,27 @@ function myersDiff(a: readonly string[], b: readonly string[]): DiffOp[] {
     else runs.push({ ...op })
   }
   return runs
+}
+
+function myersDiff(a: readonly string[], b: readonly string[]): DiffOp[] {
+  return myersDiffWithin(a, b, a.length + b.length) ?? []
+}
+
+/**
+ * Bounded variant of {@link diffLineRuns}: `undefined` once the edit script
+ * needs more than `maxEdits` added plus removed lines
+ * (oh-my-pi 5de4b03810's `pi_diff::myers_diff_within`). The snapshot store
+ * uses the bound to stop treating a rewritten text as an aligned version of
+ * the one it replaced.
+ */
+export function diffLineRunsWithin(oldText: string, newText: string, maxEdits: number): LineDiffRun[] | undefined {
+  const runs = myersDiffWithin(oldText.split('\n'), newText.split('\n'), maxEdits)
+  if (runs === undefined) return undefined
+  return runs.map((op) => {
+    if (op.op === 'equal') return { count: op.count }
+    if (op.op === 'insert') return { added: true, count: op.count }
+    return { removed: true, count: op.count }
+  })
 }
 
 /**

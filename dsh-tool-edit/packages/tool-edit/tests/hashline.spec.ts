@@ -717,3 +717,82 @@ describe('tool-edit (hashline mode) × carried read provenance', () => {
     expect(carriedSeenLines('x\na\nb\nc\nd\ne\n', before, new Set([1, 2, 3, 4, 5]))).toEqual([])
   })
 })
+
+describe('tool-edit (hashline mode) × carried seen lines across outside changes (oh-my-pi 5de4b03810)', () => {
+  /**
+   * Composition with seen-line enforcement, as the GUI mounts it. The
+   * plugins workspace has no dsh-tool-fs, so the fork's `read` calls are
+   * simulated by recording the displayed rows in the shared session
+   * snapshot store (mirrors the fork's `seenLineStack`).
+   */
+  async function seenLineStack() {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-tool-edit-carry-'))
+    roots.push(root)
+    const ctx = new Context()
+    contexts.push(ctx)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(NativeToolExecutor)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(LocalFileSystem, { cwd: root })
+    const fiber = await ctx.plugin(ToolEdit, { enforceSeenLines: true })
+    return { ctx, root, fiber, owner: agent(ctx, root) }
+  }
+
+  function modelText(result: { content: { type: string; text?: string }[] }): string {
+    return result.content.filter(b => b.type === 'text').map(b => b.text).join('')
+  }
+
+  /** Hashline header `[path#TAG]` tag from a rendered read/edit result. */
+  function tagFrom(text: string): string | undefined {
+    return /\[[^\]#]+#([0-9A-F]{4})\]/.exec(text)?.[1]
+  }
+
+  it('renders the rows an edit wrote whole and keeps them anchorable for the next edit', async () => {
+    const { ctx, root, owner } = await seenLineStack()
+    const sample = join(root, 'h.txt')
+    const text = `${Array.from({ length: 6 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+    await writeFile(sample, text)
+    const store = getSessionSnapshotStore(owner.session)
+    const tag = store.record(sample, text, Array.from({ length: 6 }, (_, i) => i + 1))
+    expect(tag).toBe(computeFileHash(text))
+
+    // The eight-row inserted run renders whole under the raised added-run
+    // context (2×20+1), so row 7 is displayed by the response that wrote it.
+    const rows = Array.from({ length: 8 }, (_, i) => `+new ${String.fromCharCode(97 + i)}`).join('\n')
+    const first = await call(ctx, owner, { input: `[${sample}#${tag}]\nPUT >3:\n${rows}\n` })
+    expect(first.isError).toBe(false)
+    const firstText = modelText(first)
+    expect(firstText).toContain('\n7:new d\n')
+    const edited = text.replace('line 4\n', 'new a\nnew b\nnew c\nnew d\nnew e\nnew f\nnew g\nnew h\nline 4\n')
+    expect(tagFrom(firstText)).toBe(computeFileHash(edited))
+
+    // ...and the model can edit that row under the response tag with no re-read.
+    const second = await call(ctx, owner, { input: `[${sample}#${tagFrom(firstText)}]\nPUT 7.=7:\n+new D\n` })
+    expect(second.isError).toBe(false)
+    expect(await readFile(sample, 'utf8')).toBe(edited.replace('new d\n', 'new D\n'))
+  })
+
+  it('keeps lines seen where an outside change kept their number and content', async () => {
+    const { ctx, root, owner } = await seenLineStack()
+    const sample = join(root, 'f.txt')
+    const text = `${Array.from({ length: 60 }, (_, i) => `line ${i + 1}`).join('\n')}\n`
+    await writeFile(sample, text)
+    const store = getSessionSnapshotStore(owner.session)
+    store.record(sample, text, Array.from({ length: 60 }, (_, i) => i + 1))
+
+    // An outside write changes only line 50; a partial re-read of that
+    // region records the changed content with just its own displayed rows.
+    const changed = text.replace('line 50\n', 'line FIFTY\n')
+    await writeFile(sample, changed)
+    const rereadTag = store.record(sample, changed, [48, 49, 50, 51, 52])
+    expect(rereadTag).toBe(computeFileHash(changed))
+
+    // Line 5 kept its number and content across the outside change, so the
+    // store carries it into the changed snapshot and the edit applies.
+    const result = await call(ctx, owner, { input: `[${sample}#${rereadTag}]\nPUT 5.=5:\n+line FIVE\n` })
+    expect(result.isError).toBe(false)
+    expect(await readFile(sample, 'utf8')).toBe(changed.replace('line 5\n', 'line FIVE\n'))
+  })
+})

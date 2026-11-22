@@ -14,10 +14,10 @@
 import {
   type BlockResolution,
   buildCompactDiffPreview,
+  carriedSeenLines,
   type Clipboard,
   computeFileHash,
   commitClipboard,
-  diffLineRuns,
   forkClipboard,
   formatHeaderOnlyMessage,
   MismatchError as HashlineMismatchError,
@@ -82,6 +82,13 @@ function noChangeLoopDiagnostic(path: string, count: number): string {
 const SEEN_LINE_ROW_RE = /^[ *]?(\d+)(?:-(\d+))?:/
 
 /**
+ * Rendered inserted runs of up to 2×20+1 rows whole in an edit response, so
+ * the rows the model just wrote count as displayed for its next edit
+ * (oh-my-pi 5de4b03810).
+ */
+const RESPONSE_ADDED_RUN_CONTEXT_LINES = 20
+
+/**
  * Extract the 1-indexed lines a rendered hashline result displays as
  * `N:content` rows (plus range ends `N-M:`) so they can be registered as
  * seen provenance on the snapshot the result tag names. Mirrors oh-my-pi's
@@ -101,45 +108,13 @@ export function seenLinesFromBody(text: string): number[] {
   return seen
 }
 
-/**
- * Prior-snapshot lines that keep both their number and content in `after`:
- * every unchanged run the edit did not shift (the leading run, plus runs
- * below line-neutral hunks), filtered by what `prior` displayed. A missing
- * or unrestricted prior snapshot let the edit anchor anywhere, so every
- * such run carries over. Shifted lines never carry: their old numbers name
- * other content.
- */
-export function carriedSeenLines(before: string, after: string, prior: ReadonlySet<number> | undefined): number[] {
-  const seen = prior !== undefined && prior.size > 0 ? prior : undefined
-  const carried: number[] = []
-  let oldLine = 1
-  let newLine = 1
-  for (const run of diffLineRuns(before, after)) {
-    if (run.added) {
-      newLine += run.count
-      continue
-    }
-    if (run.removed) {
-      oldLine += run.count
-      continue
-    }
-    if (oldLine === newLine) {
-      for (let i = 0; i < run.count; i++) {
-        const line = oldLine + i
-        if (seen === undefined || seen.has(line)) carried.push(line)
-      }
-    }
-    oldLine += run.count
-    newLine += run.count
-  }
-  return carried
-}
+export { carriedSeenLines }
 
 /**
  * Register the lines a rendered section result leaves anchorable on the
  * snapshot version its tag names (the post-edit content the patcher just
  * recorded): rows the model read before an update that the edit kept at
- * their line with their content ({@link carriedSeenLines}), plus the
+ * their line with their content ({@link SnapshotStore.recordEdit} carry), plus the
  * numbered rows the result itself displays. Upstream terminates a
  * successful edit's response with this same registration, making both
  * anchorable for a follow-up edit against the NEW tag; a line hidden under
@@ -156,13 +131,10 @@ function recordRenderedSeenLines(
   // preview rows are numbered against `after` — marking them seen would mint
   // bogus provenance, so only carried lines register.
   const drifted = recorded !== result.after
-  const seen: number[] = []
   // Only updates carry: a create has no prior text to prove lines against.
-  if (result.op === 'update') {
-    const prior = snapshots.byContent(result.canonicalPath, result.before)?.seenLines
-    seen.push(...carriedSeenLines(result.before, recorded, prior))
-  }
-  if (!drifted) seen.push(...seenLinesFromBody(text))
+  if (result.op === 'update') snapshots.recordEdit(result.canonicalPath, result.before, recorded)
+  if (drifted) return
+  const seen = seenLinesFromBody(text)
   if (seen.length === 0) return
   // A moved file carries its provenance to the destination: the patcher
   // already rewrote `canonicalPath` to the destination canonical path and
@@ -253,7 +225,9 @@ function renderSection(
   }
 
   const diff = generateDiffString(result.before, result.after, undefined, { path: result.path })
-  const preview = buildCompactDiffPreview(diff.diff)
+  const preview = buildCompactDiffPreview(diff.diff, {
+    maxAddedRunContext: RESPONSE_ADDED_RUN_CONTEXT_LINES,
+  })
   const warningsBlock = result.warnings.length > 0 ? `\n\nWarnings:\n${result.warnings.join('\n')}` : ''
   const previewBlock = preview.preview ? `\n${preview.preview}` : ''
   const blockBlock =

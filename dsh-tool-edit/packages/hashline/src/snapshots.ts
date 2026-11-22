@@ -22,6 +22,7 @@
  */
 import { LRUCache } from './lru.ts'
 import { computeFileHash } from './format.ts'
+import { diffLineRunsWithin } from './line-diff.ts'
 
 /**
  * One full-file version observed at a point in time. The tag the model sees is
@@ -45,6 +46,16 @@ export interface Snapshot {
 	 * applies as before. Mutated in place as more of the same content is read.
 	 */
   seenLines?: Set<number>
+}
+
+/**
+ * One stored version plus the edit-carry state. `carried` holds 1-indexed
+ * lines an edit carry proved unchanged at their number, held back while no
+ * displayed line restricts `seenLines`; the first displayed line drains
+ * them into the set (see {@link mergeSeenLines} and {@link carryInto}).
+ */
+interface StoredSnapshot extends Snapshot {
+  carried?: number[] | undefined
 }
 
 /**
@@ -96,11 +107,26 @@ export abstract class SnapshotStore {
   }
 
   /**
-	 * Record the full normalized text of `path` and return its content tag.
-	 * `seenLines` (optional) are the 1-indexed lines the producer displayed;
-	 * they merge into {@link Snapshot.seenLines} across reads of identical text.
-	 */
+   * Record the full normalized text of `path` and return its content tag.
+   * `seenLines` (optional) are the 1-indexed lines the producer displayed;
+   * they merge into {@link Snapshot.seenLines} across reads of identical
+   * text. Lines the version replaces keeps at their number with their
+   * content carry from the previous head version (see {@link recordEdit}).
+   */
   abstract record(path: string, fullText: string, seenLines?: Iterable<number>): string
+
+  /**
+   * Record the full normalized text an edit wrote and return its content tag.
+   * `before` is the full normalized text the edit was prepared against (the
+   * version its section tags resolved to). Lines that keep both their number
+   * and content from `before` to `after` stay seen when the `before` version
+   * had already seen them, so one edit does not blind the next one to the
+   * unchanged rows it did not display (oh-my-pi 5de4b03810). Shifted lines
+   * never carry: their old numbers name other content. Past the bounded-diff
+   * limit only unchanged head rows (plus, for equal-length texts, tail rows)
+   * carry.
+   */
+  abstract recordEdit(path: string, before: string, after: string): string
 
   /**
 	 * Merge `lines` into the {@link Snapshot.seenLines} of the version whose tag
@@ -124,6 +150,13 @@ export abstract class SnapshotStore {
   abstract clear(): void
 }
 
+/**
+ * Bounds the edit-carry diff to `O(lines × CARRY_MAX_EDITS)` added plus
+ * removed lines (oh-my-pi 5de4b03810); past it only unchanged head rows
+ * (plus, for equal-length texts, tail rows) carry.
+ */
+const CARRY_MAX_EDITS = 1024
+
 // Wide sessions routinely touch far more than a few dozen files; evicting a
 // path downgrades a genuinely in-session tag to the misleading "hash is not
 // from this session" rejection. Retention is still bounded by
@@ -137,11 +170,109 @@ const DEFAULT_MAX_VERSIONS_PER_PATH = 4
  */
 const DEFAULT_MAX_TOTAL_BYTES = 64 * 1024 * 1024
 
-/** Union `lines` into `snapshot.seenLines`, lazily creating the set. */
-function mergeSeenLines(snapshot: Snapshot, lines: Iterable<number> | undefined): void {
+/**
+ * Union `lines` into `snapshot.seenLines`, lazily creating the set. A set
+ * that becomes non-empty drains the lines {@link carryInto} held back.
+ */
+function mergeSeenLines(snapshot: StoredSnapshot, lines: Iterable<number> | undefined): void {
   if (lines === undefined) return
   if (snapshot.seenLines === undefined) snapshot.seenLines = new Set<number>()
   for (const line of lines) snapshot.seenLines.add(line)
+  if (snapshot.seenLines.size > 0 && snapshot.carried !== undefined && snapshot.carried.length > 0) {
+    for (const line of snapshot.carried) snapshot.seenLines.add(line)
+    snapshot.carried = undefined
+  }
+}
+
+/**
+ * Merge lines an edit carry proved unchanged into a version's seen set:
+ * directly when a non-empty seen set restricts it, held back (sorted,
+ * deduped) otherwise until the version gains one.
+ */
+function carryInto(snapshot: StoredSnapshot, carried: number[]): void {
+  if (carried.length === 0) return
+  if (snapshot.seenLines !== undefined && snapshot.seenLines.size > 0) {
+    for (const line of carried) snapshot.seenLines.add(line)
+    return
+  }
+  const held = snapshot.carried === undefined ? [...carried] : [...snapshot.carried, ...carried]
+  held.sort((a, b) => a - b)
+  snapshot.carried = held.filter((line, index) => index === 0 || line !== held[index - 1])
+}
+
+/**
+ * Lines of `parent` that keep both their number and content in `child`:
+ * every unchanged run the change did not shift (the leading run, plus runs
+ * below line-neutral hunks), filtered by `seen`. A missing or empty `seen`
+ * is an unrestricted parent, whose every such line carries. Shifted lines
+ * never carry: their old numbers name other content. Past the
+ * {@link CARRY_MAX_EDITS} bound the diff gives up and only the unchanged
+ * head rows (plus, for equal-length texts, tail rows) carry.
+ */
+export function carriedSeenLines(parent: string, child: string, seen: ReadonlySet<number> | undefined): number[] {
+  const restricted = seen !== undefined && seen.size > 0 ? seen : undefined
+  const oldLines = parent.split('\n')
+  const newLines = child.split('\n')
+  const unshifted: Array<[number, number]> = []
+  const runs = diffLineRunsWithin(parent, child, CARRY_MAX_EDITS)
+  if (runs !== undefined) {
+    let oldLine = 1
+    let newLine = 1
+    for (const run of runs) {
+      if (run.added) {
+        newLine += run.count
+      } else if (run.removed) {
+        oldLine += run.count
+      } else {
+        if (oldLine === newLine) unshifted.push([oldLine, oldLine + run.count])
+        oldLine += run.count
+        newLine += run.count
+      }
+    }
+  } else {
+    const max = Math.min(oldLines.length, newLines.length)
+    let prefix = 0
+    while (prefix < max && oldLines[prefix] === newLines[prefix]) prefix++
+    unshifted.push([1, prefix + 1])
+    if (oldLines.length === newLines.length) {
+      let suffix = 0
+      while (
+        suffix < max - prefix &&
+        oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
+      ) {
+        suffix++
+      }
+      unshifted.push([oldLines.length - suffix + 1, oldLines.length + 1])
+    }
+  }
+  const carried: number[] = []
+  for (const [start, end] of unshifted) {
+    for (let line = start; line < end; line++) {
+      if (restricted === undefined || restricted.has(line)) carried.push(line)
+    }
+  }
+  return carried
+}
+
+/**
+ * Lines carried into `text` from the version it replaces: `parent` names the
+ * explicit edit parent (the text the section tags resolved to); without one
+ * the path's head version stands in. Identical text carries nothing.
+ */
+function carriedFromParent(history: readonly StoredSnapshot[], text: string, parent: string | undefined): number[] {
+  let parentText: string
+  let parentSeen: ReadonlySet<number> | undefined
+  if (parent === undefined) {
+    const head = history[0]
+    if (head === undefined) return []
+    parentText = head.text
+    parentSeen = head.seenLines
+  } else {
+    parentText = parent
+    parentSeen = history.find(version => version.text === parent)?.seenLines
+  }
+  if (parentText === text) return []
+  return carriedSeenLines(parentText, text, parentSeen)
 }
 
 export interface InMemorySnapshotStoreOptions {
@@ -161,16 +292,17 @@ export interface InMemorySnapshotStoreOptions {
  * Estimated retained size of one stored version, in bytes. Mirrors the
  * upstream `StoredSnapshot::retained_bytes` accounting (oh-my-pi b3458f5073):
  * the path and tag strings, the text body plus two header words
- * (word-aligned), and a per-line seen-lines allowance of a value slot plus
- * two link words plus the set object itself. The fork stores seenLines as a
- * `Set` with no exposed layout, so the figures are an estimate, not a
- * measurement.
+ * (word-aligned), a per-line seen-lines allowance of a value slot plus two
+ * link words plus the set object itself, and one slot per held-back carried
+ * line (oh-my-pi 5de4b03810). The fork stores seenLines as a `Set` with no
+ * exposed layout, so the figures are an estimate, not a measurement.
  */
-function versionRetainedBytes(version: Snapshot): number {
+function versionRetainedBytes(version: StoredSnapshot): number {
   const textBytes = Math.ceil((version.text.length + 2 * 8) / 8) * 8
   const seenBytes =
     version.seenLines === undefined ? 0 : 2 * 8 + 3 * 8 + version.seenLines.size * (4 + 2 * 8)
-  return version.path.length + version.hash.length + textBytes + seenBytes
+  const carriedBytes = version.carried === undefined ? 0 : version.carried.length * 4
+  return version.path.length + version.hash.length + textBytes + seenBytes + carriedBytes
 }
 
 /**
@@ -186,7 +318,7 @@ function versionRetainedBytes(version: Snapshot): number {
  * the identity.
  */
 export class InMemorySnapshotStore extends SnapshotStore {
-  readonly #versions: LRUCache<string, Snapshot[]>
+  readonly #versions: LRUCache<string, StoredSnapshot[]>
   readonly #maxVersionsPerPath: number
 
   constructor(options: InMemorySnapshotStoreOptions = {}) {
@@ -238,21 +370,47 @@ export class InMemorySnapshotStore extends SnapshotStore {
   }
 
   record(path: string, fullText: string, seenLines?: Iterable<number>): string {
-    const hash = computeFileHash(fullText)
+    return this.recordVersion(path, fullText, seenLines)
+  }
+
+  recordEdit(path: string, before: string, after: string): string {
+    return this.recordVersion(path, after, undefined, before)
+  }
+
+  /**
+   * Record one version of `path` and return its content tag. `seenLines` are
+   * the 1-indexed lines a producer displayed; `parent` is the full text this
+   * version replaces (an edit's pre-image) — absent, the path's head version
+   * stands in. Carried lines from the parent merge into `seenLines` when one
+   * is given, and are held back otherwise until the version gains a seen set.
+   */
+  private recordVersion(
+    path: string,
+    text: string,
+    seenLines?: Iterable<number>,
+    parent?: string,
+  ): string {
+    const hash = computeFileHash(text)
     // `get` refreshes LRU recency for `path`.
     const history = this.#versions.get(path) ?? []
+    const carried = carriedFromParent(history, text, parent)
     // Dedup requires full-text equality, not just tag equality: two distinct
     // texts that happen to share the 4-hex tag are DIFFERENT snapshots — fusing
     // them under one entry would corrupt seenLines (attaching lines from
     // text B onto the stored text A) and let the patcher misresolve which
     // snapshot the section tag names during recovery or seen-line validation.
     // See issue #4075.
-    const existing = history.find(version => version.hash === hash && version.text === fullText)
+    const existing = history.find(version => version.hash === hash && version.text === text)
     if (existing) {
       // Same content state observed again: refresh recency and promote to
       // head (it is the current file content), then reuse the tag. Union any
       // newly-displayed lines so re-reading more of the file widens coverage.
       existing.recordedAt = Date.now()
+      if (parent !== undefined && carried.length > 0) {
+        mergeSeenLines(existing, carried)
+      } else {
+        carryInto(existing, carried)
+      }
       mergeSeenLines(existing, seenLines)
       // The merge above can grow the history's calculated size; re-set so
       // the LRU recomputes and evicts when the budget is exceeded.
@@ -263,7 +421,12 @@ export class InMemorySnapshotStore extends SnapshotStore {
       return hash
     }
 
-    const snapshot: Snapshot = { path, text: fullText, hash, recordedAt: Date.now() }
+    const snapshot: StoredSnapshot = { path, text, hash, recordedAt: Date.now() }
+    if (parent !== undefined && carried.length > 0) {
+      mergeSeenLines(snapshot, carried)
+    } else {
+      carryInto(snapshot, carried)
+    }
     mergeSeenLines(snapshot, seenLines)
     this.#versions.set(path, [snapshot, ...history].slice(0, this.#maxVersionsPerPath))
     return hash
