@@ -236,4 +236,55 @@ describe('relay bridge detach reporting', () => {
       'Chrome detached the debugger from tab 1 (target_closed) during this command',
     )
   })
+
+  it('keeps an earlier detach reason out of a later relay-initiated detach failure', async () => {
+    const { bridge, ext, cdp, conn, session } = await withAttachedTab()
+
+    // Cycle 1: the detach is reported and named target_closed; its session dies with it.
+    const firstId = sendCmd(bridge, conn, session, 'Runtime.evaluate', { expression: '1' })
+    const firstRpc = pendingRpcs(ext).at(-1)?.id
+    expect(firstRpc).toBeDefined()
+    bridge.extMessage(ext, JSON.stringify({ t: 'detached', tabId: 1, reason: 'target_closed' }))
+    ackRpc(bridge, ext, firstRpc!, 'Detached while handling command.')
+    await flush()
+    expect(cdp.replies().find(r => r.id === firstId)?.error?.message).toBe(
+      'Chrome detached the debugger from tab 1 (target_closed) during this command',
+    )
+
+    // A different-url hello clears the ban the detach left; the tab attaches again.
+    bridge.extMessage(ext, JSON.stringify({
+      t: 'hello',
+      userAgent: 'ua',
+      browserVersion: 'Chrome/1',
+      discardedTabsProtocol: 1,
+      tabs: [{ ...snap(1), url: 'https://example.com/1-after-detach' }],
+      attachedTabIds: [],
+    }))
+    await flush()
+    const mark = ext.sequence.length
+    const id = ++msgSeq
+    bridge.cdpMessage(conn, JSON.stringify({ id, method: 'Target.attachToTarget', params: { targetId: 'PAGE1' } }))
+    for (const { frame } of ext.sequence.slice(mark)) {
+      if (frame.t === 'rpc' && frame.op === 'attach') ackRpc(bridge, ext, frame.id as number)
+    }
+    await flush()
+    const session2 = (
+      cdp.replies().find(r => r.id === id)?.result as { sessionId?: string } | undefined
+    )?.sessionId
+    expect(typeof session2).toBe('string')
+
+    // Cycle 2: a command in flight while the relay itself releases the session.
+    const secondId = sendCmd(bridge, conn, session2!, 'Runtime.evaluate', { expression: '1' })
+    bridge.cdpMessage(conn, JSON.stringify({ id: ++msgSeq, method: 'Target.detachFromTarget', params: { sessionId: session2 } }))
+    await flush()
+    const detachRpcs = pendingRpcs(ext).filter(f => f.op === 'detach')
+    expect(detachRpcs.length).toBeGreaterThan(0)
+    ackRpc(bridge, ext, detachRpcs.at(-1)!.id)
+
+    // The failure answers detach-shaped, but this detach has no reported reason:
+    // the reply must not borrow cycle 1's target_closed.
+    ackRpc(bridge, ext, pendingRpcs(ext).filter(f => f.op === 'send').at(-1)!.id, 'Detached while handling command.')
+    await flush()
+    expect(cdp.replies().find(r => r.id === secondId)?.error?.message).toBe('Detached while handling command.')
+  })
 })

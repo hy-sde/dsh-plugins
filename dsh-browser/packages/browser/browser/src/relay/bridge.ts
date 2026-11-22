@@ -897,7 +897,7 @@ export class RelayBridge {
     // settlement so the tab's next detach gets its own.
     tab.chromeDetach.resolve()
     tab.chromeDetach = Promise.withResolvers<void>()
-    // down): release the tab's omp-group membership too.
+    // A detached tab is no longer a group candidate — no claim holds it — so release its omp-group membership too.
     this.#syncTabGrouping(tab)
     this.#retractTab(tab)
   }
@@ -1121,6 +1121,8 @@ export class RelayBridge {
     const tab = this.#tabs.get(tabId)
     if (!tab?.attached) return
     tab.attached = false
+    // This detach is the relay's own; any reported detach reason is from an earlier cycle.
+    tab.detachReason = undefined
     this.#forgetChildren(tab)
     const done = this.#rpc({ op: 'detach', tabId })
       .then(() => {})
@@ -1161,6 +1163,8 @@ export class RelayBridge {
     const attempt = this.#rpc({ op: 'attach', tabId: tab.tabId })
       .then(() => {
         tab.attached = true
+        // A fresh attach leaves any earlier detach cycle's reason behind.
+        tab.detachReason = undefined
         return true
       })
       .catch((err: unknown) => {
