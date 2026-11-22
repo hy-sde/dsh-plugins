@@ -32,6 +32,7 @@ import {
   startClipboardBatch,
   stripBom,
 } from '@hy-sde-org/dsh-hashline'
+import { withErrorKind } from '@hy-sde-org/dsh-hashline'
 import type { EditDiagnosticsResult } from '../lsp/writethrough.ts'
 import type { EditSession } from '../session.ts'
 import { generateDiffString } from '../diff.ts'
@@ -282,10 +283,15 @@ async function headerOnlyError(options: ExecuteHashlineSingleOptions): Promise<E
   try {
     raw = await fs.readText(path)
   } catch (error) {
-    if (isNotFound(error)) return new Error(`File not found: ${path}. Use the write tool to create new files.`)
+    if (isNotFound(error)) {
+      return withErrorKind(new Error(`File not found: ${path}. Use the write tool to create new files.`), 'file_not_found')
+    }
     throw error
   }
-  return new Error(formatHeaderOnlyMessage(path, computeFileHash(normalizeToLF(stripBom(raw).text))))
+  return withErrorKind(
+    new Error(formatHeaderOnlyMessage(path, computeFileHash(normalizeToLF(stripBom(raw).text)))),
+    'header_only',
+  )
 }
 
 /**
@@ -327,7 +333,7 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     if (sectionResult.op === 'noop') {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath, inputHash)
       if (escalate) {
-        throw new Error(noChangeLoopDiagnostic(sectionResult.path, count))
+        throw withErrorKind(new Error(noChangeLoopDiagnostic(sectionResult.path, count)), 'no_change')
       }
       const rendered = renderSection(sectionResult, undefined)
       recordRenderedSeenLines(snapshots, sectionResult, rendered.text)
@@ -356,8 +362,8 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     if (entry.isNoop) {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, entry.canonicalPath, inputHash)
       throw escalate
-        ? new Error(noChangeLoopDiagnostic(entry.section.path, count))
-        : new Error(noChangeDiagnostic(entry.section.path))
+        ? withErrorKind(new Error(noChangeLoopDiagnostic(entry.section.path, count)), 'no_change')
+        : withErrorKind(new Error(noChangeDiagnostic(entry.section.path)), 'no_change')
     }
   }
   // Then commit each one. A no-op apply mid-batch is treated as a hard
@@ -369,8 +375,8 @@ export async function executeHashlineSingle(options: ExecuteHashlineSingleOption
     if (sectionResult.op === 'noop') {
       const { count, escalate } = recordNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath, inputHash)
       throw escalate
-        ? new Error(noChangeLoopDiagnostic(sectionResult.path, count))
-        : new Error(noChangeDiagnostic(sectionResult.path))
+        ? withErrorKind(new Error(noChangeLoopDiagnostic(sectionResult.path, count)), 'no_change')
+        : withErrorKind(new Error(noChangeDiagnostic(sectionResult.path)), 'no_change')
     }
     resetNoopEdit(options.session.sessionKey ?? {}, sectionResult.canonicalPath)
     const entry = renderSection(sectionResult, fs.consumeDiagnostics(sectionResult.path))
