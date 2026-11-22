@@ -20,10 +20,12 @@
  * @module @hy-sde-org/dsh-browser/service
  */
 
+import { rm } from 'node:fs/promises'
 import { Service, type Context } from '@deepseek-ai/cordis'
 import { chromium, type Browser as PlaywrightBrowser, type BrowserServer as PlaywrightServer, type Page as PlaywrightPage } from 'playwright-core'
 import { forgetOwnedBrowser, isPidAlive, reapOrphanBrowsers, recordOwnedBrowser } from './orphan-registry.ts'
 import { captureAriaSnapshot, resolveAriaRefElement } from './aria.ts'
+import { openSeededProfileDir } from './profile-seed.ts'
 import {
   DEFAULT_VIEWPORT,
   STEALTH_LAUNCH_ARGS,
@@ -67,6 +69,8 @@ interface BrowserEntry {
   cwd: string
   /** OS pid of a browser this host spawned (launch/patch) and recorded in the orphan registry; attach/relay browsers belong to other owners. */
   pid?: number
+  /** Ephemeral profile directory seeded for a launch-kind browser; removed on close. */
+  profileDir?: string
 }
 
 interface TabEntry {
@@ -153,29 +157,39 @@ export class BrowserService extends Service {
   private async openConnection(kind: BrowserKind, cwd: string): Promise<BrowserEntry> {
     if (kind.kind === 'launch') {
       const executablePath = kind.path ?? this.browserPath
+      // Launch into a profile this host created so automation-safe
+      // preferences can be seeded before Chromium reads them; Playwright's
+      // own ephemeral profile offers no path to write `Preferences` to.
+      const profileDir = await openSeededProfileDir()
       const launchOptions = {
         executablePath,
         headless: this.headless,
         args: [...STEALTH_LAUNCH_ARGS],
         ignoreDefaultArgs: stealthIgnoreDefaultArgs(executablePath),
+        userDataDir: profileDir,
       } as never
-      // launchServer (not bare launch): the returned server owns the real OS
-      // process, exposing its pid for the orphan registry and giving us a
-      // definitive kill handle. The connected Browser still serves pages, and
-      // newBrowserCDPSession (UA override) works over the connection.
-      const server = await chromium.launchServer(launchOptions)
-      const browser = await chromium.connect(server.wsEndpoint())
-      void applyUserAgentOverride(browser, await resolveUserAgentOverride(browser))
-      // Record our own spawned browser in the orphan registry so a later host
-      // can reap it if THIS process dies before closing it. `launch` pids only
-      // (attach/relay browsers belong to other owners and must never be
-      // touched by our reap sweep).
-      const launchedPid = server.process().pid
-      const pid = typeof launchedPid === 'number' && Number.isInteger(launchedPid) ? launchedPid : undefined
-      if (pid !== undefined) {
-        void recordOwnedBrowser(pid).catch(() => {})
+      try {
+        // launchServer (not bare launch): the returned server owns the real OS
+        // process, exposing its pid for the orphan registry and giving us a
+        // definitive kill handle. The connected Browser still serves pages, and
+        // newBrowserCDPSession (UA override) works over the connection.
+        const server = await chromium.launchServer(launchOptions)
+        const browser = await chromium.connect(server.wsEndpoint())
+        void applyUserAgentOverride(browser, await resolveUserAgentOverride(browser))
+        // Record our own spawned browser in the orphan registry so a later host
+        // can reap it if THIS process dies before closing it. `launch` pids only
+        // (attach/relay browsers belong to other owners and must never be
+        // touched by our reap sweep).
+        const launchedPid = server.process().pid
+        const pid = typeof launchedPid === 'number' && Number.isInteger(launchedPid) ? launchedPid : undefined
+        if (pid !== undefined) {
+          void recordOwnedBrowser(pid).catch(() => {})
+        }
+        return { kind, server, browser, headless: this.headless, cwd, profileDir, ...(pid !== undefined ? { pid } : {}) }
+      } catch (error) {
+        void rm(profileDir, { recursive: true, force: true }).catch(() => { /* temp residue */ })
+        throw error
       }
-      return { kind, server, browser, headless: this.headless, cwd, ...(pid !== undefined ? { pid } : {}) }
     }
 
     if (kind.kind === 'patch') {
@@ -214,14 +228,21 @@ export class BrowserService extends Service {
 
   /**
    * Resolve the browser kind for a session (attach/launch/patch/relay), like omp.
-   * @param input - optional app-path, cdp URL, patch flag, or explicit relay opt-in.
+   * @param input - optional app-path, cdp URL, patch flag, explicit relay opt-in,
+   *   or subagent classification.
    * @returns the resolved {@link BrowserKind} to drive.
    */
-  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean; patch?: boolean }): BrowserKind {
+  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean; patch?: boolean; subagent?: boolean }): BrowserKind {
     if (input.cdpUrl) return { kind: 'attach', cdpUrl: input.cdpUrl.replace(/\/+$/, '') }
     if (input.path) return { kind: 'launch', path: input.path }
     if (input.patch ?? this.usePatch) return { kind: 'patch' }
-    const relay = resolveRelayKind({ settingEnabled: input.relay ?? false, url: this.relayUrl })
+    // A subagent inherits the parent's environment, so DSH_BROWSER_RELAY=1
+    // there is the parent's standing default, not this session's request; a
+    // child reaches the user's Chrome only through an explicit relay request
+    // (oh-my-pi 8b7827f6f3+7271557af).
+    const relay = input.relay === true || input.subagent !== true
+      ? resolveRelayKind({ settingEnabled: input.relay ?? false, url: this.relayUrl })
+      : null
     if (relay) return { kind: 'relay', cdpUrl: relay.cdpUrl }
     return this.browserPath !== undefined ? { kind: 'launch', path: this.browserPath } : { kind: 'launch' }
   }
@@ -452,6 +473,9 @@ export class BrowserService extends Service {
       // kill even if the page layer wedged. The connected Browser's own close
       // would only drop the connection.
       await entry.server.close().catch(() => {})
+      if (entry.profileDir !== undefined) {
+        await rm(entry.profileDir, { recursive: true, force: true }).catch(() => { /* already gone */ })
+      }
       return
     }
     await entry.browser.close().catch(() => {})

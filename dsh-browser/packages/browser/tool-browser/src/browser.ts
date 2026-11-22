@@ -82,6 +82,17 @@ export function resolveCwd(exec: ToolExecution, configured: string | undefined, 
 }
 
 /**
+ * A delegated child session (delegationDepth > 0) inherits the parent's
+ * environment, so a standing relay default is the parent's choice, not this
+ * session's request.
+ * @param exec - the executing tool context.
+ * @returns whether the executing session is a delegated subagent child.
+ */
+export function isSubagentSession(exec: ToolExecution): boolean {
+  return (exec.agent?.session.header.delegationDepth ?? 0) > 0
+}
+
+/**
  * Trim Aria.
  *
  * @param aria - The aria parameter.
@@ -114,8 +125,8 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
       + 'Chromium — a Playwright fork with automation-leak patches (app.patch; needs the optional `patchright` peer), '
       + 'attach to an existing '
       + 'CDP endpoint (app.cdp_url), or relay into the user\'s own Chrome tabs via the local dsh browser relay + companion '
-      + 'extension (app.relay). ARIA snapshots carry [ref=eN] ids that stay valid until the next snapshot; click/type via '
-      + 'CSS selectors keep working. Screenshots are written to disk as PNG paths the model can re-read. Returned observation '
+      + 'extension (app.relay). ARIA snapshots carry [ref=eN] ids that stay valid until the next snapshot; drive interactions '
+      + 'through `run` JavaScript evaluation. Screenshots are written to disk as PNG paths the model can re-read. Returned observation '
       + 'is the current title, url and ref tree, so prefer it over re-reading when no screenshot is needed.',
     parameters: {
       action: {
@@ -186,6 +197,7 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
         ...(args.app?.cdp_url !== undefined ? { cdpUrl: args.app.cdp_url } : {}),
         ...(args.app?.relay !== undefined ? { relay: args.app.relay } : {}),
         ...(args.app?.patch !== undefined ? { patch: args.app.patch } : {}),
+        ...(isSubagentSession(exec) ? { subagent: true } : {}),
       })
       const cwd = resolveCwd(exec, config.cwd, undefined)
       const screenshotRoot = config.screenshotDir ?? resolve(cwd, '.dsh-browser')

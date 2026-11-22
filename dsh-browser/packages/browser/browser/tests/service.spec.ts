@@ -150,6 +150,32 @@ describe('kind + wait resolution (pure)', () => {
     }
   })
 
+  it('ignores the inherited relay env override for a subagent', () => {
+    process.env.DSH_BROWSER_RELAY = '1'
+    try {
+      expect(service.resolveKind({ subagent: true }).kind).toBe('launch')
+    } finally {
+      delete process.env.DSH_BROWSER_RELAY
+    }
+  })
+
+  it('keeps an explicit relay request for a subagent', () => {
+    try {
+      expect(service.resolveKind({ relay: true, subagent: true })).toEqual({ kind: 'relay', cdpUrl: 'http://127.0.0.1:9224' })
+    } finally {
+      delete process.env.DSH_BROWSER_RELAY
+    }
+  })
+
+  it('still honors the env override for a top-level session', () => {
+    process.env.DSH_BROWSER_RELAY = '1'
+    try {
+      expect(service.resolveKind({})).toEqual({ kind: 'relay', cdpUrl: 'http://127.0.0.1:9224' })
+    } finally {
+      delete process.env.DSH_BROWSER_RELAY
+    }
+  })
+
   it.skipIf(hasPatchrightInstall)('app.patch fails helpfully when the patchright peer is missing', async () => {
     await expect(service.open('patch-tab', DATA_URL, { kind: { kind: 'patch' }, cwd: dir }))
       .rejects.toThrow(/patchright/)

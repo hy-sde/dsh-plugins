@@ -158,6 +158,23 @@ function trafficSince(socket: FakeSocket, start: number): Array<[unknown, unknow
     .map(f => [f.method ?? 'reply', f.sessionId, (f.params as { sessionId?: string } | undefined)?.sessionId])
 }
 
+/** ext 'send' RPC frames, in order — the wire Chrome would receive. */
+function sendRpcs(ext: FakeSocket): Array<Record<string, unknown>> {
+  return ext.frames.filter(f => f.t === 'rpc' && f.op === 'send')
+}
+
+/** Send one Target.setAutoAttach command without acking or flushing. */
+function sendAutoAttach(bridge: RelayBridge, connId: number, sessionId: string, params: Record<string, unknown>): void {
+  bridge.cdpMessage(connId, JSON.stringify({ id: ++msgSeq, sessionId, method: 'Target.setAutoAttach', params }))
+}
+
+/** Send one Runtime.evaluate command; returns the command id for reply lookup. */
+function sendEvaluate(bridge: RelayBridge, connId: number, sessionId: string, expression = '1'): number {
+  const id = ++msgSeq
+  bridge.cdpMessage(connId, JSON.stringify({ id, sessionId, method: 'Runtime.evaluate', params: { expression } }))
+  return id
+}
+
 describe('relay bridge — child targets', () => {
   it('announces a real child target only to the page session that armed auto-attach', async () => {
     const bridge = new RelayBridge()
@@ -322,4 +339,240 @@ describe('relay bridge — Target.createTarget background tabs', () => {
       expect(create).not.toHaveProperty('active')
     },
   )
+})
+
+describe('relay bridge — auto-attach ownership', () => {
+  const DISABLE = { autoAttach: false, waitForDebuggerOnStart: false, flatten: true }
+  const ENABLE = { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }
+
+  it.each(['disconnect', 'release'] as const)(
+    'isolates opt-out and disarms Chrome when the final armed holder leaves by %s',
+    async (leave) => {
+      const bridge = new RelayBridge()
+      const ext = new FakeSocket()
+      await connect(bridge, ext, [snap(1)])
+      const firstCdp = new FakeSocket()
+      const first = bridge.cdpConnected(firstCdp)
+      const firstSession = await attachPage(bridge, ext, firstCdp, first, 1)
+      await armAutoAttach(bridge, ext, first, firstSession)
+      const secondCdp = new FakeSocket()
+      const second = bridge.cdpConnected(secondCdp)
+      const secondSession = await attachPage(bridge, ext, secondCdp, second, 1)
+      await armAutoAttach(bridge, ext, second, secondSession)
+      if (leave === 'disconnect') {
+        await armAutoAttach(bridge, ext, second, await attachPage(bridge, ext, secondCdp, second, 1))
+      }
+      emit(bridge, ext, ATTACH)
+      const thirdCdp = new FakeSocket()
+      const third = bridge.cdpConnected(thirdCdp)
+      await armAutoAttach(bridge, ext, third, await attachPage(bridge, ext, thirdCdp, third, 1))
+
+      // The remaining two holders keep the tab armed, so Chrome hears nothing.
+      let sends = sendRpcs(ext).length
+      bridge.cdpClosed(third)
+      await flush()
+      expect(sendRpcs(ext)).toHaveLength(sends)
+
+      emit(bridge, ext, NAVIGATE)
+      expect(childTraffic(secondCdp)).toContainEqual(['Page.frameNavigated', 'CHILD1'])
+
+      sends = sendRpcs(ext).length
+      sendAutoAttach(bridge, first, firstSession, DISABLE)
+      await flush()
+      // The second holder still arms the tab, so the opt-out stays local.
+      expect(sendRpcs(ext)).toHaveLength(sends)
+      expect(childTraffic(firstCdp)).toEqual([
+        ['Target.attachedToTarget', firstSession],
+        ['Page.frameNavigated', 'CHILD1'],
+        ['Target.detachedFromTarget', firstSession],
+      ])
+      const probe = sendEvaluate(bridge, first, 'CHILD1')
+      await flush()
+      expect(firstCdp.replies().find(r => r.id === probe)).toMatchObject({ error: { message: 'Unknown session id CHILD1' } })
+      expect(sendRpcs(ext)).toHaveLength(sends)
+
+      const optedOut = firstCdp.frames.length
+      emit(bridge, ext, NAVIGATE, NESTED_ATTACH)
+      expect(firstCdp.frames).toHaveLength(optedOut)
+      expect(childTraffic(secondCdp)).toContainEqual(['Page.frameNavigated', 'CHILD1'])
+      emit(bridge, ext, DETACH, ATTACH)
+      expect(firstCdp.frames).toHaveLength(optedOut)
+
+      // The opted-out connection still holds the tab, so losing the last armed holder must disarm Chrome.
+      sends = sendRpcs(ext).length
+      if (leave === 'disconnect') {
+        bridge.cdpClosed(second)
+      } else {
+        bridge.cdpMessage(second, JSON.stringify({ id: ++msgSeq, method: 'Target.detachFromTarget', params: { sessionId: secondSession } }))
+      }
+      await flush()
+      const wire = sendRpcs(ext)
+      expect(wire).toHaveLength(sends + 1)
+      expect(wire[wire.length - 1]).toMatchObject({ method: 'Target.setAutoAttach', params: DISABLE })
+      ackRpcs(bridge, ext, 'send')
+      await flush()
+      expect(sendRpcs(ext)).toHaveLength(sends + 1)
+    },
+  )
+
+  it("disarms Chrome after another holder's in-flight enable fails", async () => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [snap(1)])
+    const firstCdp = new FakeSocket()
+    const first = bridge.cdpConnected(firstCdp)
+    const session = await attachPage(bridge, ext, firstCdp, first, 1)
+    await armAutoAttach(bridge, ext, first, session)
+    const secondCdp = new FakeSocket()
+    const second = bridge.cdpConnected(secondCdp)
+    const other = await attachPage(bridge, ext, secondCdp, second, 1)
+    sendAutoAttach(bridge, second, other, ENABLE)
+    // Queue the opt-out behind the in-flight enable before either resolves.
+    sendAutoAttach(bridge, first, session, DISABLE)
+    // The enable fails; its rollback leaves nobody armed, so the opt-out reaches Chrome.
+    ackRpcs(bridge, ext, 'send', false)
+    await flush()
+    const wire = sendRpcs(ext)
+    expect(wire).toHaveLength(3)
+    expect(wire[2]).toMatchObject({ method: 'Target.setAutoAttach', params: DISABLE })
+    ackRpcs(bridge, ext, 'send')
+    await flush()
+  })
+
+  it.each(['disconnect', 'release'] as const)('retries a failed disable after its holder leaves by %s', async (leave) => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [snap(1)])
+    const cdp = new FakeSocket()
+    const conn = bridge.cdpConnected(cdp)
+    const session = await attachPage(bridge, ext, cdp, conn, 1)
+    await armAutoAttach(bridge, ext, conn, session)
+    // A second connection keeps the tab attached without arming auto-attach.
+    const registryCdp = new FakeSocket()
+    await attachPage(bridge, ext, registryCdp, bridge.cdpConnected(registryCdp), 1)
+    sendAutoAttach(bridge, conn, session, DISABLE)
+    if (leave === 'disconnect') bridge.cdpClosed(conn)
+    else bridge.cdpMessage(conn, JSON.stringify({ id: ++msgSeq, method: 'Target.detachFromTarget', params: { sessionId: session } }))
+    // The disable failed; the departure's reconcile must retry it for the remaining holder.
+    ackRpcs(bridge, ext, 'send', false)
+    await flush()
+    const wire = sendRpcs(ext)
+    expect(wire).toHaveLength(3)
+    expect(wire[2]).toMatchObject({ method: 'Target.setAutoAttach', params: DISABLE })
+    ackRpcs(bridge, ext, 'send')
+    await flush()
+  })
+
+  it('rejects a queued auto-attach after its page session is released', async () => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [snap(1)])
+    const cdp = new FakeSocket()
+    const conn = bridge.cdpConnected(cdp)
+    const first = await attachPage(bridge, ext, cdp, conn, 1)
+    const queued = await attachPage(bridge, ext, cdp, conn, 1)
+    sendAutoAttach(bridge, conn, first, ENABLE)
+    const queuedId = ++msgSeq
+    bridge.cdpMessage(conn, JSON.stringify({ id: queuedId, sessionId: queued, method: 'Target.setAutoAttach', params: ENABLE }))
+    // The queued session dies while its enable still waits behind the first one.
+    bridge.cdpMessage(conn, JSON.stringify({ id: ++msgSeq, method: 'Target.detachFromTarget', params: { sessionId: queued } }))
+    ackRpcs(bridge, ext, 'send')
+    await flush()
+    expect(cdp.replies().find(r => r.id === queuedId)).toMatchObject({ error: { message: `Unknown session id ${queued}` } })
+    expect(sendRpcs(ext)).toHaveLength(1)
+  })
+
+  it('owns an explicitly attached child without arming auto-attach', async () => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [snap(1)])
+    const cdp = new FakeSocket()
+    const conn = bridge.cdpConnected(cdp)
+    const page = await attachPage(bridge, ext, cdp, conn, 1)
+    const otherCdp = new FakeSocket()
+    const other = bridge.cdpConnected(otherCdp)
+    const otherPage = await attachPage(bridge, ext, otherCdp, other, 1)
+
+    const attachId = ++msgSeq
+    bridge.cdpMessage(conn, JSON.stringify({
+      id: attachId,
+      sessionId: page,
+      method: 'Target.attachToTarget',
+      params: { targetId: 'FRAME1', flatten: true },
+    }))
+    emit(bridge, ext, ATTACH)
+    ackRpcs(bridge, ext, 'send', true, { sessionId: 'CHILD1' })
+    await flush()
+    expect(cdp.replies().find(r => r.id === attachId)).toMatchObject({ result: { sessionId: 'CHILD1' } })
+
+    // Only the owning connection may drive the explicit child.
+    const own = sendEvaluate(bridge, conn, 'CHILD1')
+    const foreign = sendEvaluate(bridge, other, 'CHILD1')
+    ackRpcs(bridge, ext, 'send', true, { result: { type: 'number', value: 1 } })
+    await flush()
+    expect(cdp.replies().find(r => r.id === own)).toMatchObject({ result: { result: { type: 'number', value: 1 } } })
+    expect(otherCdp.replies().find(r => r.id === foreign)).toMatchObject({ error: { message: 'Unknown session id CHILD1' } })
+
+    await armAutoAttach(bridge, ext, conn, 'CHILD1')
+    emit(bridge, ext, NESTED_ATTACH)
+    await armAutoAttach(bridge, ext, conn, page)
+    await armAutoAttach(bridge, ext, other, otherPage)
+    emit(bridge, ext, {
+      method: 'Target.attachedToTarget',
+      params: { sessionId: 'AUTOMATIC', targetInfo: { targetId: 'FRAME2', type: 'iframe' } },
+    })
+
+    sendAutoAttach(bridge, conn, page, DISABLE)
+    await flush()
+    // The opt-out only revokes automatic children; explicit ones stay owned.
+    expect(cdp.frames).toContainEqual({ sessionId: page, method: 'Target.detachedFromTarget', params: { sessionId: 'AUTOMATIC' } })
+    const afterOptOut = sendEvaluate(bridge, conn, 'CHILD1')
+    ackRpcs(bridge, ext, 'send', true, { result: { type: 'number', value: 1 } })
+    await flush()
+    expect(cdp.replies().find(r => r.id === afterOptOut)).toMatchObject({ result: { result: { type: 'number', value: 1 } } })
+    const descendant = sendEvaluate(bridge, conn, 'CHILD2')
+    ackRpcs(bridge, ext, 'send', true, { result: { type: 'number', value: 1 } })
+    await flush()
+    expect(cdp.replies().find(r => r.id === descendant)).toMatchObject({ result: { result: { type: 'number', value: 1 } } })
+
+    emit(bridge, ext, NAVIGATE, DETACH)
+    expect(childTraffic(cdp).filter(([method]) => method !== undefined)).toEqual([
+      ['Target.attachedToTarget', 'CHILD1'],
+      ['Page.frameNavigated', 'CHILD1'],
+      ['Target.detachedFromTarget', page],
+    ])
+    expect(childTraffic(otherCdp).filter(([method]) => method !== undefined)).toEqual(lifecycleOn(otherPage))
+  })
+
+  it('revokes automatic children when the last local page is released while another connection remains armed', async () => {
+    const bridge = new RelayBridge()
+    const ext = new FakeSocket()
+    await connect(bridge, ext, [snap(1)])
+    const cdp = new FakeSocket()
+    const conn = bridge.cdpConnected(cdp)
+    const page = await attachPage(bridge, ext, cdp, conn, 1)
+    await armAutoAttach(bridge, ext, conn, page)
+    const otherCdp = new FakeSocket()
+    const other = bridge.cdpConnected(otherCdp)
+    const otherPage = await attachPage(bridge, ext, otherCdp, other, 1)
+    await armAutoAttach(bridge, ext, other, otherPage)
+    emit(bridge, ext, ATTACH)
+
+    bridge.cdpMessage(conn, JSON.stringify({ id: ++msgSeq, method: 'Target.detachFromTarget', params: { sessionId: page } }))
+    await flush()
+    const probe = sendEvaluate(bridge, conn, 'CHILD1')
+    await flush()
+    expect(cdp.replies().find(r => r.id === probe)).toMatchObject({ error: { message: 'Unknown session id CHILD1' } })
+    expect(sendRpcs(ext)).toHaveLength(2)
+
+    emit(bridge, ext, NAVIGATE)
+    expect(childTraffic(cdp).filter(([method]) => method !== undefined)).toEqual([
+      ['Target.attachedToTarget', page],
+      ['Target.detachedFromTarget', page],
+    ])
+    expect(childTraffic(otherCdp)).toEqual([
+      ['Target.attachedToTarget', otherPage],
+      ['Page.frameNavigated', 'CHILD1'],
+    ])
+  })
 })
