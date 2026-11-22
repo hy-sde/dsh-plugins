@@ -294,4 +294,19 @@ describe('Patcher shift-consistent anchor rescue', () => {
     const v1 = 'alpha bravo charlie one\ndelta echo foxtrot two (merged)\njuliet kilo lima four\nmike november oscar five\npapa quebec romeo six\n'
     expect(fs.get(PATH)).toBe(v1)
   })
+  it('applies the boundary-candidate case as written while the parse probe is stubbed', async () => {
+    // oh-my-pi 69df14cfa8 rejects this edit with the suggested fix ("line 5
+    // stays (use `PUT <5:`)") once a unique boundary candidate keeps the file
+    // parsing. This fork has no tree-sitter (syntax.ts stubs parsesCleanly to
+    // false), so no candidate ever proves and the body applies as written;
+    // apply.ts's pivot still throws the suggested fix when a real probe lands.
+    const text = ['const handlers = {', '\ta() {', '\t\treturn 1;', '\t},', '};'].join('\n')
+    const fs = new InMemoryFilesystem([[PATH, text]])
+    const snapshots = new InMemorySnapshotStore()
+    const tag = snapshots.record(PATH, text, [1, 2, 3, 4, 5])
+    const patcher = new Patcher({ fs, snapshots })
+
+    await patcher.apply(Patch.parse(`[${PATH}#${tag}]\nPUT 5.=5:\n+\tb() {\n+\t\treturn 2;\n+\t},`))
+    expect(fs.get(PATH)).toBe(['const handlers = {', '\ta() {', '\t\treturn 1;', '\t},', '\tb() {', '\t\treturn 2;', '\t},'].join('\n'))
+  })
 })
