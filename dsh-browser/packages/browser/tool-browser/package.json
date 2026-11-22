@@ -1,6 +1,6 @@
 {
   "name": "@hy-sde-org/dsh-tool-browser",
-  "version": "0.2.2-rc.3",
+  "version": "0.2.2-rc.4",
   "description": "Model-facing browser tool (open/close/run over launch, CDP-attach and relay backends, ARIA-snapshot + screenshot observations) for DeepSeek Harness — a standalone plugin with no upstream harness changes required.",
   "type": "module",
   "main": "./dist/index.js",
