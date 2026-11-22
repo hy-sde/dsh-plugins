@@ -620,6 +620,18 @@ describe('PublicSearchProvider', () => {
     })
   })
 
+  it('keeps a sign-prefixed token after an empty directive from strict-emptying the merge', async () => {
+    const engine = stubEngine('startpage', {
+      sources: [{ url: 'https://available.test/guide', title: 'Guide' }],
+    })
+
+    // `docs site: -example.com` parses without a site scope — the sign-prefixed
+    // token stays an exclusion term, so the merge is not strict-emptied.
+    const result = await provider([engine.engine]).search({ query: 'docs site: -example.com' })
+
+    expect(result).toEqual({ sources: [{ url: 'https://available.test/guide', title: 'Guide' }], truncated: false })
+  })
+
   it('explains degraded coverage when accepted empties mix with engine failures', async () => {
     const walled = stubEngine('startpage', { error: new EngineSearchFailure('challenge', 'challenge wall') })
     const empty = stubEngine('duckduckgo', { sources: [] })
@@ -813,6 +825,24 @@ describe('PublicSearchProvider', () => {
     })
   })
 
+  it('keeps date-incapable engines running when an impossible date degrades to a term', async () => {
+    let incapableCalls = 0
+    const incapable: PublicEngine = {
+      id: 'mojeek',
+      querySyntax: MOJEEK_QUERY_SYNTAX,
+      async search(): Promise<WebSearchSource[]> {
+        incapableCalls += 1
+        return [{ url: 'https://mojeek.test/', title: 'Guide' }]
+      },
+    }
+
+    const result = await provider([incapable]).search({ query: 'guide before:2023-02-29' })
+
+    // The typo'd date degrades to a plain term instead of a bound, so the
+    // engine without dateRange support is not skipped.
+    expect(incapableCalls).toBe(1)
+    expect(result).toEqual({ sources: [{ url: 'https://mojeek.test/', title: 'Guide' }], truncated: false })
+  })
 
   it('cancels a queued search when its request aborts', async () => {
     const gates: Array<() => void> = []

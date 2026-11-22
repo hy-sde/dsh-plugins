@@ -267,6 +267,12 @@ function splitParens(tokens: RawToken[]): RawToken[] {
 
 function isoDate(year: number, month: number, day: number): string | undefined {
   if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return undefined
+  // Reject calendar-impossible dates (2023-02-29): Date.parse would roll the
+  // bound over to the next valid day (V8 MakeDay) instead of rejecting it.
+  const probe = new Date(Date.UTC(year, month - 1, day))
+  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day) {
+    return undefined
+  }
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
@@ -486,7 +492,10 @@ export function parseSearchQuery(raw: string): StructuredQuery {
       let value = (match[3] as string).trim()
       if (value.length === 0) {
         const next = tokens[index + 1]
-        if (next !== undefined && (next.quoted || !isReservedToken(next.text))) {
+        // A sign-prefixed token is an exclusion/inclusion term, not the value
+        // (`site: -example.com` reads as "site: then exclude example.com");
+        // adopting it verbatim would make the strict positive dim empty the result.
+        if (next !== undefined && (next.quoted || (!isReservedToken(next.text) && !/^[-+]/.test(next.text)))) {
           value = next.text.trim()
           index += 1
         }
