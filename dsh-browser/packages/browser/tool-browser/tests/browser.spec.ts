@@ -20,7 +20,7 @@ import { Context } from '@deepseek-ai/cordis'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import Browser from '@hy-sde-org/dsh-browser'
 import toolBrowserPackage from '@hy-sde-org/dsh-tool-browser'
-import { resolveCwd, trimAria, stringifyResult } from '../src/browser.ts'
+import { resolveCwd, trimAria, stringifyResult, isSubagentSession } from '../src/browser.ts'
 
 const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -88,6 +88,25 @@ describe('pure helpers', () => {
 describe('browser tool registration', () => {
   it('registers the browser tool with the expected name', () => {
     expect(ctx.tools.get('browser')).toBeDefined()
+  })
+})
+
+describe('isSubagentSession', () => {
+  const execWithDepth = (delegationDepth?: number): never =>
+    ({ agent: { session: { header: { delegationDepth } } } }) as never
+
+  it('classifies a delegated child by its delegation depth', () => {
+    expect(isSubagentSession(execWithDepth(1))).toBe(true)
+    expect(isSubagentSession(execWithDepth(3))).toBe(true)
+  })
+
+  it('treats a top-level or depth-less session as non-subagent', () => {
+    expect(isSubagentSession(execWithDepth(0))).toBe(false)
+    expect(isSubagentSession(execWithDepth(undefined))).toBe(false)
+  })
+
+  it('survives a missing agent', () => {
+    expect(isSubagentSession({} as never)).toBe(false)
   })
 })
 

@@ -214,14 +214,21 @@ export class BrowserService extends Service {
 
   /**
    * Resolve the browser kind for a session (attach/launch/patch/relay), like omp.
-   * @param input - optional app-path, cdp URL, patch flag, or explicit relay opt-in.
+   * @param input - optional app-path, cdp URL, patch flag, explicit relay opt-in,
+   *   or subagent classification.
    * @returns the resolved {@link BrowserKind} to drive.
    */
-  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean; patch?: boolean }): BrowserKind {
+  resolveKind(input: { path?: string; cdpUrl?: string; relay?: boolean; patch?: boolean; subagent?: boolean }): BrowserKind {
     if (input.cdpUrl) return { kind: 'attach', cdpUrl: input.cdpUrl.replace(/\/+$/, '') }
     if (input.path) return { kind: 'launch', path: input.path }
     if (input.patch ?? this.usePatch) return { kind: 'patch' }
-    const relay = resolveRelayKind({ settingEnabled: input.relay ?? false, url: this.relayUrl })
+    // A subagent inherits the parent's environment, so DSH_BROWSER_RELAY=1
+    // there is the parent's standing default, not this session's request; a
+    // child reaches the user's Chrome only through an explicit relay request
+    // (oh-my-pi 8b7827f6f3+7271557af).
+    const relay = input.relay === true || input.subagent !== true
+      ? resolveRelayKind({ settingEnabled: input.relay ?? false, url: this.relayUrl })
+      : null
     if (relay) return { kind: 'relay', cdpUrl: relay.cdpUrl }
     return this.browserPath !== undefined ? { kind: 'launch', path: this.browserPath } : { kind: 'launch' }
   }

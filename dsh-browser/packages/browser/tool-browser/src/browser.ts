@@ -82,6 +82,17 @@ export function resolveCwd(exec: ToolExecution, configured: string | undefined, 
 }
 
 /**
+ * A delegated child session (delegationDepth > 0) inherits the parent's
+ * environment, so a standing relay default is the parent's choice, not this
+ * session's request.
+ * @param exec - the executing tool context.
+ * @returns whether the executing session is a delegated subagent child.
+ */
+export function isSubagentSession(exec: ToolExecution): boolean {
+  return (exec.agent?.session.header.delegationDepth ?? 0) > 0
+}
+
+/**
  * Trim Aria.
  *
  * @param aria - The aria parameter.
@@ -186,6 +197,7 @@ export function applyBrowserTool(ctx: Context, config: BrowserToolConfig = {}): 
         ...(args.app?.cdp_url !== undefined ? { cdpUrl: args.app.cdp_url } : {}),
         ...(args.app?.relay !== undefined ? { relay: args.app.relay } : {}),
         ...(args.app?.patch !== undefined ? { patch: args.app.patch } : {}),
+        ...(isSubagentSession(exec) ? { subagent: true } : {}),
       })
       const cwd = resolveCwd(exec, config.cwd, undefined)
       const screenshotRoot = config.screenshotDir ?? resolve(cwd, '.dsh-browser')
